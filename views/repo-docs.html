@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/assets/mesh-docs.css">
   <link rel="stylesheet" href="/assets/repo-docs.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 </head>
 <body>
   <nav class="docs-nav">
@@ -35,7 +36,7 @@
 
       <label class="repo-docs-search">
         <span>Filter files</span>
-        <input id="repoDocsSearch" type="search" placeholder="Type to filter...">
+        <div class="repo-docs-search-wrap"><input id="repoDocsSearch" type="text" placeholder="Type to filter..." required><button type="button" id="repoDocsSearchClear" class="repo-docs-search-clear" aria-label="Clear search">×</button></div>
       </label>
 
       <div class="side-title">Key Docs</div>

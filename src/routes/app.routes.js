@@ -2,7 +2,32 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const hljs = require('highlight.js');
 const { marked } = require('marked');
+
+const markedRenderer = new marked.Renderer();
+markedRenderer.code = function(code, lang) {
+  // If arguments is an object (marked >= 8.0.0 uses options object)
+  let actualCode = code;
+  let actualLang = lang;
+  if (code && typeof code === 'object' && code.text !== undefined) {
+      actualCode = code.text;
+      actualLang = code.lang;
+  }
+
+  let highlighted = actualCode;
+  if (actualLang && hljs.getLanguage(actualLang)) {
+    try {
+      highlighted = hljs.highlight(actualCode, { language: actualLang }).value;
+    } catch (e) {}
+  } else {
+    try {
+      highlighted = hljs.highlightAuto(actualCode).value;
+    } catch (e) {}
+  }
+  return `<pre><code class="hljs ${actualLang || ''}">${highlighted}</code></pre>`;
+};
+marked.use({ renderer: markedRenderer });
 
 const REPO_DOCS_ROOT = path.join(__dirname, '..', '..');
 const REPO_DOCS_EXCLUDED_DIRS = new Set([
@@ -121,12 +146,34 @@ function buildRepoTree(absDir, relDir = '', depth = 0) {
   return items;
 }
 
-function renderRepoDocument(relPath, content) {
+
+function sanitizeContent(src) {
+  return String(src || '').replace(/(sk-[a-zA-Z0-9_\-]{20,})/g, '********');
+}
+
+function renderRepoDocument(relPath, rawContent) {
+  const content = sanitizeContent(rawContent);
   const ext = path.extname(relPath).toLowerCase();
+
   if (ext === '.md') {
     return marked.parse(content, { breaks: true, gfm: true });
   }
-  return `<pre class="repo-docs-code"><code>${escapeHtml(content)}</code></pre>`;
+
+  // Also try to syntax highlight other raw files
+  let lang = ext.slice(1);
+  if (lang === 'js' || lang === 'cjs' || lang === 'mjs') lang = 'javascript';
+  else if (lang === 'yml') lang = 'yaml';
+
+  let highlighted = content;
+  if (lang && hljs.getLanguage(lang)) {
+    try {
+      highlighted = hljs.highlight(content, { language: lang }).value;
+    } catch (e) {}
+  } else {
+    highlighted = hljs.highlightAuto(content).value;
+  }
+
+  return `<pre><code class="hljs ${lang}">${highlighted}</code></pre>`;
 }
 
 const DEFAULT_BILLING_STATE = {
