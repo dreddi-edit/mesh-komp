@@ -24,8 +24,9 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'ccmon.html'));
 });
 
-const server = app.listen(port, () => {
+const server = app.listen(port, '0.0.0.0', () => {
   console.log(`ccmon-web listening at http://localhost:${port}`);
+  console.log(`Also accessible on your network at http://<your-ip-address>:${port}`);
 });
 
 const wss = new WebSocketServer({ server });
