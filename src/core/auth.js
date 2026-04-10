@@ -38,9 +38,11 @@ const AUTH_SESSION_TOUCH_INTERVAL_MS = parseIntegerInRange(
 );
 const AUTH_COOKIE_NAME      = String(process.env.MESH_AUTH_COOKIE_NAME || 'mesh_auth').trim() || 'mesh_auth';
 const AUTH_COOKIE_PATH      = String(process.env.MESH_AUTH_COOKIE_PATH || '/').trim() || '/';
-const AUTH_COOKIE_SAME_SITE = String(process.env.MESH_AUTH_COOKIE_SAMESITE || 'Lax').trim() || 'Lax';
+const AUTH_COOKIE_SAME_SITE = String(process.env.MESH_AUTH_COOKIE_SAMESITE || 'Strict').trim() || 'Strict';
 const AUTH_COOKIE_SECURE    = parseBooleanFlag(process.env.MESH_AUTH_COOKIE_SECURE, process.env.NODE_ENV === 'production');
 
+const IS_PRODUCTION = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
+const DEMO_USER_ENABLED      = parseBooleanFlag(process.env.MESH_DEMO_USER_ENABLED, !IS_PRODUCTION);
 const DEMO_USER_EMAIL        = 'edgar@test.com';
 const DEMO_USER_EMAIL_ALIASES = String(process.env.MESH_DEMO_USER_EMAIL_ALIASES || '')
   .split(',')
@@ -138,8 +140,9 @@ async function ensureDemoUserRecord() {
 async function loadAuthStore() {
   try {
     await secureDb.migrateLegacyAuthStore(AUTH_STORE_FILE);
-    // Keep demo login deterministic across instances, even if legacy stores drift.
-    await ensureDemoUserRecord();
+    if (DEMO_USER_ENABLED) {
+      await ensureDemoUserRecord();
+    }
   } catch (error) {
     reportAuthStoreError('load', error);
   }
@@ -389,6 +392,7 @@ module.exports = {
   AUTH_COOKIE_PATH,
   AUTH_COOKIE_SAME_SITE,
   AUTH_COOKIE_SECURE,
+  DEMO_USER_ENABLED,
   DEMO_USER_EMAIL,
   DEMO_USER_EMAIL_ALIASES,
   DEMO_USER_PASSWORD,

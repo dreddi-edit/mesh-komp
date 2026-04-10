@@ -25,7 +25,7 @@ markedRenderer.code = function(code, lang) {
       highlighted = hljs.highlightAuto(actualCode).value;
     } catch (e) {}
   }
-  return `<pre><code class="hljs ${actualLang || ''}">${highlighted}</code></pre>`;
+  return `<pre><code class="hljs ${escapeHtml(actualLang || '')}">${highlighted}</code></pre>`;
 };
 marked.use({ renderer: markedRenderer });
 
@@ -173,7 +173,7 @@ function renderRepoDocument(relPath, rawContent) {
     highlighted = hljs.highlightAuto(content).value;
   }
 
-  return `<pre><code class="hljs ${lang}">${highlighted}</code></pre>`;
+  return `<pre><code class="hljs ${escapeHtml(lang)}">${highlighted}</code></pre>`;
 }
 
 const DEFAULT_BILLING_STATE = {
@@ -267,7 +267,8 @@ router.get("/api/docs/index", requireAuth, (_req, res) => {
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    res.status(500).json({ ok: false, error: error.message || 'Failed to build repo docs index' });
+    console.error('[app-routes] Failed to build repo docs index:', String(error?.message || error || 'unknown'));
+    res.status(500).json({ ok: false, error: 'Failed to build repo docs index' });
   }
 });
 
@@ -278,8 +279,9 @@ router.get("/api/docs/file", requireAuth, (req, res) => {
       res.status(400).json({ ok: false, error: 'Missing file path' });
       return;
     }
-    const absPath = path.join(REPO_DOCS_ROOT, relPath);
-    if (!absPath.startsWith(REPO_DOCS_ROOT)) {
+    const resolvedRoot = path.resolve(REPO_DOCS_ROOT);
+    const absPath = path.resolve(REPO_DOCS_ROOT, relPath);
+    if (absPath !== resolvedRoot && !absPath.startsWith(resolvedRoot + path.sep)) {
       res.status(400).json({ ok: false, error: 'Invalid file path' });
       return;
     }
@@ -303,7 +305,8 @@ router.get("/api/docs/file", requireAuth, (req, res) => {
       updatedAt: stat.mtime.toISOString(),
     });
   } catch (error) {
-    res.status(500).json({ ok: false, error: error.message || 'Failed to read docs file' });
+    console.error('[app-routes] Failed to read docs file:', String(error?.message || error || 'unknown'));
+    res.status(500).json({ ok: false, error: 'Failed to read docs file' });
   }
 });
 
@@ -499,13 +502,13 @@ router.post("/api/byok/validate", requireAuth, async (req, res) => {
   } catch (error) {
     res.status(400).json({
       ok: false,
-      error: error.message || "Validation failed",
+      error: "Validation failed",
     });
   }
 });
 
 
-router.post("/api/chat", async (req, res) => {
+router.post("/api/chat", requireAuth, async (req, res) => {
   const { model = "claude-opus-4-6", messages = [] } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
@@ -528,7 +531,8 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
     });
     res.json({ content: resp.content[0]?.text || "" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[app-routes] Chat request failed:", String(err?.message || err || "unknown"));
+    res.status(500).json({ error: "Chat request failed." });
   }
 });
 
@@ -565,15 +569,18 @@ router.post("/api/inline-complete", requireAuth, async (req, res) => {
       method: "POST",
       headers: { "api-key": azureKey, "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60_000),
     });
   } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
+    console.error("[app-routes] Inline completion failed:", String(err?.message || err || "unknown"));
+    res.status(502).json({ ok: false, error: "Inline completion request failed." });
     return;
   }
 
   if (!upstream.ok) {
     const errText = await upstream.text().catch(() => "");
-    res.status(upstream.status).json({ ok: false, error: errText });
+    console.error('[app-routes] Inline completion upstream error:', upstream.status, errText.slice(0, 200));
+    res.status(upstream.status).json({ ok: false, error: "Inline completion upstream error." });
     return;
   }
 
