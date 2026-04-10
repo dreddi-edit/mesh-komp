@@ -19,6 +19,7 @@
   --r: 20px;
   --r-sm: 12px;
   --font-mono: "Berkeley Mono", ui-monospace, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme="dark"] {
@@ -48,11 +49,12 @@ a { color: inherit; text-decoration: none; transition: 0.2s cubic-bezier(0.16, 1
 /* ── Shell ── */
 .docs-shell {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 300px 1fr;
   max-width: 1440px;
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
+  padding-top: 60px;
 }
 
 /* ── Navigation (Topbar) ── */
@@ -81,10 +83,11 @@ a { color: inherit; text-decoration: none; transition: 0.2s cubic-bezier(0.16, 1
 .docs-sidebar {
   position: sticky; top: 60px;
   height: calc(100vh - 60px);
-  padding: 40px 24px;
+  padding: 32px 20px;
   border-right: 1px solid var(--line);
   overflow-y: auto;
   scrollbar-width: none;
+  background: var(--bg);
 }
 .docs-sidebar::-webkit-scrollbar { display: none; }
 
@@ -103,7 +106,7 @@ a { color: inherit; text-decoration: none; transition: 0.2s cubic-bezier(0.16, 1
 .side-nav a.active { background: rgba(var(--primary-rgb), 0.08); color: var(--primary); font-weight: 600; }
 
 /* ── Content Area ── */
-.docs-main { padding: 40px 60px 100px; position: relative; }
+.docs-main { padding: 48px 64px 100px; position: relative; max-width: 900px; }
 
 .hero {
   margin-bottom: 60px; position: relative;
