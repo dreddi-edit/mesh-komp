@@ -2,6 +2,16 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+
+// ── Fail fast if critical env vars are missing ────────────────────────────────
+const { runStartupChecks } = require('./core/startup-checks');
+const startupResult = runStartupChecks();
+startupResult.warnings.forEach((w) => console.warn(`[startup] ${w}`));
+if (!startupResult.ok) {
+  startupResult.errors.forEach((e) => console.error(`[startup] FATAL: ${e}`));
+  process.exit(1);
+}
+
 const core = require('./core/index');
 
 // Destructure all required core logic directly into global scope for routes (fast monolithic refactor)

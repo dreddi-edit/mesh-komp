@@ -300,7 +300,7 @@ The following six standalone pages remain for direct-URL access and backwards co
   Works with: `src/core/index.js`, `secure-db.js`, `assets/settings.js`, `assets/app-workspace.js`, `assets/repo-docs.js`.
 
 - `src/routes/assistant.routes.js`
-  Purpose: assistant/workspace/git/chat/context endpoints, including workspace diff sync and graph fallback routing.
+  Purpose: assistant/workspace/git/chat/context endpoints, including workspace diff sync and graph fallback routing. Search/grep limits are capped (200/500). Git clone validates URL protocol (https/git/ssh) and restricts target path to the workspace parent. Span lookup escapes regex meta-characters.
   Works with: `src/core/index.js`, workbench frontend, graph, search, chat, and workspace flows.
 
 - `src/routes/realtime.routes.js`
@@ -352,6 +352,10 @@ The following six standalone pages remain for direct-URL access and backwards co
 - `src/core/assistant-runs.js`
   Purpose: assistant run orchestration — run record lifecycle, plan/proposal generation, batch execution, diff extraction, and run continuation logic. Uses globals set by server.js at startup (no direct requires to avoid circular deps).
   Works with: globals from `src/core/index.js` (`runModelChat`, `localWorkspaceSave`, `appendOperationLog`, etc.), `src/core/index.js` (required by index.js and destructured into scope).
+
+- `src/core/startup-checks.js`
+  Purpose: startup environment validation — `runStartupChecks()` validates critical env vars before the server accepts connections. In production, missing `MESH_DATA_ENCRYPTION_KEY` or Cosmos DB config is fatal. In all envs, warns about missing recommended vars.
+  Works with: `src/server.js` (called at boot, before core import).
 
 ## mesh-core Worker
 
@@ -442,6 +446,14 @@ The following six standalone pages remain for direct-URL access and backwards co
 - `test/assistant-integration.test.js`
   Purpose: integration tests across server/assistant/runtime flows.
   Works with: `src/server.js`, route APIs, workspace files.
+
+- `test/security-integration.test.js`
+  Purpose: integration tests for security hardening — security headers, CSRF guard, login rate limiter, auth on chat endpoint, SameSite cookie. Spins up a real server and tests via HTTP.
+  Works with: `src/server.js`, `src/routes/auth.routes.js`, `src/routes/app.routes.js`, `src/core/auth.js`.
+
+- `test/startup-checks.test.js`
+  Purpose: unit tests for startup env var validation (production vs. dev behaviour, warning generation).
+  Works with: `src/core/startup-checks.js`.
 
 - `test/compression-core.test.js`
   Purpose: tests for Mesh compression core behavior.

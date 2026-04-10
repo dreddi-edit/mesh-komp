@@ -363,7 +363,7 @@ router.get("/api/assistant/workspace/search", requireAuth, async (req, res) => {
   try {
     const result = await searchWorkspaceWithFallback(String(req.query.q || ""), {
       scope: String(req.query.scope || "all"),
-      limit: Number(req.query.limit) || 12,
+      limit: Math.min(Number(req.query.limit) || 12, 200),
     });
     res.json(result);
   } catch (error) {
@@ -376,7 +376,7 @@ router.post("/api/assistant/workspace/grep", requireAuth, async (req, res) => {
   try {
     const result = await grepWorkspaceWithFallback(String(req.body?.q || req.body?.query || ""), {
       scope: String(req.body?.scope || "all"),
-      limit: Number(req.body?.limit) || 40,
+      limit: Math.min(Number(req.body?.limit) || 40, 500),
       caseSensitive: req.body?.caseSensitive === true,
     });
     if (result.ok === false) {
@@ -761,14 +761,23 @@ router.post("/api/assistant/git/clone", requireAuth, async (req, res) => {
       res.status(400).json({ ok: false, error: "Repository URL required" });
       return;
     }
+    const SAFE_GIT_URL_PATTERN = /^(https?:\/\/|git:\/\/|ssh:\/\/|git@[\w.\-]+:)/;
+    if (!SAFE_GIT_URL_PATTERN.test(url)) {
+      res.status(400).json({ ok: false, error: "Invalid repository URL. Must use https, git, or ssh protocol." });
+      return;
+    }
     const result = await runGitWithFallback("git.clone", { url, path: targetPath }, async () => {
       if (!targetPath && !isLocalPathWorkspaceState()) {
         return { ok: false, error: "Target path required when no local workspace root is configured." };
       }
+      const workspaceParent = path.dirname(getLocalGitCwd());
       const fallbackName = url.split("/").pop()?.replace(/\.git$/i, "") || "repo";
       const resolvedTarget = targetPath
-        ? path.resolve(targetPath)
-        : path.resolve(path.dirname(getLocalGitCwd()), fallbackName);
+        ? path.resolve(workspaceParent, targetPath)
+        : path.resolve(workspaceParent, fallbackName);
+      if (resolvedTarget !== workspaceParent && !resolvedTarget.startsWith(workspaceParent + path.sep)) {
+        return { ok: false, error: "Target path must be within the workspace directory." };
+      }
       await fs.promises.mkdir(path.dirname(resolvedTarget), { recursive: true });
       const cloned = await runLocalGit(["clone", url, resolvedTarget], path.dirname(resolvedTarget));
       return {
@@ -1511,7 +1520,7 @@ router.get("/api/assistant/workspace/span", requireAuth, async (req, res) => {
       for (const [filePath, fileData] of files) {
         const capsule = fileData?.capsuleBase || fileData?.compressedContent || "";
         if (capsule.includes(spanId)) {
-          const spanMatch = capsule.match(new RegExp(spanId + "[^\\n]*?(?:L|line|:)(\\d+)"));
+          const spanMatch = capsule.match(new RegExp(escapeRegexLiteral(spanId) + "[^\\n]*?(?:L|line|:)(\\d+)"));
           const line = spanMatch ? parseInt(spanMatch[1]) : 1;
           res.json({
             ok: true,
