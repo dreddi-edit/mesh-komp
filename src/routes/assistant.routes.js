@@ -185,7 +185,7 @@ router.get("/api/assistant/workspace/graph", requireAuth, async (req, res) => {
     } catch {
       res.status(500).json({
         ok: false,
-        error: `Mesh worker unavailable: ${error.message || "offline"}`,
+        error: "Mesh worker unavailable.",
       });
     }
   }
@@ -1238,7 +1238,8 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
 
         if (!streamResponse.ok) {
           const errBody = await streamResponse.text();
-          sendSSE("error", { error: `Anthropic error (${streamResponse.status}): ${errBody.slice(0, 200)}` });
+          console.error(`[assistant-routes] Anthropic error (${streamResponse.status}):`, errBody.slice(0, 500));
+          sendSSE("error", { error: `Anthropic API error (${streamResponse.status})` });
           res.end();
           return;
         }
@@ -1365,7 +1366,8 @@ async function streamOpenAICompatible({ apiKey, model, messages, baseUrl, orgId,
 
   if (!streamResponse.ok) {
     const errBody = await streamResponse.text();
-    sendSSE("error", { error: `Provider error (${streamResponse.status}): ${errBody.slice(0, 200)}` });
+    console.error(`[assistant-routes] Provider error (${streamResponse.status}):`, errBody.slice(0, 500));
+    sendSSE("error", { error: `Provider API error (${streamResponse.status})` });
     return;
   }
 

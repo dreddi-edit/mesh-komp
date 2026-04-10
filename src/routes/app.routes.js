@@ -267,7 +267,8 @@ router.get("/api/docs/index", requireAuth, (_req, res) => {
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    res.status(500).json({ ok: false, error: error.message || 'Failed to build repo docs index' });
+    console.error('[app-routes] Failed to build repo docs index:', String(error?.message || error || 'unknown'));
+    res.status(500).json({ ok: false, error: 'Failed to build repo docs index' });
   }
 });
 
@@ -304,7 +305,8 @@ router.get("/api/docs/file", requireAuth, (req, res) => {
       updatedAt: stat.mtime.toISOString(),
     });
   } catch (error) {
-    res.status(500).json({ ok: false, error: error.message || 'Failed to read docs file' });
+    console.error('[app-routes] Failed to read docs file:', String(error?.message || error || 'unknown'));
+    res.status(500).json({ ok: false, error: 'Failed to read docs file' });
   }
 });
 
@@ -500,7 +502,7 @@ router.post("/api/byok/validate", requireAuth, async (req, res) => {
   } catch (error) {
     res.status(400).json({
       ok: false,
-      error: error.message || "Validation failed",
+      error: "Validation failed",
     });
   }
 });
@@ -577,7 +579,8 @@ router.post("/api/inline-complete", requireAuth, async (req, res) => {
 
   if (!upstream.ok) {
     const errText = await upstream.text().catch(() => "");
-    res.status(upstream.status).json({ ok: false, error: errText });
+    console.error('[app-routes] Inline completion upstream error:', upstream.status, errText.slice(0, 200));
+    res.status(upstream.status).json({ ok: false, error: "Inline completion upstream error." });
     return;
   }
 
