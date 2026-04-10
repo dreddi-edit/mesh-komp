@@ -21,6 +21,10 @@ Generated files, dependency trees, local logs, and OS metadata are intentionally
   Purpose: root package manifest, runtime dependencies, and scripts for start, tests, lint, and compression benchmark.
   Works with: `server.js`, `src/server.js`, `benchmarks/compression-benchmark.js`, `test/*`.
 
+- `.env.example`
+  Purpose: reference of all environment variables with descriptions, defaults, and required/optional annotations.
+  Works with: deployment and onboarding documentation.
+
 - `package-lock.json`
   Purpose: dependency lockfile for the root app.
   Works with: `package.json`.
@@ -42,7 +46,7 @@ Generated files, dependency trees, local logs, and OS metadata are intentionally
 ### Core backend and shared logic
 
 - `secure-db.js`
-  Purpose: secure persistence abstraction for users, sessions, and per-user store values. Uses AES-256-GCM encryption for stored data; encryption key is taken from `MESH_DATA_ENCRYPTION_KEY` env var (required in production). In dev without that var, falls back to a machine-derived secret from `os.hostname()` — never a known constant. Session tokens are 32 random bytes.
+  Purpose: secure persistence abstraction for users, sessions, and per-user store values. Uses AES-256-GCM encryption for stored data; encryption key is taken from `MESH_DATA_ENCRYPTION_KEY` env var (required in production). In dev without that var, falls back to a machine-derived secret from `os.hostname()`. When Cosmos DB is not configured (`enabled = false`), all functions use in-memory Maps as fallback — data lives for the process lifetime only, sufficient for local dev and CI testing. Session tokens are 32 random bytes.
   Works with: `src/core/index.js`, `src/routes/auth.routes.js`, `src/routes/app.routes.js`.
 
 - `assistant-core.js`

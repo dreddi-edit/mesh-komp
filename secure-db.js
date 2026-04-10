@@ -92,6 +92,12 @@ const key = trim(process.env.MESH_COSMOS_KEY || "");
 const databaseId = trim(process.env.MESH_COSMOS_DATABASE || "mesh-db");
 const enabled = Boolean(endpoint && key && CosmosClientCtor);
 
+// In-memory fallback when Cosmos DB is not configured (dev/test only).
+// Data lives only for the lifetime of the process — acceptable for local dev.
+const memUsers = new Map();
+const memSessions = new Map();
+const memStores = new Map();
+
 let dbInitPromise = null;
 
 async function initDb() {
@@ -124,15 +130,11 @@ async function initDb() {
 }
 
 async function upsertUser(user) {
-  if (!enabled) return null;
-  const { usersContainer } = await initDb();
-  
   const now = toIsoNow();
   const email = normalizeEmail(user?.email);
   const id = String(user?.id || crypto.randomUUID());
   if (!email) return null;
 
-  // We lookup existing by email to merge
   const existing = await getUserByEmail(email);
 
   const doc = {
@@ -145,15 +147,25 @@ async function upsertUser(user) {
     updatedAt: now,
   };
 
+  if (!enabled) {
+    memUsers.set(email, doc);
+    return doc;
+  }
+
+  const { usersContainer } = await initDb();
   await usersContainer.items.upsert(doc);
   return doc;
 }
 
 async function getUserByEmail(email) {
-  if (!enabled) return null;
-  const { usersContainer } = await initDb();
   const normEmail = normalizeEmail(email);
   if (!normEmail) return null;
+
+  if (!enabled) {
+    return memUsers.get(normEmail) || null;
+  }
+
+  const { usersContainer } = await initDb();
   const iterator = usersContainer.items.query({
     query: "SELECT * FROM c WHERE c.email = @email",
     parameters: [{ name: "@email", value: normEmail }]
@@ -163,10 +175,17 @@ async function getUserByEmail(email) {
 }
 
 async function getUserById(userId) {
-  if (!enabled) return null;
-  const { usersContainer } = await initDb();
   const id = String(userId || "");
   if (!id) return null;
+
+  if (!enabled) {
+    for (const user of memUsers.values()) {
+      if (user.id === id) return user;
+    }
+    return null;
+  }
+
+  const { usersContainer } = await initDb();
   const iterator = usersContainer.items.query(
     { query: "SELECT * FROM c WHERE c.id = @id", parameters: [{ name: "@id", value: id }] },
     { enableCrossPartitionQuery: true }
@@ -176,8 +195,6 @@ async function getUserById(userId) {
 }
 
 async function createSession(userId, ttlMs, metadata = {}) {
-  if (!enabled) return null;
-  const { sessionsContainer } = await initDb();
   const token = crypto.randomBytes(32).toString("hex");
   const now = Date.now();
   const doc = {
@@ -190,16 +207,28 @@ async function createSession(userId, ttlMs, metadata = {}) {
     ipAddress: trim(metadata.ipAddress || ""),
     label: trim(metadata.label || ""),
   };
+
+  if (!enabled) {
+    memSessions.set(doc.id, doc);
+    return { token, expiresAt: doc.expiresAt };
+  }
+
+  const { sessionsContainer } = await initDb();
   await sessionsContainer.items.create(doc);
   return { token, expiresAt: doc.expiresAt };
 }
 
 async function readSession(rawToken) {
-  if (!enabled) return null;
-  const { sessionsContainer } = await initDb();
   const token = String(rawToken || "").trim();
   if (!token) return null;
   const hashId = hashSessionToken(token);
+
+  if (!enabled) {
+    const doc = memSessions.get(hashId);
+    return doc ? { ...doc, token } : null;
+  }
+
+  const { sessionsContainer } = await initDb();
   const iterator = sessionsContainer.items.query(
     { query: "SELECT * FROM c WHERE c.id = @id", parameters: [{ name: "@id", value: hashId }] },
     { enableCrossPartitionQuery: true }
@@ -210,18 +239,30 @@ async function readSession(rawToken) {
 }
 
 async function touchSession(rawToken, timestampMs) {
-  if (!enabled) return;
   const session = await readSession(rawToken);
   if (!session) return;
-  const { sessionsContainer } = await initDb();
   session.lastSeenAt = Number(timestampMs) || Date.now();
+
+  if (!enabled) {
+    const hashId = hashSessionToken(rawToken);
+    const existing = memSessions.get(hashId);
+    if (existing) existing.lastSeenAt = session.lastSeenAt;
+    return;
+  }
+
+  const { sessionsContainer } = await initDb();
   await sessionsContainer.items.upsert(session);
 }
 
 async function deleteSession(rawToken) {
-  if (!enabled) return;
   const session = await readSession(rawToken);
   if (!session) return;
+
+  if (!enabled) {
+    memSessions.delete(session.id);
+    return;
+  }
+
   const { sessionsContainer } = await initDb();
   try {
     await sessionsContainer.item(session.id, session.userId).delete();
@@ -231,9 +272,16 @@ async function deleteSession(rawToken) {
 }
 
 async function pruneExpiredSessions() {
-  if (!enabled) return;
-  const { sessionsContainer } = await initDb();
   const now = Date.now();
+
+  if (!enabled) {
+    for (const [id, doc] of memSessions) {
+      if (Number(doc.expiresAt || 0) <= now) memSessions.delete(id);
+    }
+    return;
+  }
+
+  const { sessionsContainer } = await initDb();
   const iterator = sessionsContainer.items.query(
     { query: "SELECT * FROM c WHERE c.expiresAt <= @now", parameters: [{ name: "@now", value: now }] },
     { enableCrossPartitionQuery: true }
@@ -247,9 +295,13 @@ async function pruneExpiredSessions() {
 }
 
 async function listSessionsByUser(userId) {
-  if (!enabled) return [];
   const uid = String(userId || "").trim();
   if (!uid) return [];
+
+  if (!enabled) {
+    return [...memSessions.values()].filter((doc) => doc.userId === uid);
+  }
+
   const { sessionsContainer } = await initDb();
   const iterator = sessionsContainer.items.query({
     query: "SELECT * FROM c WHERE c.userId = @uid",
@@ -260,10 +312,14 @@ async function listSessionsByUser(userId) {
 }
 
 async function deleteSessionById(userId, sessionId) {
-  if (!enabled) return false;
   const uid = String(userId || "").trim();
   const sid = String(sessionId || "").trim();
   if (!uid || !sid) return false;
+
+  if (!enabled) {
+    return memSessions.delete(sid);
+  }
+
   const { sessionsContainer } = await initDb();
   try {
     await sessionsContainer.item(sid, uid).delete();
@@ -290,12 +346,10 @@ async function deleteSessionsByUser(userId, options = {}) {
 }
 
 async function setUserStoreValue(userId, storeKey, value) {
-  if (!enabled) return;
   const uid = String(userId || "").trim();
   const key = String(storeKey || "").trim();
   if (!uid || !key) return;
-  const { storesContainer } = await initDb();
-  
+
   const docId = `${uid}:${key}`;
   const doc = {
     id: docId,
@@ -304,15 +358,32 @@ async function setUserStoreValue(userId, storeKey, value) {
     payloadEnc: encryptJson(value || {}),
     updatedAt: toIsoNow()
   };
+
+  if (!enabled) {
+    memStores.set(docId, doc);
+    return;
+  }
+
+  const { storesContainer } = await initDb();
   await storesContainer.items.upsert(doc);
 }
 
 async function getUserStoreValue(userId, storeKey, fallbackValue = {}) {
-  if (!enabled) return fallbackValue;
   const uid = String(userId || "").trim();
   const key = String(storeKey || "").trim();
   if (!uid || !key) return fallbackValue;
-  
+
+  if (!enabled) {
+    const doc = memStores.get(`${uid}:${key}`);
+    if (!doc || !doc.payloadEnc) return fallbackValue;
+    try {
+      const parsed = decryptJson(doc.payloadEnc);
+      return (parsed === null || parsed === undefined) ? fallbackValue : parsed;
+    } catch {
+      return fallbackValue;
+    }
+  }
+
   const { storesContainer } = await initDb();
   try {
     const { resource } = await storesContainer.item(`${uid}:${key}`, uid).read();
@@ -325,19 +396,24 @@ async function getUserStoreValue(userId, storeKey, fallbackValue = {}) {
 }
 
 async function getUserStoreValues(userId, storeKeys = []) {
-  if (!enabled) return {};
   const uid = String(userId || "").trim();
   if (!uid) return {};
-  
-  const { storesContainer } = await initDb();
-  const iterator = storesContainer.items.query({
-    query: "SELECT * FROM c WHERE c.userId = @uid",
-    parameters: [{ name: "@uid", value: uid }]
-  }, { partitionKey: uid });
-  
-  const { resources } = await iterator.fetchAll();
+
+  let allRows;
+  if (!enabled) {
+    allRows = [...memStores.values()].filter((doc) => doc.userId === uid);
+  } else {
+    const { storesContainer } = await initDb();
+    const iterator = storesContainer.items.query({
+      query: "SELECT * FROM c WHERE c.userId = @uid",
+      parameters: [{ name: "@uid", value: uid }]
+    }, { partitionKey: uid });
+    const { resources } = await iterator.fetchAll();
+    allRows = resources || [];
+  }
+
   const all = {};
-  for (const row of resources || []) {
+  for (const row of allRows) {
     try {
       all[row.storeKey] = decryptJson(row.payloadEnc);
     } catch {
