@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+  <title>Settings: AI &amp; Models | Mesh</title>
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+</head>
+<body data-settings-page="ai">
+  <div class="settings-shell">
+    <header class="settings-topbar">
+      <a class="topbar-logo" href="app" aria-label="Mesh workspace">
+        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+      </a>
+      <a class="topbar-back" href="app">← Workspace</a>
+    </header>
+
+    <aside class="settings-sidebar">
+      <div class="sidebar-top">
+        <div class="workspace-badge">
+          <div class="workspace-dot"></div>
+          <span>mesh-core / production</span>
+        </div>
+        <nav class="settings-nav">
+          <a href="/settings-account">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong>Account</strong>
+              <small>Profile and workspace identity</small>
+            </div>
+          </a>
+          <a href="/settings-security">
+            <span class="material-symbols-outlined">shield</span>
+            <div>
+              <strong>Security</strong>
+              <small>Sessions, 2FA and recovery posture</small>
+            </div>
+          </a>
+          <a href="/settings-billing">
+            <span class="material-symbols-outlined">credit_card</span>
+            <div>
+              <strong>Billing</strong>
+              <small>Plan, invoices and usage</small>
+            </div>
+          </a>
+          <a href="/settings-api-keys">
+            <span class="material-symbols-outlined">key</span>
+            <div>
+              <strong>API Keys</strong>
+              <small>Automation credentials</small>
+            </div>
+          </a>
+          <a href="/settings-appearance">
+            <span class="material-symbols-outlined">palette</span>
+            <div>
+              <strong>Appearance</strong>
+              <small>Theme, density and motion</small>
+            </div>
+          </a>
+          <a href="/settings-ai" class="active">
+            <span class="material-symbols-outlined">neurology</span>
+            <div>
+              <strong>AI &amp; Models</strong>
+              <small>Provider keys and model defaults</small>
+            </div>
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-card">
+          <div class="info-label">Key storage</div>
+          <strong>Encrypted server store</strong>
+          <p>API keys are stored per user in Mesh's encrypted database and loaded only for authenticated sessions.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">BYOK</div>
+          <strong>Import extra models</strong>
+          <p>Add your own compatible provider key in this page. Verified models are marked in the app dropdown, and new models are added under BYOK.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="settings-content">
+      <div class="content-header">
+        <div class="content-label">AI assistant</div>
+        <h1 class="content-title">AI &amp; Models</h1>
+        <p class="content-desc">Provider API keys, default model selection, and behaviour settings for the AI assistant.</p>
+      </div>
+
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Configured providers<i class="info-tip-icon">i</i><span class="info-tip-bubble">Number of AI providers with a valid API key saved.</span></span></div>
+          <div class="stat-value" id="ai-stat-providers">0</div>
+          <div class="stat-desc">Providers with a saved API key.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Default model</div>
+          <div class="stat-value" id="ai-stat-model" style="font-size:1rem;padding-top:4px">Claude Sonnet 4.6</div>
+          <div class="stat-desc">Model used when no override is selected in the chat.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Max context<i class="info-tip-icon">i</i><span class="info-tip-bubble">Maximum characters sent per message including attached file content. Larger values use more tokens.</span></span></div>
+          <div class="stat-value" id="ai-stat-context">8k</div>
+          <div class="stat-desc">Per-file character limit when attaching files to the chat.</div>
+        </article>
+      </div>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Anthropic</div>
+          <h2 class="panel-title">Claude models</h2>
+          <p class="panel-desc">Powers Claude Opus 4.6, Sonnet 4.6 and Haiku 4.5 in the AI assistant.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshAiAnthropic" id="form-anthropic">
+          <div class="form-grid">
+            <div class="field-group span-2">
+              <label class="field-label" for="anthropic-key">
+                <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your Anthropic API key. Starts with "sk-ant-". Find it at console.anthropic.com under API Keys.</span></span>
+              </label>
+              <input class="field-input" id="anthropic-key" name="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="anthropic-default">Default model</label>
+              <select class="field-select" id="anthropic-default" name="defaultModel">
+                <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6</option>
+                <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="anthropic-max-tokens">Max tokens</label>
+              <select class="field-select" id="anthropic-max-tokens" name="maxTokens">
+                <option value="1024">1,024</option>
+                <option value="2048" selected>2,048</option>
+                <option value="4096">4,096</option>
+                <option value="8192">8,192</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-ghost" type="button" data-test-key="anthropic">Test connection</button>
+            <button class="btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">OpenAI</div>
+          <h2 class="panel-title">GPT models</h2>
+          <p class="panel-desc">Powers GPT-4o, o3 and GPT-4o mini in the AI assistant.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshAiOpenAI" id="form-openai">
+          <div class="form-grid">
+            <div class="field-group span-2">
+              <label class="field-label" for="openai-key">
+                <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your OpenAI API key. Starts with "sk-". Find it at platform.openai.com under API keys.</span></span>
+              </label>
+              <input class="field-input" id="openai-key" name="apiKey" type="password" placeholder="sk-…" autocomplete="off"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="openai-default">Default model</label>
+              <select class="field-select" id="openai-default" name="defaultModel">
+                <option value="gpt-4o" selected>GPT-4o</option>
+                <option value="o3">o3</option>
+                <option value="gpt-4o-mini">GPT-4o mini</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="openai-org">Organisation ID <span style="color:var(--text-xlo);font-weight:400">(optional)</span></label>
+              <input class="field-input" id="openai-org" name="orgId" type="text" placeholder="org-…"/>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-ghost" type="button" data-test-key="openai">Test connection</button>
+            <button class="btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Google</div>
+          <h2 class="panel-title">Gemini models</h2>
+          <p class="panel-desc">Powers Gemini 2.5 Pro, Gemini 2.0 Flash and Gemini 1.5 Pro in the AI assistant.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshAiGoogle" id="form-google">
+          <div class="form-grid">
+            <div class="field-group span-2">
+              <label class="field-label" for="google-key">
+                <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your Google AI Studio API key. Find it at aistudio.google.com under "Get API key".</span></span>
+              </label>
+              <input class="field-input" id="google-key" name="apiKey" type="password" placeholder="AIza…" autocomplete="off"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="google-default">Default model</label>
+              <select class="field-select" id="google-default" name="defaultModel">
+                <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-ghost" type="button" data-test-key="google">Test connection</button>
+            <button class="btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">BYOK</div>
+          <h2 class="panel-title">Bring your own provider</h2>
+          <p class="panel-desc">Connect a compatible provider such as OpenRouter. A tiny live call validates the key and imports models into the BYOK group in chat.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshAiByok" id="form-byok">
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="byok-provider-id">Provider ID</label>
+              <input class="field-input" id="byok-provider-id" name="providerId" type="text" placeholder="openrouter"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="byok-provider-name">Provider name</label>
+              <input class="field-input" id="byok-provider-name" name="providerName" type="text" placeholder="OpenRouter"/>
+            </div>
+            <div class="field-group span-2">
+              <label class="field-label" for="byok-key">
+                <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your provider key. For OpenRouter this usually starts with sk-or-.</span></span>
+              </label>
+              <input class="field-input" id="byok-key" name="apiKey" type="password" placeholder="sk-or-…" autocomplete="off"/>
+            </div>
+            <div class="field-group span-2">
+              <label class="field-label" for="byok-base-url">Base URL</label>
+              <input class="field-input" id="byok-base-url" name="baseUrl" type="text" placeholder="https://openrouter.ai/api/v1"/>
+            </div>
+            <div class="field-group span-2">
+              <label class="field-label" for="byok-model-ids">
+                <span class="info-tip">Model IDs to test<i class="info-tip-icon">i</i><span class="info-tip-bubble">Enter one model ID per line or separated by commas. Validation runs tiny live calls against these exact IDs. For Azure, use deployment IDs.</span></span>
+              </label>
+              <textarea class="field-textarea" id="byok-model-ids" name="modelIds" placeholder="deepseek/deepseek-chat&#10;openai/gpt-5.4-mini"></textarea>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-ghost" type="button" data-test-key="byok">Validate key + test model IDs</button>
+            <button class="btn-primary" type="submit">Save</button>
+          </div>
+          <div class="panel-footer-note" style="margin-top:6px;border-top:none;padding:0" data-byok-result>
+            Run validation to see which models are reachable.
+          </div>
+          <div class="panel-footer-note" style="padding:0;border-top:none" data-byok-existing></div>
+          <div class="panel-footer-note" style="padding:0;border-top:none" data-byok-new></div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Behaviour</div>
+          <h2 class="panel-title">Assistant defaults</h2>
+          <p class="panel-desc">Controls how the AI assistant behaves across all sessions.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshAiBehaviour">
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="ai-file-limit">
+                <span class="info-tip">Per-file character limit<i class="info-tip-icon">i</i><span class="info-tip-bubble">Attached files are truncated to this many characters before being sent to the model. Higher = more context, more tokens used.</span></span>
+              </label>
+              <select class="field-select" id="ai-file-limit" name="fileCharLimit">
+                <option value="4000">4,000 chars (~1k tokens)</option>
+                <option value="8000" selected>8,000 chars (~2k tokens)</option>
+                <option value="16000">16,000 chars (~4k tokens)</option>
+                <option value="32000">32,000 chars (~8k tokens)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ai-default-provider">Default provider</label>
+              <select class="field-select" id="ai-default-provider" name="defaultProvider">
+                <option value="anthropic" selected>Anthropic (Claude)</option>
+                <option value="openai">OpenAI (GPT)</option>
+                <option value="google">Google (Gemini)</option>
+                <option value="byok">BYOK provider</option>
+              </select>
+            </div>
+          </div>
+          <div class="switches-list" style="margin-top:1.5rem">
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong>Include workspace context</strong>
+                <span>Automatically prepend active route health, deploy queue and alerts to every message.</span>
+              </div>
+              <label class="switch" data-switch="includeContext">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong>Show token usage</strong>
+                <span>Display estimated token count below each AI response.</span>
+              </div>
+              <label class="switch" data-switch="showTokens">
+                <input type="checkbox"/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Stream responses<i class="info-tip-icon">i</i><span class="info-tip-bubble">Show the model's reply word-by-word as it generates, rather than waiting for the full response.</span></span></strong>
+                <span>Display replies as they stream in rather than waiting for the full response.</span>
+              </div>
+              <label class="switch" data-switch="streamReplies">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-primary" type="submit">Save defaults</button>
+          </div>
+        </form>
+      </article>
+    </main>
+  </div>
+
+  <div data-toast-stack class="toast-stack"></div>
+  <script defer src="assets/settings.js"></script>
+  <script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="mesh-theme")document.documentElement.dataset.theme=e.data.theme;});</script>
+  <script>
+  document.addEventListener('DOMContentLoaded',()=>{
+    const byokDefaults={
+      providerId:'openrouter',
+      providerName:'OpenRouter',
+      baseUrl:'https://openrouter.ai/api/v1',
+    };
+    Object.entries(byokDefaults).forEach(([name,value])=>{
+      const input=document.querySelector(`#form-byok [name="${name}"]`);
+      if(input&&!String(input.value||'').trim())input.value=value;
+    });
+  });
+  </script>
+</body>
+</html>

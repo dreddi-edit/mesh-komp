@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dokumentation - Mesh</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/mesh-docs.css"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <nav class="docs-nav">
+    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="assets/brand/lockup-color.svg" alt="Mesh"/></a>
+    <div class="nav-links">
+      <a href="index">Start</a>
+      <a href="how-it-works">So funktioniert es</a>
+      <a href="statistics">Statistiken</a>
+      <a class="active" href="docs">Dokumentation</a>
+      <a href="terminal">Terminal</a>
+    </div>
+    <div class="nav-actions">
+      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
+      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
+    </div>
+  </nav>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar">
+      <div class="side-title">Navigation</div>
+      <nav class="side-nav">
+        <a class="active" href="#ueberblick">Überblick</a>
+        <a href="#architektur">Architekturfluss</a>
+        <a href="#api">API und SDK</a>
+        <a href="#betrieb">Betrieb</a>
+        <a href="#sicherheit">Sicherheit</a>
+        <a href="#integrationen">Integrationen</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+    </aside>
+
+    <main class="docs-main">
+      <header class="hero animate" id="ueberblick">
+        <div class="eyebrow">Mesh Produktdokumentation</div>
+        <h1>Infrastruktur für Engineering-Teams</h1>
+        <p>Verbindet Produktverständnis, Architektur und Betriebsleitfäden in einer klaren Struktur. Für Teams, die Mesh sicher skalieren wollen.</p>
+      </header>
+
+      <div class="section-head animate">
+        <div class="section-label">Kernbegriffe</div>
+        <h2 class="section-title">Die drei Säulen der Mesh-Interaktion</h2>
+      </div>
+
+      <div class="grid-cards animate delay-1">
+        <div class="card">
+          <div class="icon-pill">C</div>
+          <h3>Capsule</h3>
+          <p>Die strukturierte Zusammenfassung einer Datei. Reduziert Rauschen, erhält aber die logische Verbindung zum Original.</p>
+        </div>
+        <div class="card">
+          <div class="icon-pill">F</div>
+          <h3>Focused</h3>
+          <p>Mesh zeigt nur die Stellen, die exakt zu deiner Frage passen. Retrieval auf höchstem Präzisionsniveau.</p>
+        </div>
+        <div class="card">
+          <div class="icon-pill">R</div>
+          <h3>Recovery</h3>
+          <p>Lädt bei Bedarf die exakten Originalzeilen nach, um Beweise für jede Antwort zu liefern.</p>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="architektur">
+        <div class="section-label">Pipeline</div>
+        <h2 class="section-title">Architekturfluss von Ingest bis Antwort</h2>
+      </div>
+
+      <div class="timeline animate delay-1">
+        <div class="step">
+          <div class="step-n">01</div>
+          <div class="step-t">Workspace-Ingest erzeugt Manifest und setzt Dateien auf <code>pending</code>.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">02</div>
+          <div class="step-t">Indexer und Parser erstellen strukturierte Capsules mit priorisierten Sektionen.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">03</div>
+          <div class="step-t">Focused Retrieval reduziert den Kontext auf query-relevante Ausschnitte.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">04</div>
+          <div class="step-t">Recovery lädt exakte Evidenz aus dem Original nach.</div>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="api">
+        <div class="section-label">Schnittstellen</div>
+        <h2 class="section-title">API-Referenz im Überblick</h2>
+      </div>
+
+      <div class="matrix animate delay-1">
+        <div class="matrix-row head">
+          <div>Endpunkt</div><div>Nutzen</div><div>Ergebnis</div>
+        </div>
+        <div class="matrix-row">
+          <div>GET /workspace/files</div><div>Gesundheit und Status</div><div>Dateiliste + Status</div>
+        </div>
+        <div class="matrix-row">
+          <div>GET /workspace/file</div><div>Spezifische Ansicht</div><div>original / focused / capsule</div>
+        </div>
+        <div class="matrix-row">
+          <div>POST /chat</div><div>Kontext-Antwort</div><div>Response + Belege</div>
+        </div>
+      </div>
+
+      <div class="code-wrap animate delay-2">
+        <div class="code-header">
+          <span>Dateivertrag (File Record)</span>
+          <button class="code-copy">Copy JSON</button>
+        </div>
+        <pre class="code-pre">{
+  "path": "src/routes/assistant.routes.js",
+  "status": "completed",
+  "views": {
+    "original": "...",
+    "capsule": "...",
+    "focused": { "queryHash": "...", "content": "..." }
+  },
+  "recovery": {
+    "spanMap": [{ "spanId": "auth:142", "lineStart": 142 }]
+  }
+}</pre>
+      </div>
+
+      <div class="section-head animate" id="betrieb">
+        <div class="section-label">Operationen</div>
+        <h2 class="section-title">Runbooks für den stabilen Betrieb</h2>
+      </div>
+
+      <div class="grid-cards animate delay-1">
+        <div class="card">
+          <h3>Queue-Health</h3>
+          <p>Wenn pending Dateien steigen: Prüfen der Event-Kette und Queue-Latenz in der Worker-Instanz.</p>
+        </div>
+        <div class="card">
+          <h3>Fehlerklassen</h3>
+          <p>Wenn failed Dateien steigen: Gruppieren der Error-Logs und Durchführung eines selektiven Retrys.</p>
+        </div>
+        <div class="card">
+          <h3>Genauigkeit</h3>
+          <p>Wenn Antworten unpräzise sind: Validierung des Focused-Scoring und der Recovery-Span Definitionen.</p>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="sicherheit">
+        <div class="section-label">Compliance</div>
+        <h2 class="section-title">Sicherheit und Audit-Fähigkeit</h2>
+      </div>
+
+      <div class="matrix animate delay-1">
+        <div class="matrix-row head">
+          <div>Domäne</div><div>Ansatz</div><div>Vorteil</div>
+        </div>
+        <div class="matrix-row">
+          <div>Integrität</div><div>Digest-Ketten</div><div>Manipulationsschutz</div>
+        </div>
+        <div class="matrix-row">
+          <div>Isolation</div><div>Multi-Tenant Store</div><div>Kein Datenleck</div>
+        </div>
+      </div>
+
+      <footer class="animate delay-3">
+        &copy; 2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.
+      </footer>
+    </main>
+  </div>
+
+  <script src="assets/docs-shared.js"></script>
+</body>
+</html>

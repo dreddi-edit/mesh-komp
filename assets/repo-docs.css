@@ -1,0 +1,56 @@
+/* ============================================================
+   MESH Repo Docs — Stylistic Bridge
+   Refines the codebase explorer to match mesh-docs.css
+   ============================================================ */
+
+.repo-docs-brand { margin-bottom: 30px; padding: 0 12px; }
+.repo-docs-brand h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.04em; color: var(--ink); }
+.repo-docs-brand p { font-size: 0.84rem; color: var(--soft); margin-top: 6px; line-height: 1.5; }
+
+.repo-docs-search { display: block; margin: 0 12px 24px; }
+.repo-docs-search span { display: block; font-family: var(--font-mono); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--soft); margin-bottom: 8px; }
+.repo-docs-search input {
+  width: 100%; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); border-radius: 12px; padding: 12px 14px; font-size: 0.88rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.repo-docs-search input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1); }
+
+.repo-docs-nav { display: flex; flex-direction: column; gap: 4px; margin-bottom: 24px; }
+.repo-docs-nav-item, .repo-tree-file, .repo-tree-dir-head {
+  display: flex; align-items: center; gap: 10px; border: 1px solid transparent;
+  border-radius: 10px; padding: 8px 12px; color: var(--soft);
+  cursor: pointer; transition: all 0.2s var(--ease); font-size: 0.84rem; text-align: left; background: transparent;
+}
+.repo-docs-nav-item:hover, .repo-tree-file:hover, .repo-tree-dir-head:hover { background: var(--sky); color: var(--ink); }
+.repo-docs-nav-item.is-active, .repo-tree-file.is-active { background: rgba(var(--primary-rgb), 0.08); border-color: rgba(var(--primary-rgb), 0.12); color: var(--primary); font-weight: 500; }
+.repo-docs-nav-item small, .repo-tree-file small { margin-left: auto; font-family: var(--font-mono); font-size: 0.64rem; opacity: 0.6; }
+
+.repo-tree { display: flex; flex-direction: column; gap: 2px; }
+.repo-tree-children { margin-left: 14px; border-left: 1px dashed var(--line); padding-left: 10px; display: flex; flex-direction: column; gap: 2px; transition: 0.3s var(--ease); }
+.repo-tree-dir { display: flex; flex-direction: column; gap: 2px; }
+.repo-tree-dir-head::before { content: "▸"; font-size: 10px; color: var(--primary); transition: transform 0.2s; opacity: 0.6; }
+.repo-tree-dir.is-open > .repo-tree-dir-head::before { transform: rotate(90deg); }
+.repo-tree-dir:not(.is-open) > .repo-tree-children { display: none; }
+
+.repo-docs-topbar { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.repo-docs-topline { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--primary); margin-bottom: 6px; }
+.repo-docs-meta { font-size: 0.84rem; color: var(--soft); }
+
+.repo-docs-welcome { background: var(--sky); border: 1px solid var(--line); border-radius: 20px; padding: 40px; }
+.repo-docs-welcome h2 { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 12px; }
+.repo-docs-welcome p { font-size: 1.05rem; color: var(--soft); line-height: 1.6; }
+
+.repo-docs-rendered { animation: fadeIn 0.4s var(--ease) forwards; }
+.repo-docs-path { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--primary); margin-bottom: 8px; }
+.repo-docs-updated { font-size: 0.78rem; color: var(--soft); margin-bottom: 30px; }
+
+/* Markdown Styles inside rendered content */
+.repo-docs-rendered h1 { font-size: 2.8rem; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 24px; }
+.repo-docs-rendered h2 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.03em; margin: 40px 0 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.repo-docs-rendered p, .repo-docs-rendered li { font-size: 1rem; line-height: 1.7; margin-bottom: 16px; }
+.repo-docs-rendered ul, .repo-docs-rendered ol { padding-left: 24px; margin-bottom: 24px; }
+.repo-docs-rendered pre {
+  background: #0d1117; border-radius: 14px; padding: 20px; overflow: auto; margin: 24px 0; border: 1px solid var(--line-hi);
+}
+.repo-docs-rendered code { font-family: var(--font-mono); font-size: 0.88rem; background: var(--sky); color: var(--primary); padding: 2px 6px; border-radius: 6px; }
+.repo-docs-rendered pre code { background: transparent; color: #e6edf3; padding: 0; font-size: 0.82rem; }

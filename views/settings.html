@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Settings | Mesh</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+  <!--
+    Apply the saved theme before CSS renders to prevent a dark flash.
+    The :root in mesh-settings.css defaults to dark; this script sets
+    data-theme="light" immediately when the user has light mode saved.
+  -->
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}}());</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+</head>
+<body data-settings-page="account">
+  <div class="settings-shell">
+    <header class="settings-topbar">
+      <a class="topbar-logo" href="app" aria-label="Mesh workspace">
+        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+      </a>
+      <a class="topbar-back" href="app">← Workspace</a>
+    </header>
+
+    <aside class="settings-sidebar">
+      <div class="sidebar-top">
+        <div class="workspace-badge">
+          <div class="workspace-dot"></div>
+          <span>mesh-core / production</span>
+        </div>
+        <nav class="settings-nav">
+          <a data-settings-section="account" href="#account" class="active">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong>Account</strong>
+              <small>Profile and workspace identity</small>
+            </div>
+          </a>
+          <a data-settings-section="security" href="#security">
+            <span class="material-symbols-outlined">shield</span>
+            <div>
+              <strong>Security</strong>
+              <small>Sessions, 2FA and recovery posture</small>
+            </div>
+          </a>
+          <a data-settings-section="billing" href="#billing">
+            <span class="material-symbols-outlined">credit_card</span>
+            <div>
+              <strong>Billing</strong>
+              <small>Plan, invoices and usage</small>
+            </div>
+          </a>
+          <a data-settings-section="api-keys" href="#api-keys">
+            <span class="material-symbols-outlined">key</span>
+            <div>
+              <strong>API Keys</strong>
+              <small>Automation credentials</small>
+            </div>
+          </a>
+          <a data-settings-section="appearance" href="#appearance">
+            <span class="material-symbols-outlined">palette</span>
+            <div>
+              <strong>Appearance</strong>
+              <small>Theme, density and motion</small>
+            </div>
+          </a>
+          <a data-settings-section="ai" href="#ai">
+            <span class="material-symbols-outlined">neurology</span>
+            <div>
+              <strong>AI &amp; Models</strong>
+              <small>Provider keys and model defaults</small>
+            </div>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Sidebar info cards — one set per section, toggled by the router -->
+      <div class="sidebar-info" data-settings-sidebar-info="account">
+        <div class="info-card">
+          <div class="info-label">Workspace identity</div>
+          <strong>One profile, all surfaces</strong>
+          <p>Your display name and avatar appear in the activity feed, approval queue and operator audit trail.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Integrations</div>
+          <strong>Connect carefully</strong>
+          <p>Third-party integrations inherit the operator's permission scope. Only connect services you actively use.</p>
+        </div>
+      </div>
+
+      <div class="sidebar-info" data-settings-sidebar-info="security" hidden>
+        <div class="info-card">
+          <div class="info-label">Posture tip</div>
+          <strong>Rotate after incidents</strong>
+          <p>Any session used during a hotfix or emergency override should be expired immediately after the window closes.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Recovery</div>
+          <strong>Two recovery contacts</strong>
+          <p>Keep at least two breakglass owners on record so a single point of failure never locks the workspace.</p>
+        </div>
+      </div>
+
+      <div class="sidebar-info" data-settings-sidebar-info="billing" hidden>
+        <div class="info-card">
+          <div class="info-label">Annual savings</div>
+          <strong>2 months free</strong>
+          <p>Switch to annual billing and save the equivalent of two months compared to the monthly rate.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Usage</div>
+          <strong>Predictable at scale</strong>
+          <p>Edge events and session counts are metered separately so costs reflect actual production load, not seat counts.</p>
+        </div>
+      </div>
+
+      <div class="sidebar-info" data-settings-sidebar-info="api-keys" hidden>
+        <div class="info-card">
+          <div class="info-label">Best practice</div>
+          <strong>One key per workflow</strong>
+          <p>Separate deploy automation, read-only observability and local testing so revocation can stay surgical.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Rotation</div>
+          <strong>After every incident</strong>
+          <p>Any key involved in a hotfix or emergency bypass should be rotated after the event closes.</p>
+        </div>
+      </div>
+
+      <div class="sidebar-info" data-settings-sidebar-info="appearance" hidden>
+        <div class="info-card">
+          <div class="info-label">Ergonomics</div>
+          <strong>Density for operators</strong>
+          <p>Compact density reduces scroll depth during incident response. Comfortable density is better for long review sessions.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Motion</div>
+          <strong>Respect system settings</strong>
+          <p>Reduced motion respects the OS-level preference automatically — no need to override it here unless you want to force a specific mode.</p>
+        </div>
+      </div>
+
+      <div class="sidebar-info" data-settings-sidebar-info="ai" hidden>
+        <div class="info-card">
+          <div class="info-label">Key storage</div>
+          <strong>Encrypted server store</strong>
+          <p>API keys are stored per user in Mesh's encrypted database and loaded only for authenticated sessions.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">BYOK</div>
+          <strong>Import extra models</strong>
+          <p>Add your own compatible provider key in this page. Verified models are marked in the app dropdown, and new models are added under BYOK.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="settings-content">
+
+      <!-- ══════════════════════════════════════════════════════
+           ACCOUNT
+           ══════════════════════════════════════════════════════ -->
+      <section data-settings-section="account">
+        <div class="content-header">
+          <div class="content-label">Operator identity</div>
+          <h1 class="content-title">Account</h1>
+          <p class="content-desc">Your profile, workspace membership and the integrations that extend your operator surface.</p>
+        </div>
+
+        <div class="stats-row">
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Role<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your permission level in this workspace. Owner has full access including billing and team management.</span></span></div>
+            <div class="stat-value">Owner</div>
+            <div class="stat-desc">Full workspace access with billing and operator management rights.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label">Member since</div>
+            <div class="stat-value">Jan 2025</div>
+            <div class="stat-desc">Account age in this workspace. Role history is in the audit log.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Integrations<i class="info-tip-icon">i</i><span class="info-tip-bubble">Third-party services connected to your operator profile. Each inherits your current permission scope.</span></span></div>
+            <div class="stat-value" data-account-stat="integrations">2</div>
+            <div class="stat-desc" data-account-stat-desc="integrations">Third-party services connected to this operator profile.</div>
+          </article>
+        </div>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Profile</div>
+            <h2 class="panel-title">Operator profile</h2>
+            <p class="panel-desc">Your display name and contact details appear throughout the workspace wherever operator identity is shown.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshAccountProfile">
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="acc-name">Display name</label>
+                <input class="field-input" id="acc-name" name="displayName" type="text" placeholder="Your name"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="acc-email">Email address</label>
+                <input class="field-input" id="acc-email" name="email" type="email" placeholder="you@yourorg.com"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="acc-handle">Operator handle</label>
+                <input class="field-input" id="acc-handle" name="handle" type="text" placeholder="@handle"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="acc-timezone">Timezone</label>
+                <select class="field-select" id="acc-timezone" name="timezone">
+                  <option value="UTC">UTC</option>
+                  <option value="Europe/Berlin">Europe / Berlin</option>
+                  <option value="America/New_York">America / New York</option>
+                  <option value="America/Los_Angeles">America / Los Angeles</option>
+                  <option value="Asia/Tokyo">Asia / Tokyo</option>
+                  <option value="Asia/Singapore">Asia / Singapore</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-primary" type="submit">Save profile</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Workspace</div>
+            <h2 class="panel-title">Workspace settings</h2>
+            <p class="panel-desc">Workspace-level identity and configuration that applies to all operators in this environment.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshWorkspaceConfig">
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="ws-name">Workspace name</label>
+                <input class="field-input" id="ws-name" name="workspaceName" type="text" placeholder="mesh-core"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ws-slug">Workspace slug</label>
+                <input class="field-input" id="ws-slug" name="workspaceSlug" type="text" placeholder="mesh-core"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ws-region">Primary region</label>
+                <select class="field-select" id="ws-region" name="primaryRegion">
+                  <option value="EU Central">EU Central</option>
+                  <option value="US East">US East</option>
+                  <option value="US West">US West</option>
+                  <option value="AP Southeast">AP Southeast</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ws-env">Default environment</label>
+                <select class="field-select" id="ws-env" name="defaultEnvironment">
+                  <option value="production">Production</option>
+                  <option value="staging">Staging</option>
+                  <option value="observability">Observability</option>
+                </select>
+              </div>
+              <div class="field-group span-2">
+                <label class="field-label" for="ws-desc">Workspace description</label>
+                <textarea class="field-textarea" id="ws-desc" name="description" rows="2" placeholder="Short description of this workspace's purpose and scope."></textarea>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-primary" type="submit">Save workspace</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Integrations</div>
+            <h2 class="panel-title">Connected services</h2>
+            <p class="panel-desc">Third-party services connected to this operator profile. Each connection inherits your current permission scope.</p>
+          </div>
+          <div class="cards-list" data-integrations-list>
+            <div class="session-card">
+              <div class="session-meta" style="flex:1;">
+                <strong>Loading integrations…</strong>
+                <span class="badge badge-neutral">Syncing</span>
+              </div>
+              <div class="session-detail">Connected services will appear here once your operator profile loads.</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Notifications</div>
+            <h2 class="panel-title">Notification routing</h2>
+            <p class="panel-desc">Control which workspace events generate notifications and how they reach you.</p>
+          </div>
+          <div class="switches-list">
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Deploy approvals<i class="info-tip-icon">i</i><span class="info-tip-bubble">You'll get a notification whenever a deploy or policy change is queued and waiting for your sign-off.</span></span></strong>
+                <span>Notify me when a deploy or policy change needs operator approval in this workspace.</span>
+              </div>
+              <label class="switch" data-switch="notifyDeploys">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Route health alerts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Triggered when any route score drops below 75 (warning) or enters a degraded state requiring action.</span></span></strong>
+                <span>Receive alerts when a route score drops below the warning threshold or enters a degraded state.</span>
+              </div>
+              <label class="switch" data-switch="notifyRoutes">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Security events<i class="info-tip-icon">i</i><span class="info-tip-bubble">Covers failed auth attempts, unusual session patterns, and any policy violations detected by the system.</span></span></strong>
+                <span>Alert me when authentication anomalies or policy violations are detected in this workspace.</span>
+              </div>
+              <label class="switch" data-switch="notifySecurity">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Billing and usage<i class="info-tip-icon">i</i><span class="info-tip-bubble">Alerts when your workspace approaches its quota limit or when an invoice is due in the next 7 days.</span></span></strong>
+                <span>Notify me when usage approaches quota limits or invoice dates are approaching.</span>
+              </div>
+              <label class="switch" data-switch="notifyBilling">
+                <input type="checkbox"/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           SECURITY
+           ══════════════════════════════════════════════════════ -->
+      <section data-settings-section="security" hidden>
+        <div class="content-header">
+          <div class="content-label">Trust posture</div>
+          <h1 class="content-title">Security</h1>
+          <p class="content-desc">Authentication baseline, active sessions and the audit trail that keeps every operator action traceable.</p>
+        </div>
+
+        <div class="stats-row">
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">2FA coverage<i class="info-tip-icon">i</i><span class="info-tip-bubble">Percentage of operators in this workspace with a second factor (TOTP or hardware key) enrolled.</span></span></div>
+            <div class="stat-value">100%</div>
+            <div class="stat-desc">All operators in this workspace have a second factor enrolled.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Review cadence<i class="info-tip-icon">i</i><span class="info-tip-bubble">How long before an operator session expires and re-authentication is required. Shorter = more secure.</span></span></div>
+            <div class="stat-value" data-security-stat="ttl">14 d</div>
+            <div class="stat-desc" data-security-stat-desc="ttl">Current session TTL before re-authentication is required.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Recovery contacts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Breakglass owners can regain access to a locked workspace. Keep at least 2 registered.</span></span></div>
+            <div class="stat-value" data-security-stat="recovery">2</div>
+            <div class="stat-desc" data-security-stat-desc="recovery">Breakglass owners registered for emergency workspace access.</div>
+          </article>
+        </div>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Baseline</div>
+            <h2 class="panel-title">Authentication settings</h2>
+            <p class="panel-desc">Define the policy layer that governs how operators authenticate and recover access to the workspace.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshSecurityBaseline">
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="sec-rotation"><span class="info-tip">Password rotation interval<i class="info-tip-icon">i</i><span class="info-tip-bubble">How often operators must update their password. 60 days is the recommended default.</span></span></label>
+                <select class="field-select" id="sec-rotation" name="rotation">
+                  <option value="30d">Every 30 days</option>
+                  <option value="60d" selected>Every 60 days</option>
+                  <option value="90d">Every 90 days</option>
+                  <option value="never">Never (manual only)</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="sec-ttl"><span class="info-tip">Session TTL<i class="info-tip-icon">i</i><span class="info-tip-bubble">Time-to-live for an authenticated session. After this period, the operator must log in again.</span></span></label>
+                <select class="field-select" id="sec-ttl" name="sessionTtl">
+                  <option value="7d">7 days</option>
+                  <option value="14d" selected>14 days</option>
+                  <option value="30d">30 days</option>
+                  <option value="90d">90 days</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="sec-recovery-email">Recovery email</label>
+                <input class="field-input" id="sec-recovery-email" name="recoveryEmail" type="email" placeholder="security@yourorg.com"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="sec-breakglass"><span class="info-tip">Breakglass owner<i class="info-tip-icon">i</i><span class="info-tip-bubble">An operator who can bypass normal auth to recover a locked workspace. Should be someone senior.</span></span></label>
+                <input class="field-input" id="sec-breakglass" name="breakglass" type="text" placeholder="operator@yourorg.com"/>
+              </div>
+              <div class="field-group span-2">
+                <label class="field-label" for="sec-notes">Recovery notes</label>
+                <textarea class="field-textarea" id="sec-notes" name="recoveryNotes" rows="3" placeholder="Document the escalation path for locked workspaces and who holds recovery authority."></textarea>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-primary" type="submit">Save baseline</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Protection</div>
+            <h2 class="panel-title">Security controls</h2>
+            <p class="panel-desc">Toggle the protection layer that governs how sessions, devices and alerts behave across the workspace.</p>
+          </div>
+          <div class="switches-list">
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Two-factor authentication<i class="info-tip-icon">i</i><span class="info-tip-bubble">Requires a TOTP code or hardware key at every sign-in. Disabling this immediately weakens workspace posture.</span></span></strong>
+                <span>Require a second factor for every operator sign-in. Disabling this weakens the workspace posture immediately.</span>
+              </div>
+              <label class="switch" data-switch="twoFactor">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Session approval for new devices<i class="info-tip-icon">i</i><span class="info-tip-bubble">First login from an unrecognised device triggers an approval step before workspace access is granted.</span></span></strong>
+                <span>Prompt operators to approve sessions initiated from unrecognised devices before granting workspace access.</span>
+              </div>
+              <label class="switch" data-switch="sessionApproval">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Webhook security alerts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Sends auth anomalies and login spikes to a webhook endpoint before they hit the audit log — useful for Slack or PagerDuty.</span></span></strong>
+                <span>Forward authentication anomalies and failed login spikes to the workspace webhook before they reach the audit log.</span>
+              </div>
+              <label class="switch" data-switch="webhookAlerts">
+                <input type="checkbox"/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Device trust scoring<i class="info-tip-icon">i</i><span class="info-tip-bubble">Rates session risk using device hygiene signals. Unmanaged or unknown devices get a lower score on write operations.</span></span></strong>
+                <span>Weight session risk using device hygiene signals. Unmanaged endpoints receive a lower trust score during route-write operations.</span>
+              </div>
+              <label class="switch" data-switch="deviceTrust">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong><span class="info-tip">Geo-anomaly alerts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Flags logins from regions you don't normally access. Helps catch credential misuse early.</span></span></strong>
+                <span>Flag sessions that originate from unexpected regions relative to the operator's usual access pattern.</span>
+              </div>
+              <label class="switch" data-switch="geoAlerts">
+                <input type="checkbox"/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Sessions</div>
+            <h2 class="panel-title">Active sessions</h2>
+            <p class="panel-desc">Every live session is visible here. Expire individual sessions or clear all to force re-authentication across the workspace.</p>
+            <div class="panel-actions-inline">
+              <button class="btn-secondary" data-expire-sessions="others">Expire other sessions</button>
+              <button class="btn-secondary" data-expire-sessions="all">Expire all sessions</button>
+            </div>
+          </div>
+          <div class="cards-list" data-sessions-list>
+            <div class="session-card">
+              <div class="session-meta">
+                <strong>Loading active sessions…</strong>
+                <span class="badge badge-neutral">Syncing</span>
+              </div>
+              <div class="session-detail">Session inventory is loading.</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Audit</div>
+            <h2 class="panel-title">Recent activity</h2>
+            <p class="panel-desc">A traceable record of authentication events, policy changes and session actions in this workspace.</p>
+          </div>
+          <div class="audit-list">
+            <div class="audit-row">
+              <div class="audit-time">Today, 09:14 UTC</div>
+              <div class="audit-event">
+                <strong>Session created</strong>
+                <span>MacBook Pro — Safari 17 · EU Central</span>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-time">Today, 08:51 UTC</div>
+              <div class="audit-event">
+                <strong>Device trust score updated</strong>
+                <span>iPhone 15 scored 94 / 100 after hygiene check</span>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-time">Yesterday, 22:03 UTC</div>
+              <div class="audit-event">
+                <strong>Session approval required</strong>
+                <span>Linux — Chrome 122 approved from US East after device check</span>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-time">Yesterday, 14:37 UTC</div>
+              <div class="audit-event">
+                <strong>Password rotation reminder sent</strong>
+                <span>60-day rotation window opened for workspace operators</span>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-time">3 days ago, 11:22 UTC</div>
+              <div class="audit-event">
+                <strong>2FA policy enforced</strong>
+                <span>All operators confirmed second factor enrollment</span>
+              </div>
+            </div>
+            <div class="audit-row">
+              <div class="audit-time">5 days ago, 09:08 UTC</div>
+              <div class="audit-event">
+                <strong>Session TTL updated</strong>
+                <span>Changed from 30 days to 14 days by workspace owner</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel-footer-note">Audit log is retained for 90 days. Export available on Pro and Enterprise plans.</div>
+        </article>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           BILLING
+           ══════════════════════════════════════════════════════ -->
+      <section data-settings-section="billing" hidden>
+        <div class="content-header">
+          <div class="content-label">Plan and usage</div>
+          <h1 class="content-title">Billing</h1>
+          <p class="content-desc">Current plan, invoice history and the usage breakdown that maps production load to cost.</p>
+        </div>
+
+        <div class="stats-row">
+          <article class="stat-card">
+            <div class="stat-label">Current plan</div>
+            <div class="stat-value" data-billing-stat="plan">Pro</div>
+            <div class="stat-desc" data-billing-stat-desc="plan">Billed annually. Next invoice on May 1, 2026.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label">Monthly spend</div>
+            <div class="stat-value" data-billing-stat="spend">$149</div>
+            <div class="stat-desc" data-billing-stat-desc="spend">Edge events, sessions and operator seats combined.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Usage this month<i class="info-tip-icon">i</i><span class="info-tip-bubble">How much of your included edge event quota you've consumed. Overage charges begin at 80%.</span></span></div>
+            <div class="stat-value" data-billing-stat="usage">74%</div>
+            <div class="stat-desc" data-billing-stat-desc="usage">Of included edge event quota. Overage billing starts at 80%.</div>
+          </article>
+        </div>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Plan</div>
+            <h2 class="panel-title">Choose the right tier</h2>
+            <p class="panel-desc">Pricing scales with edge volume and seat count. Annual billing removes the per-month premium.</p>
+            <div class="billing-cycle-toggle">
+              <button class="cycle-btn active" data-billing-cycle="monthly">Monthly</button>
+              <button class="cycle-btn" data-billing-cycle="annual">Annual <span class="badge badge-green">−17%</span></button>
+            </div>
+          </div>
+          <div class="plan-grid">
+            <article class="plan-card" data-plan="starter">
+              <div class="plan-name">Starter</div>
+              <div class="plan-price"><span class="price-amount" data-monthly="$49" data-annual="$41">$49</span><span class="price-period"> / mo</span></div>
+              <div class="plan-desc">For small teams running a single production environment with moderate edge volume.</div>
+              <ul class="plan-features">
+                <li>Up to 3 operators</li>
+                <li>2M edge events / mo</li>
+                <li>EU Central + US East regions</li>
+                <li>14-day audit log</li>
+                <li>Community support</li>
+              </ul>
+              <button class="btn-secondary plan-select-btn" data-select-plan="starter">Select Starter</button>
+            </article>
+            <article class="plan-card is-current" data-plan="pro">
+              <div class="plan-badge">Current plan</div>
+              <div class="plan-name">Pro</div>
+              <div class="plan-price"><span class="price-amount" data-monthly="$149" data-annual="$124">$149</span><span class="price-period"> / mo</span></div>
+              <div class="plan-desc">For growing ops teams with multi-region footprints and tighter SLA requirements.</div>
+              <ul class="plan-features">
+                <li>Up to 12 operators</li>
+                <li>10M edge events / mo</li>
+                <li>All regions including AP Southeast</li>
+                <li>90-day audit log</li>
+                <li>Priority support + SLA</li>
+              </ul>
+              <button class="btn-primary plan-select-btn" data-select-plan="pro" disabled>Current plan</button>
+            </article>
+            <article class="plan-card" data-plan="enterprise">
+              <div class="plan-name">Enterprise</div>
+              <div class="plan-price"><span class="price-amount">Custom</span></div>
+              <div class="plan-desc">Unlimited operators, dedicated infrastructure and a custom edge event quota with negotiated SLAs.</div>
+              <ul class="plan-features">
+                <li>Unlimited operators</li>
+                <li>Unlimited edge events</li>
+                <li>Private edge nodes</li>
+                <li>365-day audit log</li>
+                <li>Dedicated account team</li>
+              </ul>
+              <button class="btn-secondary plan-select-btn" data-select-plan="enterprise">Contact sales</button>
+            </article>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Contact</div>
+            <h2 class="panel-title">Billing contact</h2>
+            <p class="panel-desc">Invoice recipient and payment contact for this workspace. Changes take effect on the next billing cycle.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshBillingContact">
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="bill-name">Contact name</label>
+                <input class="field-input" id="bill-name" name="contactName" type="text" placeholder="Finance lead or team alias"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="bill-email">Billing email</label>
+                <input class="field-input" id="bill-email" name="contactEmail" type="email" placeholder="billing@yourorg.com"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="bill-company">Company name</label>
+                <input class="field-input" id="bill-company" name="company" type="text" placeholder="Your organisation name"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="bill-vat">VAT / Tax ID</label>
+                <input class="field-input" id="bill-vat" name="vatId" type="text" placeholder="Optional — appears on invoices"/>
+              </div>
+              <div class="field-group span-2">
+                <label class="field-label" for="bill-address">Billing address</label>
+                <textarea class="field-textarea" id="bill-address" name="address" rows="2" placeholder="Street, city, postcode, country"></textarea>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-primary" type="submit">Save contact</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Invoices</div>
+            <h2 class="panel-title">Invoice history</h2>
+            <p class="panel-desc">All past invoices available for download. Enterprise customers can request CSV exports for longer date ranges.</p>
+          </div>
+          <div class="invoice-list" data-invoice-list>
+            <div class="invoice-row">
+              <div class="invoice-period">Loading invoices…</div>
+              <div class="invoice-detail">Your invoice history is syncing.</div>
+              <div class="invoice-amount">...</div>
+              <span class="badge badge-neutral">Syncing</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Usage</div>
+            <h2 class="panel-title">This month's breakdown</h2>
+            <p class="panel-desc">Usage is metered in real time. Overages are billed at the end of the month at the plan's per-unit rate.</p>
+          </div>
+          <div class="usage-list" data-usage-list>
+            <div class="usage-row">
+              <div class="usage-label">Loading usage…</div>
+              <div class="usage-bar-wrap">
+                <div class="usage-bar" style="--pct: 12%"></div>
+              </div>
+              <div class="usage-value">Syncing</div>
+              <span class="badge badge-neutral">...</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           API KEYS
+           ══════════════════════════════════════════════════════ -->
+      <section data-settings-section="api-keys" hidden>
+        <div class="content-header">
+          <div class="content-label">Automation layer</div>
+          <h1 class="content-title">API Keys</h1>
+          <p class="content-desc">Scoped, visible credentials for every automation workflow. No hidden tokens, no mystery secrets.</p>
+        </div>
+
+        <div class="stats-row">
+          <article class="stat-card">
+            <div class="stat-label">Active keys</div>
+            <div class="stat-value" data-key-metric="active">0</div>
+            <div class="stat-desc">Automation credentials currently in local state.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Automation scope<i class="info-tip-icon">i</i><span class="info-tip-bubble">Keys with write access can create or modify routes, policies and deployments. Use with care.</span></span></div>
+            <div class="stat-value" data-key-metric="automation">0</div>
+            <div class="stat-desc">Keys carrying write-capable automation scopes.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Edge environment<i class="info-tip-icon">i</i><span class="info-tip-bubble">Keys scoped to the production edge — they interact with live routing infrastructure, not staging.</span></span></div>
+            <div class="stat-value" data-key-metric="edge">0</div>
+            <div class="stat-desc">Credentials targeting production edge paths.</div>
+          </article>
+        </div>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Create</div>
+            <h2 class="panel-title">Issue a new credential</h2>
+            <p class="panel-desc">Name the workflow, state the environment, define the region and make the scope explicit before a token exists.</p>
+          </div>
+          <form class="panel-form" data-api-key-form>
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="keyName">Key name</label>
+                <input class="field-input" id="keyName" name="name" type="text" placeholder="Deploy Runner"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="keyScope"><span class="info-tip">Scope<i class="info-tip-icon">i</i><span class="info-tip-bubble">Space-separated permission tokens. Use automation.read for read-only and automation.write for full access.</span></span></label>
+                <input class="field-input" id="keyScope" name="scope" type="text" placeholder="automation.read automation.write"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="keyRegion">Region</label>
+                <select class="field-select" id="keyRegion" name="region">
+                  <option value="Global">Global</option>
+                  <option value="EU Central">EU Central</option>
+                  <option value="US East">US East</option>
+                  <option value="AP Southeast">AP Southeast</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="keyEnvironment"><span class="info-tip">Environment<i class="info-tip-icon">i</i><span class="info-tip-bubble">Edge = live production traffic. Staging = test environment. Observability = read-only metrics access.</span></span></label>
+                <select class="field-select" id="keyEnvironment" name="environment">
+                  <option value="edge">Edge</option>
+                  <option value="staging">Staging</option>
+                  <option value="observability">Observability</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-primary" type="submit">Create key</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Inventory</div>
+            <h2 class="panel-title">Issued keys</h2>
+            <p class="panel-desc">Every token stays reviewable with scope, region, environment and lifecycle actions visible at a glance.</p>
+          </div>
+          <div class="cards-list" data-api-key-list></div>
+          <div class="empty-state" data-api-empty>
+            <span class="material-symbols-outlined">key_off</span>
+            <strong>No keys yet</strong>
+            <p>Create the first automation credential above. Once issued, this area becomes the review surface for copy, reveal, rotate and delete actions.</p>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Reference</div>
+            <h2 class="panel-title">Example control-plane call</h2>
+            <p class="panel-desc">The newest key drops straight into this snippet so the relationship between token scope and control-plane action stays visible.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-block-head">
+              <span>Example request</span>
+              <button class="copy-btn" data-copy-target="#api-key-snippet">Copy</button>
+            </div>
+            <pre id="api-key-snippet" class="code-pre">Create a key above to generate an example snippet.</pre>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Guardrails</div>
+            <h2 class="panel-title">Keeping automation safe</h2>
+            <p class="panel-desc">Credentials are only as safe as the habits around them.</p>
+          </div>
+          <ul class="guardrails-list">
+            <li>Keep production route-write access separate from read-only metrics keys so observation does not imply mutation.</li>
+            <li>Assign one key per automation workflow so revocation does not force unrelated systems to rotate at the same time.</li>
+            <li>Prefer region-specific tokens during staged rollouts to limit the blast radius of misrouted deploy jobs.</li>
+            <li>After a manual hotfix or operator override, rotate the key involved and record why the extra privilege was needed.</li>
+          </ul>
+        </article>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           APPEARANCE
+           ══════════════════════════════════════════════════════ -->
+      <section data-settings-section="appearance" hidden>
+        <div class="content-header">
+          <div class="content-label">Operator ergonomics</div>
+          <h1 class="content-title">Appearance</h1>
+          <p class="content-desc">Theme, density, motion and the visual preferences that make the workspace feel like it was built for you.</p>
+        </div>
+
+        <div class="stats-row">
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Active theme<i class="info-tip-icon">i</i><span class="info-tip-bubble">Controls light/dark mode across the entire workspace. "Follow system" syncs with your OS setting.</span></span></div>
+            <div class="stat-value" id="preview-theme-stat">Light</div>
+            <div class="stat-desc">The current colour mode applied to the operator workspace.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Density<i class="info-tip-icon">i</i><span class="info-tip-bubble">Controls how compact the UI feels. Compact reduces padding and font size for higher information density.</span></span></div>
+            <div class="stat-value" id="preview-density-stat">Default</div>
+            <div class="stat-desc">UI spacing and element size mode across all workspace surfaces.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label">Accent</div>
+            <div class="stat-value" id="preview-accent-stat">Indigo</div>
+            <div class="stat-desc">The primary interactive colour used for actions and focus states.</div>
+          </article>
+        </div>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Presets</div>
+            <h2 class="panel-title">Quick-apply configurations</h2>
+            <p class="panel-desc">Start with a preset and adjust from there. Presets fill every preference at once without touching individual controls.</p>
+          </div>
+          <div class="preset-grid">
+            <button class="preset-card" data-appearance-preset="default">
+              <div class="preset-preview preset-preview-default">
+                <div class="pp-bar"></div>
+                <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+              </div>
+              <strong>Default</strong>
+              <span>Light · Default density · Indigo accent</span>
+            </button>
+            <button class="preset-card" data-appearance-preset="focus">
+              <div class="preset-preview preset-preview-focus">
+                <div class="pp-bar"></div>
+                <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+              </div>
+              <strong>Focus</strong>
+              <span>Light · Compact density · No motion</span>
+            </button>
+            <button class="preset-card" data-appearance-preset="night">
+              <div class="preset-preview preset-preview-night">
+                <div class="pp-bar"></div>
+                <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+              </div>
+              <strong>Night ops</strong>
+              <span>Dark · Compact density · Indigo accent</span>
+            </button>
+            <button class="preset-card" data-appearance-preset="highcontrast">
+              <div class="preset-preview preset-preview-highcontrast">
+                <div class="pp-bar"></div>
+                <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+              </div>
+              <strong>High contrast</strong>
+              <span>Light · Default density · Slate accent</span>
+            </button>
+          </div>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Preferences</div>
+            <h2 class="panel-title">Individual controls</h2>
+            <p class="panel-desc">Fine-tune each dimension independently. Changes apply to the preview below before you save.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshAppearance" id="appearance-form">
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="app-theme">Theme</label>
+                <select class="field-select" id="app-theme" name="theme">
+                  <option value="light" selected>Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="system">Follow system</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="app-density">Density</label>
+                <select class="field-select" id="app-density" name="density">
+                  <option value="comfortable">Comfortable</option>
+                  <option value="default" selected>Default</option>
+                  <option value="compact">Compact</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="app-accent">Accent colour</label>
+                <select class="field-select" id="app-accent" name="accent">
+                  <option value="indigo" selected>Indigo</option>
+                  <option value="violet">Violet</option>
+                  <option value="slate">Slate</option>
+                  <option value="teal">Teal</option>
+                  <option value="rose">Rose</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="app-motion"><span class="info-tip">Motion<i class="info-tip-icon">i</i><span class="info-tip-bubble">Controls transitions and animations. Set to None or Reduced if you prefer a static interface or have motion sensitivity.</span></span></label>
+                <select class="field-select" id="app-motion" name="motion">
+                  <option value="full" selected>Full</option>
+                  <option value="reduced">Reduced</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="app-font">Code font</label>
+                <select class="field-select" id="app-font" name="font">
+                  <option value="berkeley" selected>Berkeley Mono</option>
+                  <option value="mono">System mono</option>
+                  <option value="fira">Fira Code</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="app-sidebar"><span class="info-tip">Sidebar width<i class="info-tip-icon">i</i><span class="info-tip-bubble">How wide the left navigation sidebar renders. Narrow gives more main content space; wide shows longer nav labels.</span></span></label>
+                <select class="field-select" id="app-sidebar" name="sidebarWidth">
+                  <option value="narrow">Narrow (220px)</option>
+                  <option value="default" selected>Default (248px)</option>
+                  <option value="wide">Wide (280px)</option>
+                </select>
+              </div>
+            </div>
+            <div class="switches-list" style="margin-top: 1.5rem;">
+              <div class="switch-row">
+                <div class="switch-info">
+                  <strong>Show keyboard shortcut hints</strong>
+                  <span>Display shortcut overlays on interactive elements during keyboard navigation.</span>
+                </div>
+                <label class="switch" data-switch="kbHints">
+                  <input type="checkbox" checked/>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+              <div class="switch-row">
+                <div class="switch-info">
+                  <strong>Animate route health indicators</strong>
+                  <span>Pulse status dots and fade health badges when values change in the workspace overview.</span>
+                </div>
+                <label class="switch" data-switch="animateHealth">
+                  <input type="checkbox" checked/>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+              <div class="switch-row">
+                <div class="switch-info">
+                  <strong>Compact activity feed</strong>
+                  <span>Remove the copy line from activity entries so more events fit without scrolling.</span>
+                </div>
+                <label class="switch" data-switch="compactFeed">
+                  <input type="checkbox"/>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-ghost" type="button" data-appearance-reset>Reset to defaults</button>
+              <button class="btn-primary" type="submit">Save preferences</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Preview</div>
+            <h2 class="panel-title">Live component preview</h2>
+            <p class="panel-desc">A representative set of workspace components using the selected preferences.</p>
+          </div>
+          <div class="appearance-preview" id="appearance-preview">
+            <div class="ap-topbar">
+              <div class="ap-logo"><img src="assets/brand/wordmark-black.svg" alt="Mesh"/></div>
+              <div class="ap-tabs">
+                <button class="ap-tab active">Overview</button>
+                <button class="ap-tab">Routes</button>
+                <button class="ap-tab">Commands</button>
+              </div>
+              <div class="ap-env">Production</div>
+            </div>
+            <div class="ap-body">
+              <div class="ap-kpis">
+                <div class="ap-kpi">
+                  <div class="ap-kpi-label">Edges</div>
+                  <div class="ap-kpi-value">148</div>
+                </div>
+                <div class="ap-kpi">
+                  <div class="ap-kpi-label">Sessions</div>
+                  <div class="ap-kpi-value">12.4k</div>
+                </div>
+                <div class="ap-kpi">
+                  <div class="ap-kpi-label">Latency</div>
+                  <div class="ap-kpi-value">21ms</div>
+                </div>
+                <div class="ap-kpi">
+                  <div class="ap-kpi-label">Deploys</div>
+                  <div class="ap-kpi-value">2</div>
+                </div>
+              </div>
+              <div class="ap-cards">
+                <div class="ap-card">
+                  <div class="ap-card-label">Route health</div>
+                  <div class="ap-route-row"><span class="ap-dot green"></span>api-core<span class="ap-route-score">98</span></div>
+                  <div class="ap-route-row"><span class="ap-dot green"></span>web-public<span class="ap-route-score">94</span></div>
+                  <div class="ap-route-row"><span class="ap-dot yellow"></span>ap-edge<span class="ap-route-score">71</span></div>
+                </div>
+                <div class="ap-card">
+                  <div class="ap-card-label">Activity</div>
+                  <div class="ap-activity-row">Time range changed</div>
+                  <div class="ap-activity-row">Route selected</div>
+                  <div class="ap-activity-row">Command submitted</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════
+           AI & MODELS
+           ══════════════════════════════════════════════════════ -->
+      <section data-settings-section="ai" hidden>
+        <div class="content-header">
+          <div class="content-label">AI assistant</div>
+          <h1 class="content-title">AI &amp; Models</h1>
+          <p class="content-desc">Provider API keys, default model selection, and behaviour settings for the AI assistant.</p>
+        </div>
+
+        <div class="stats-row">
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Configured providers<i class="info-tip-icon">i</i><span class="info-tip-bubble">Number of AI providers with a valid API key saved.</span></span></div>
+            <div class="stat-value" id="ai-stat-providers">0</div>
+            <div class="stat-desc">Providers with a saved API key.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label">Default model</div>
+            <div class="stat-value" id="ai-stat-model" style="font-size:1rem;padding-top:4px">Claude Sonnet 4.6</div>
+            <div class="stat-desc">Model used when no override is selected in the chat.</div>
+          </article>
+          <article class="stat-card">
+            <div class="stat-label"><span class="info-tip">Max context<i class="info-tip-icon">i</i><span class="info-tip-bubble">Maximum characters sent per message including attached file content. Larger values use more tokens.</span></span></div>
+            <div class="stat-value" id="ai-stat-context">8k</div>
+            <div class="stat-desc">Per-file character limit when attaching files to the chat.</div>
+          </article>
+        </div>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Anthropic</div>
+            <h2 class="panel-title">Claude models</h2>
+            <p class="panel-desc">Powers Claude Opus 4.6, Sonnet 4.6 and Haiku 4.5 in the AI assistant.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshAiAnthropic" id="form-anthropic">
+            <div class="form-grid">
+              <div class="field-group span-2">
+                <label class="field-label" for="anthropic-key">
+                  <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your Anthropic API key. Starts with "sk-ant-". Find it at console.anthropic.com under API Keys.</span></span>
+                </label>
+                <input class="field-input" id="anthropic-key" name="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="anthropic-default">Default model</label>
+                <select class="field-select" id="anthropic-default" name="defaultModel">
+                  <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6</option>
+                  <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="anthropic-max-tokens">Max tokens</label>
+                <select class="field-select" id="anthropic-max-tokens" name="maxTokens">
+                  <option value="1024">1,024</option>
+                  <option value="2048" selected>2,048</option>
+                  <option value="4096">4,096</option>
+                  <option value="8192">8,192</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-ghost" type="button" data-test-key="anthropic">Test connection</button>
+              <button class="btn-primary" type="submit">Save</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">OpenAI</div>
+            <h2 class="panel-title">GPT models</h2>
+            <p class="panel-desc">Powers GPT-4o, o3 and GPT-4o mini in the AI assistant.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshAiOpenAI" id="form-openai">
+            <div class="form-grid">
+              <div class="field-group span-2">
+                <label class="field-label" for="openai-key">
+                  <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your OpenAI API key. Starts with "sk-". Find it at platform.openai.com under API keys.</span></span>
+                </label>
+                <input class="field-input" id="openai-key" name="apiKey" type="password" placeholder="sk-…" autocomplete="off"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="openai-default">Default model</label>
+                <select class="field-select" id="openai-default" name="defaultModel">
+                  <option value="gpt-4o" selected>GPT-4o</option>
+                  <option value="o3">o3</option>
+                  <option value="gpt-4o-mini">GPT-4o mini</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="openai-org">Organisation ID <span style="color:var(--text-xlo);font-weight:400">(optional)</span></label>
+                <input class="field-input" id="openai-org" name="orgId" type="text" placeholder="org-…"/>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-ghost" type="button" data-test-key="openai">Test connection</button>
+              <button class="btn-primary" type="submit">Save</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Google</div>
+            <h2 class="panel-title">Gemini models</h2>
+            <p class="panel-desc">Powers Gemini 2.5 Pro, Gemini 2.0 Flash and Gemini 1.5 Pro in the AI assistant.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshAiGoogle" id="form-google">
+            <div class="form-grid">
+              <div class="field-group span-2">
+                <label class="field-label" for="google-key">
+                  <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your Google AI Studio API key. Find it at aistudio.google.com under "Get API key".</span></span>
+                </label>
+                <input class="field-input" id="google-key" name="apiKey" type="password" placeholder="AIza…" autocomplete="off"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="google-default">Default model</label>
+                <select class="field-select" id="google-default" name="defaultModel">
+                  <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro</option>
+                  <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                  <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-ghost" type="button" data-test-key="google">Test connection</button>
+              <button class="btn-primary" type="submit">Save</button>
+            </div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">BYOK</div>
+            <h2 class="panel-title">Bring your own provider</h2>
+            <p class="panel-desc">Connect a compatible provider such as OpenRouter. A tiny live call validates the key and imports models into the BYOK group in chat.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshAiByok" id="form-byok">
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="byok-provider-id">Provider ID</label>
+                <input class="field-input" id="byok-provider-id" name="providerId" type="text" placeholder="openrouter"/>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="byok-provider-name">Provider name</label>
+                <input class="field-input" id="byok-provider-name" name="providerName" type="text" placeholder="OpenRouter"/>
+              </div>
+              <div class="field-group span-2">
+                <label class="field-label" for="byok-key">
+                  <span class="info-tip">API key<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your provider key. For OpenRouter this usually starts with sk-or-.</span></span>
+                </label>
+                <input class="field-input" id="byok-key" name="apiKey" type="password" placeholder="sk-or-…" autocomplete="off"/>
+              </div>
+              <div class="field-group span-2">
+                <label class="field-label" for="byok-base-url">Base URL</label>
+                <input class="field-input" id="byok-base-url" name="baseUrl" type="text" placeholder="https://openrouter.ai/api/v1"/>
+              </div>
+              <div class="field-group span-2">
+                <label class="field-label" for="byok-model-ids">
+                  <span class="info-tip">Model IDs to test<i class="info-tip-icon">i</i><span class="info-tip-bubble">Enter one model ID per line or separated by commas. Validation runs tiny live calls against these exact IDs. For Azure, use deployment IDs.</span></span>
+                </label>
+                <textarea class="field-textarea" id="byok-model-ids" name="modelIds" placeholder="deepseek/deepseek-chat&#10;openai/gpt-5.4-mini"></textarea>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-ghost" type="button" data-test-key="byok">Validate key + test model IDs</button>
+              <button class="btn-primary" type="submit">Save</button>
+            </div>
+            <div class="panel-footer-note" style="margin-top:6px;border-top:none;padding:0" data-byok-result>
+              Run validation to see which models are reachable.
+            </div>
+            <div class="panel-footer-note" style="padding:0;border-top:none" data-byok-existing></div>
+            <div class="panel-footer-note" style="padding:0;border-top:none" data-byok-new></div>
+          </form>
+        </article>
+
+        <article class="settings-panel">
+          <div class="panel-header">
+            <div class="panel-kicker">Behaviour</div>
+            <h2 class="panel-title">Assistant defaults</h2>
+            <p class="panel-desc">Controls how the AI assistant behaves across all sessions.</p>
+          </div>
+          <form class="panel-form" data-storage-key="meshAiBehaviour">
+            <div class="form-grid">
+              <div class="field-group">
+                <label class="field-label" for="ai-file-limit">
+                  <span class="info-tip">Per-file character limit<i class="info-tip-icon">i</i><span class="info-tip-bubble">Attached files are truncated to this many characters before being sent to the model. Higher = more context, more tokens used.</span></span>
+                </label>
+                <select class="field-select" id="ai-file-limit" name="fileCharLimit">
+                  <option value="4000">4,000 chars (~1k tokens)</option>
+                  <option value="8000" selected>8,000 chars (~2k tokens)</option>
+                  <option value="16000">16,000 chars (~4k tokens)</option>
+                  <option value="32000">32,000 chars (~8k tokens)</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="ai-default-provider">Default provider</label>
+                <select class="field-select" id="ai-default-provider" name="defaultProvider">
+                  <option value="anthropic" selected>Anthropic (Claude)</option>
+                  <option value="openai">OpenAI (GPT)</option>
+                  <option value="google">Google (Gemini)</option>
+                  <option value="byok">BYOK provider</option>
+                </select>
+              </div>
+            </div>
+            <div class="switches-list" style="margin-top:1.5rem">
+              <div class="switch-row">
+                <div class="switch-info">
+                  <strong>Include workspace context</strong>
+                  <span>Automatically prepend active route health, deploy queue and alerts to every message.</span>
+                </div>
+                <label class="switch" data-switch="includeContext">
+                  <input type="checkbox" checked/>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+              <div class="switch-row">
+                <div class="switch-info">
+                  <strong>Show token usage</strong>
+                  <span>Display estimated token count below each AI response.</span>
+                </div>
+                <label class="switch" data-switch="showTokens">
+                  <input type="checkbox"/>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+              <div class="switch-row">
+                <div class="switch-info">
+                  <strong><span class="info-tip">Stream responses<i class="info-tip-icon">i</i><span class="info-tip-bubble">Show the model's reply word-by-word as it generates, rather than waiting for the full response.</span></span></strong>
+                  <span>Display replies as they stream in rather than waiting for the full response.</span>
+                </div>
+                <label class="switch" data-switch="streamReplies">
+                  <input type="checkbox" checked/>
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
+              </div>
+            </div>
+            <div class="panel-actions">
+              <button class="btn-primary" type="submit">Save defaults</button>
+            </div>
+          </form>
+        </article>
+      </section>
+
+    </main>
+  </div>
+
+  <div data-toast-stack class="toast-stack"></div>
+
+  <!--
+    settings.js: core logic — forms, switches, API keys, billing, appearance,
+    theme application (applySettingsTheme), and page-specific init functions.
+  -->
+  <script defer src="assets/settings.js"></script>
+
+  <!--
+    settings-combined.js: SPA router for the combined settings page.
+    Must load after settings.js (defer guarantees document order execution)
+    so that init functions such as initExpireSessions are already defined
+    when settings-combined.js's DOMContentLoaded handler runs.
+  -->
+  <script defer src="assets/settings-combined.js"></script>
+
+  <!--
+    Inline: iframe theme-sync listener.
+    The parent workspace posts { type: "mesh-theme", theme: "dark"|"light" }
+    to override the locally-stored appearance preference when the iframe
+    context changes (e.g. the workspace itself switches themes).
+  -->
+  <script>
+    window.addEventListener("message", function (e) {
+      if (e.data && e.data.type === "mesh-theme") {
+        document.documentElement.dataset.theme = e.data.theme;
+      }
+    });
+  </script>
+
+  <!--
+    Inline: BYOK form defaults.
+    Runs after DOMContentLoaded so the form elements are available.
+    Sets OpenRouter as the suggested provider only when the fields are empty.
+  -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var byokDefaults = {
+        providerId: 'openrouter',
+        providerName: 'OpenRouter',
+        baseUrl: 'https://openrouter.ai/api/v1',
+      };
+      Object.entries(byokDefaults).forEach(function (entry) {
+        var name = entry[0];
+        var value = entry[1];
+        var input = document.querySelector('#form-byok [name="' + name + '"]');
+        if (input && !String(input.value || '').trim()) {
+          input.value = value;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

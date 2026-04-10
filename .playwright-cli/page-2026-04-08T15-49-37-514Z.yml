@@ -1,0 +1,127 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - img [ref=e5]:
+      - generic [ref=e9]: Mesh.
+    - heading "Welcome back" [level=2] [ref=e10]
+    - paragraph [ref=e11]: Sign in to your workspace
+    - generic [ref=e12]:
+      - generic [ref=e13]: Email
+      - textbox "edgar@test.com" [ref=e14]
+      - generic [ref=e15]: Password
+      - textbox "••••••" [ref=e16]
+      - button "Sign in" [ref=e17] [cursor=pointer]
+    - paragraph [ref=e18]
+  - generic [ref=e19]:
+    - generic [ref=e20]:
+      - generic [ref=e26]: Mesh. — untitled
+      - tablist "Workspace surface" [ref=e28]:
+        - tab "Editor" [selected] [ref=e29] [cursor=pointer]
+        - tab "Terminal" [ref=e30] [cursor=pointer]
+        - tab "Voice-Coding" [ref=e31] [cursor=pointer]
+      - generic [ref=e32]:
+        - button "Toggle Sidebar (⌘B)" [ref=e33] [cursor=pointer]:
+          - img [ref=e34]
+        - button "Toggle AI Chat" [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+        - button "Search (⌘⇧F)" [ref=e39] [cursor=pointer]:
+          - img [ref=e40]
+        - button "Settings (⌘,)" [ref=e43] [cursor=pointer]:
+          - img [ref=e44]
+    - complementary [ref=e47]:
+      - button "Explorer (⌘⇧E)" [ref=e48] [cursor=pointer]:
+        - img [ref=e49]
+      - button "Search (⌘⇧F)" [ref=e51] [cursor=pointer]:
+        - img [ref=e52]
+      - button "4" [ref=e55] [cursor=pointer]:
+        - img [ref=e56]
+        - generic [ref=e60]: "4"
+      - button "Run & Debug" [ref=e61] [cursor=pointer]:
+        - img [ref=e62]
+      - button "Extensions" [ref=e64] [cursor=pointer]:
+        - img [ref=e65]
+      - button "Workspace Mesh Graph (Netz)" [ref=e70] [cursor=pointer]:
+        - img [ref=e71]
+      - button "Operations" [ref=e77] [cursor=pointer]:
+        - img [ref=e78]
+      - button "Settings (⌘,)" [ref=e80] [cursor=pointer]:
+        - img [ref=e81]
+      - button "E" [ref=e84] [cursor=pointer]
+    - generic [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e88]: EXPLORER
+        - generic [ref=e89]:
+          - button "New File" [ref=e90] [cursor=pointer]:
+            - img [ref=e91]
+          - button "New Folder" [ref=e94] [cursor=pointer]:
+            - img [ref=e95]
+          - button "Refresh Explorer" [ref=e97] [cursor=pointer]:
+            - img [ref=e98]
+          - button "Collapse All Folders" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+          - button "Open Folder" [ref=e105] [cursor=pointer]:
+            - img [ref=e106]
+      - generic [ref=e109]:
+        - generic [ref=e110]: No folder open
+        - button "Open Folder" [ref=e112] [cursor=pointer]
+      - button "▸ OUTLINE" [ref=e114] [cursor=pointer]
+      - button "▸ TIMELINE" [ref=e116] [cursor=pointer]
+    - generic [ref=e118]:
+      - generic [ref=e119]:
+        - generic [ref=e121] [cursor=pointer]: Welcome
+        - button "⫿" [ref=e122] [cursor=pointer]
+      - generic [ref=e124] [cursor=pointer]: Mesh.
+      - generic [ref=e127]:
+        - img [ref=e128]
+        - heading "Mesh." [level=1] [ref=e131]
+        - paragraph [ref=e132]: Open a folder to start editing, or use the AI assistant.
+        - generic [ref=e133]:
+          - button "Open Folder" [ref=e134] [cursor=pointer]:
+            - img [ref=e135]
+            - text: Open Folder
+          - button "Ask AI" [ref=e137] [cursor=pointer]:
+            - img [ref=e138]
+            - text: Ask AI
+    - generic [ref=e141]:
+      - button "◂" [ref=e142] [cursor=pointer]
+      - generic [ref=e143]:
+        - img [ref=e144]
+        - generic [ref=e147]: Mesh.
+        - button "New Chat" [ref=e148] [cursor=pointer]:
+          - img [ref=e149]
+        - button "Agent" [ref=e150] [cursor=pointer]:
+          - img [ref=e151]
+          - text: Agent
+      - generic [ref=e154]:
+        - generic [ref=e155]:
+          - button "Attach file" [ref=e156] [cursor=pointer]:
+            - img [ref=e157]
+          - combobox [ref=e159]:
+            - option "Agent" [selected]
+            - option "Planning"
+            - option "Ask permission"
+          - combobox [ref=e160]:
+            - option "GPT 5.4 Mini" [selected]
+            - option "Claude Opus 4.6"
+            - option "Claude Opus 4.5"
+            - option "Claude Sonnet 4.6"
+            - option "Claude Haiku 4.5"
+        - generic [ref=e161]:
+          - textbox "Ask Mesh AI… (Enter to send)" [ref=e162]
+          - button "Send" [ref=e163] [cursor=pointer]:
+            - img [ref=e164]
+          - button "Voice Chat (Cmd+M)" [ref=e166] [cursor=pointer]:
+            - img [ref=e167]
+    - generic [ref=e170]:
+      - generic [ref=e171]:
+        - generic [ref=e172]: ⊛ Mesh Cloud
+        - generic [ref=e173]: ⑂ main
+        - generic [ref=e174]: ○ 0 ⚠ 0
+        - 'button "⌘` Terminal" [ref=e175] [cursor=pointer]'
+      - generic [ref=e176]:
+        - generic [ref=e178] [cursor=pointer]: 0k / 128k
+        - generic [ref=e180]: Ln 1, Col 1
+        - generic [ref=e181]: "Spaces: 2"
+        - generic [ref=e182]: UTF-8
+        - generic [ref=e183]: LF
+        - generic [ref=e184]: Plain Text
+        - generic [ref=e185]: Mesh AI

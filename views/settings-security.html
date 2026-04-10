@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+  <title>Settings: Security | Mesh</title>
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+</head>
+<body data-settings-page="security">
+  <div class="settings-shell">
+    <header class="settings-topbar">
+      <a class="topbar-logo" href="app" aria-label="Mesh workspace">
+        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+      </a>
+      <a class="topbar-back" href="app">← Workspace</a>
+    </header>
+
+    <aside class="settings-sidebar">
+      <div class="sidebar-top">
+        <div class="workspace-badge">
+          <div class="workspace-dot"></div>
+          <span>mesh-core / production</span>
+        </div>
+        <nav class="settings-nav">
+          <a href="/settings-account">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong>Account</strong>
+              <small>Profile and workspace identity</small>
+            </div>
+          </a>
+          <a href="/settings-security" class="active">
+            <span class="material-symbols-outlined">shield</span>
+            <div>
+              <strong>Security</strong>
+              <small>Sessions, 2FA and recovery posture</small>
+            </div>
+          </a>
+          <a href="/settings-billing">
+            <span class="material-symbols-outlined">credit_card</span>
+            <div>
+              <strong>Billing</strong>
+              <small>Plan, invoices and usage</small>
+            </div>
+          </a>
+          <a href="/settings-api-keys">
+            <span class="material-symbols-outlined">key</span>
+            <div>
+              <strong>API Keys</strong>
+              <small>Automation credentials</small>
+            </div>
+          </a>
+          <a href="/settings-appearance">
+            <span class="material-symbols-outlined">palette</span>
+            <div>
+              <strong>Appearance</strong>
+              <small>Theme, density and motion</small>
+            </div>
+          </a>
+          <a href="/settings-ai">
+            <span class="material-symbols-outlined">neurology</span>
+            <div>
+              <strong>AI &amp; Models</strong>
+              <small>Provider keys and model defaults</small>
+            </div>
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-card">
+          <div class="info-label">Posture tip</div>
+          <strong>Rotate after incidents</strong>
+          <p>Any session used during a hotfix or emergency override should be expired immediately after the window closes.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Recovery</div>
+          <strong>Two recovery contacts</strong>
+          <p>Keep at least two breakglass owners on record so a single point of failure never locks the workspace.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="settings-content">
+      <div class="content-header">
+        <div class="content-label">Trust posture</div>
+        <h1 class="content-title">Security</h1>
+        <p class="content-desc">Authentication baseline, active sessions and the audit trail that keeps every operator action traceable.</p>
+      </div>
+
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">2FA coverage<i class="info-tip-icon">i</i><span class="info-tip-bubble">Percentage of operators in this workspace with a second factor (TOTP or hardware key) enrolled.</span></span></div>
+          <div class="stat-value">100%</div>
+          <div class="stat-desc">All operators in this workspace have a second factor enrolled.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Review cadence<i class="info-tip-icon">i</i><span class="info-tip-bubble">How long before an operator session expires and re-authentication is required. Shorter = more secure.</span></span></div>
+          <div class="stat-value" data-security-stat="ttl">14 d</div>
+          <div class="stat-desc" data-security-stat-desc="ttl">Current session TTL before re-authentication is required.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Recovery contacts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Breakglass owners can regain access to a locked workspace. Keep at least 2 registered.</span></span></div>
+          <div class="stat-value" data-security-stat="recovery">2</div>
+          <div class="stat-desc" data-security-stat-desc="recovery">Breakglass owners registered for emergency workspace access.</div>
+        </article>
+      </div>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Baseline</div>
+          <h2 class="panel-title">Authentication settings</h2>
+          <p class="panel-desc">Define the policy layer that governs how operators authenticate and recover access to the workspace.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshSecurityBaseline">
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="sec-rotation"><span class="info-tip">Password rotation interval<i class="info-tip-icon">i</i><span class="info-tip-bubble">How often operators must update their password. 60 days is the recommended default.</span></span></label>
+              <select class="field-select" id="sec-rotation" name="rotation">
+                <option value="30d">Every 30 days</option>
+                <option value="60d" selected>Every 60 days</option>
+                <option value="90d">Every 90 days</option>
+                <option value="never">Never (manual only)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="sec-ttl"><span class="info-tip">Session TTL<i class="info-tip-icon">i</i><span class="info-tip-bubble">Time-to-live for an authenticated session. After this period, the operator must log in again.</span></span></label>
+              <select class="field-select" id="sec-ttl" name="sessionTtl">
+                <option value="7d">7 days</option>
+                <option value="14d" selected>14 days</option>
+                <option value="30d">30 days</option>
+                <option value="90d">90 days</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="sec-recovery-email">Recovery email</label>
+              <input class="field-input" id="sec-recovery-email" name="recoveryEmail" type="email" placeholder="security@yourorg.com"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="sec-breakglass"><span class="info-tip">Breakglass owner<i class="info-tip-icon">i</i><span class="info-tip-bubble">An operator who can bypass normal auth to recover a locked workspace. Should be someone senior.</span></span></label>
+              <input class="field-input" id="sec-breakglass" name="breakglass" type="text" placeholder="operator@yourorg.com"/>
+            </div>
+            <div class="field-group span-2">
+              <label class="field-label" for="sec-notes">Recovery notes</label>
+              <textarea class="field-textarea" id="sec-notes" name="recoveryNotes" rows="3" placeholder="Document the escalation path for locked workspaces and who holds recovery authority."></textarea>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-primary" type="submit">Save baseline</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Protection</div>
+          <h2 class="panel-title">Security controls</h2>
+          <p class="panel-desc">Toggle the protection layer that governs how sessions, devices and alerts behave across the workspace.</p>
+        </div>
+        <div class="switches-list">
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Two-factor authentication<i class="info-tip-icon">i</i><span class="info-tip-bubble">Requires a TOTP code or hardware key at every sign-in. Disabling this immediately weakens workspace posture.</span></span></strong>
+              <span>Require a second factor for every operator sign-in. Disabling this weakens the workspace posture immediately.</span>
+            </div>
+            <label class="switch" data-switch="twoFactor">
+              <input type="checkbox" checked/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Session approval for new devices<i class="info-tip-icon">i</i><span class="info-tip-bubble">First login from an unrecognised device triggers an approval step before workspace access is granted.</span></span></strong>
+              <span>Prompt operators to approve sessions initiated from unrecognised devices before granting workspace access.</span>
+            </div>
+            <label class="switch" data-switch="sessionApproval">
+              <input type="checkbox" checked/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Webhook security alerts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Sends auth anomalies and login spikes to a webhook endpoint before they hit the audit log — useful for Slack or PagerDuty.</span></span></strong>
+              <span>Forward authentication anomalies and failed login spikes to the workspace webhook before they reach the audit log.</span>
+            </div>
+            <label class="switch" data-switch="webhookAlerts">
+              <input type="checkbox"/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Device trust scoring<i class="info-tip-icon">i</i><span class="info-tip-bubble">Rates session risk using device hygiene signals. Unmanaged or unknown devices get a lower score on write operations.</span></span></strong>
+              <span>Weight session risk using device hygiene signals. Unmanaged endpoints receive a lower trust score during route-write operations.</span>
+            </div>
+            <label class="switch" data-switch="deviceTrust">
+              <input type="checkbox" checked/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Geo-anomaly alerts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Flags logins from regions you don't normally access. Helps catch credential misuse early.</span></span></strong>
+              <span>Flag sessions that originate from unexpected regions relative to the operator's usual access pattern.</span>
+            </div>
+            <label class="switch" data-switch="geoAlerts">
+              <input type="checkbox"/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Sessions</div>
+          <h2 class="panel-title">Active sessions</h2>
+          <p class="panel-desc">Every live session is visible here. Expire individual sessions or clear all to force re-authentication across the workspace.</p>
+          <div class="panel-actions-inline">
+            <button class="btn-secondary" data-expire-sessions="others">Expire other sessions</button>
+            <button class="btn-secondary" data-expire-sessions="all">Expire all sessions</button>
+          </div>
+        </div>
+        <div class="cards-list" data-sessions-list>
+          <div class="session-card">
+            <div class="session-meta">
+              <strong>Loading active sessions…</strong>
+              <span class="badge badge-neutral">Syncing</span>
+            </div>
+            <div class="session-detail">Session inventory is loading.</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Audit</div>
+          <h2 class="panel-title">Recent activity</h2>
+          <p class="panel-desc">A traceable record of authentication events, policy changes and session actions in this workspace.</p>
+        </div>
+        <div class="audit-list">
+          <div class="audit-row">
+            <div class="audit-time">Today, 09:14 UTC</div>
+            <div class="audit-event">
+              <strong>Session created</strong>
+              <span>MacBook Pro — Safari 17 · EU Central</span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-time">Today, 08:51 UTC</div>
+            <div class="audit-event">
+              <strong>Device trust score updated</strong>
+              <span>iPhone 15 scored 94 / 100 after hygiene check</span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-time">Yesterday, 22:03 UTC</div>
+            <div class="audit-event">
+              <strong>Session approval required</strong>
+              <span>Linux — Chrome 122 approved from US East after device check</span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-time">Yesterday, 14:37 UTC</div>
+            <div class="audit-event">
+              <strong>Password rotation reminder sent</strong>
+              <span>60-day rotation window opened for workspace operators</span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-time">3 days ago, 11:22 UTC</div>
+            <div class="audit-event">
+              <strong>2FA policy enforced</strong>
+              <span>All operators confirmed second factor enrollment</span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-time">5 days ago, 09:08 UTC</div>
+            <div class="audit-event">
+              <strong>Session TTL updated</strong>
+              <span>Changed from 30 days to 14 days by workspace owner</span>
+            </div>
+          </div>
+        </div>
+        <div class="panel-footer-note">Audit log is retained for 90 days. Export available on Pro and Enterprise plans.</div>
+      </article>
+    </main>
+  </div>
+
+  <div data-toast-stack class="toast-stack"></div>
+  <script defer src="assets/settings.js"></script>
+  <script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="mesh-theme")document.documentElement.dataset.theme=e.data.theme;});</script>
+</body>
+</html>

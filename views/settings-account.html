@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Settings: Account | Mesh</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+</head>
+<body data-settings-page="account">
+  <div class="settings-shell">
+    <header class="settings-topbar">
+      <a class="topbar-logo" href="app" aria-label="Mesh workspace">
+        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+      </a>
+      <a class="topbar-back" href="app">← Workspace</a>
+    </header>
+
+    <aside class="settings-sidebar">
+      <div class="sidebar-top">
+        <div class="workspace-badge">
+          <div class="workspace-dot"></div>
+          <span>mesh-core / production</span>
+        </div>
+        <nav class="settings-nav">
+          <a href="/settings-account" class="active">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong>Account</strong>
+              <small>Profile and workspace identity</small>
+            </div>
+          </a>
+          <a href="/settings-security">
+            <span class="material-symbols-outlined">shield</span>
+            <div>
+              <strong>Security</strong>
+              <small>Sessions, 2FA and recovery posture</small>
+            </div>
+          </a>
+          <a href="/settings-billing">
+            <span class="material-symbols-outlined">credit_card</span>
+            <div>
+              <strong>Billing</strong>
+              <small>Plan, invoices and usage</small>
+            </div>
+          </a>
+          <a href="/settings-api-keys">
+            <span class="material-symbols-outlined">key</span>
+            <div>
+              <strong>API Keys</strong>
+              <small>Automation credentials</small>
+            </div>
+          </a>
+          <a href="/settings-appearance">
+            <span class="material-symbols-outlined">palette</span>
+            <div>
+              <strong>Appearance</strong>
+              <small>Theme, density and motion</small>
+            </div>
+          </a>
+          <a href="/settings-ai">
+            <span class="material-symbols-outlined">neurology</span>
+            <div>
+              <strong>AI &amp; Models</strong>
+              <small>Provider keys and model defaults</small>
+            </div>
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-card">
+          <div class="info-label">Workspace identity</div>
+          <strong>One profile, all surfaces</strong>
+          <p>Your display name and avatar appear in the activity feed, approval queue and operator audit trail.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Integrations</div>
+          <strong>Connect carefully</strong>
+          <p>Third-party integrations inherit the operator's permission scope. Only connect services you actively use.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="settings-content">
+      <div class="content-header">
+        <div class="content-label">Operator identity</div>
+        <h1 class="content-title">Account</h1>
+        <p class="content-desc">Your profile, workspace membership and the integrations that extend your operator surface.</p>
+      </div>
+
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Role<i class="info-tip-icon">i</i><span class="info-tip-bubble">Your permission level in this workspace. Owner has full access including billing and team management.</span></span></div>
+          <div class="stat-value">Owner</div>
+          <div class="stat-desc">Full workspace access with billing and operator management rights.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Member since</div>
+          <div class="stat-value">Jan 2025</div>
+          <div class="stat-desc">Account age in this workspace. Role history is in the audit log.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Integrations<i class="info-tip-icon">i</i><span class="info-tip-bubble">Third-party services connected to your operator profile. Each inherits your current permission scope.</span></span></div>
+          <div class="stat-value" data-account-stat="integrations">2</div>
+          <div class="stat-desc" data-account-stat-desc="integrations">Third-party services connected to this operator profile.</div>
+        </article>
+      </div>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Profile</div>
+          <h2 class="panel-title">Operator profile</h2>
+          <p class="panel-desc">Your display name and contact details appear throughout the workspace wherever operator identity is shown.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshAccountProfile">
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="acc-name">Display name</label>
+              <input class="field-input" id="acc-name" name="displayName" type="text" placeholder="Your name"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="acc-email">Email address</label>
+              <input class="field-input" id="acc-email" name="email" type="email" placeholder="you@yourorg.com"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="acc-handle">Operator handle</label>
+              <input class="field-input" id="acc-handle" name="handle" type="text" placeholder="@handle"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="acc-timezone">Timezone</label>
+              <select class="field-select" id="acc-timezone" name="timezone">
+                <option value="UTC">UTC</option>
+                <option value="Europe/Berlin">Europe / Berlin</option>
+                <option value="America/New_York">America / New York</option>
+                <option value="America/Los_Angeles">America / Los Angeles</option>
+                <option value="Asia/Tokyo">Asia / Tokyo</option>
+                <option value="Asia/Singapore">Asia / Singapore</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-primary" type="submit">Save profile</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Workspace</div>
+          <h2 class="panel-title">Workspace settings</h2>
+          <p class="panel-desc">Workspace-level identity and configuration that applies to all operators in this environment.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshWorkspaceConfig">
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="ws-name">Workspace name</label>
+              <input class="field-input" id="ws-name" name="workspaceName" type="text" placeholder="mesh-core"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ws-slug">Workspace slug</label>
+              <input class="field-input" id="ws-slug" name="workspaceSlug" type="text" placeholder="mesh-core"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ws-region">Primary region</label>
+              <select class="field-select" id="ws-region" name="primaryRegion">
+                <option value="EU Central">EU Central</option>
+                <option value="US East">US East</option>
+                <option value="US West">US West</option>
+                <option value="AP Southeast">AP Southeast</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="ws-env">Default environment</label>
+              <select class="field-select" id="ws-env" name="defaultEnvironment">
+                <option value="production">Production</option>
+                <option value="staging">Staging</option>
+                <option value="observability">Observability</option>
+              </select>
+            </div>
+            <div class="field-group span-2">
+              <label class="field-label" for="ws-desc">Workspace description</label>
+              <textarea class="field-textarea" id="ws-desc" name="description" rows="2" placeholder="Short description of this workspace's purpose and scope."></textarea>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-primary" type="submit">Save workspace</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Integrations</div>
+          <h2 class="panel-title">Connected services</h2>
+          <p class="panel-desc">Third-party services connected to this operator profile. Each connection inherits your current permission scope.</p>
+        </div>
+        <div class="cards-list" data-integrations-list>
+          <div class="session-card">
+            <div class="session-meta" style="flex:1;">
+              <strong>Loading integrations…</strong>
+              <span class="badge badge-neutral">Syncing</span>
+            </div>
+            <div class="session-detail">Connected services will appear here once your operator profile loads.</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Notifications</div>
+          <h2 class="panel-title">Notification routing</h2>
+          <p class="panel-desc">Control which workspace events generate notifications and how they reach you.</p>
+        </div>
+        <div class="switches-list">
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Deploy approvals<i class="info-tip-icon">i</i><span class="info-tip-bubble">You'll get a notification whenever a deploy or policy change is queued and waiting for your sign-off.</span></span></strong>
+              <span>Notify me when a deploy or policy change needs operator approval in this workspace.</span>
+            </div>
+            <label class="switch" data-switch="notifyDeploys">
+              <input type="checkbox" checked/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Route health alerts<i class="info-tip-icon">i</i><span class="info-tip-bubble">Triggered when any route score drops below 75 (warning) or enters a degraded state requiring action.</span></span></strong>
+              <span>Receive alerts when a route score drops below the warning threshold or enters a degraded state.</span>
+            </div>
+            <label class="switch" data-switch="notifyRoutes">
+              <input type="checkbox" checked/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Security events<i class="info-tip-icon">i</i><span class="info-tip-bubble">Covers failed auth attempts, unusual session patterns, and any policy violations detected by the system.</span></span></strong>
+              <span>Alert me when authentication anomalies or policy violations are detected in this workspace.</span>
+            </div>
+            <label class="switch" data-switch="notifySecurity">
+              <input type="checkbox" checked/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+          <div class="switch-row">
+            <div class="switch-info">
+              <strong><span class="info-tip">Billing and usage<i class="info-tip-icon">i</i><span class="info-tip-bubble">Alerts when your workspace approaches its quota limit or when an invoice is due in the next 7 days.</span></span></strong>
+              <span>Notify me when usage approaches quota limits or invoice dates are approaching.</span>
+            </div>
+            <label class="switch" data-switch="notifyBilling">
+              <input type="checkbox"/>
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </label>
+          </div>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <div data-toast-stack class="toast-stack"></div>
+  <script defer src="assets/settings.js"></script>
+  <script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="mesh-theme")document.documentElement.dataset.theme=e.data.theme;});</script>
+</body>
+</html>

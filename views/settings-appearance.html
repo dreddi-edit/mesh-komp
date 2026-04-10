@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+  <title>Settings: Appearance | Mesh</title>
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+</head>
+<body data-settings-page="appearance">
+  <div class="settings-shell">
+    <header class="settings-topbar">
+      <a class="topbar-logo" href="app" aria-label="Mesh workspace">
+        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+      </a>
+      <a class="topbar-back" href="app">← Workspace</a>
+    </header>
+
+    <aside class="settings-sidebar">
+      <div class="sidebar-top">
+        <div class="workspace-badge">
+          <div class="workspace-dot"></div>
+          <span>mesh-core / production</span>
+        </div>
+        <nav class="settings-nav">
+          <a href="/settings-account">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong>Account</strong>
+              <small>Profile and workspace identity</small>
+            </div>
+          </a>
+          <a href="/settings-security">
+            <span class="material-symbols-outlined">shield</span>
+            <div>
+              <strong>Security</strong>
+              <small>Sessions, 2FA and recovery posture</small>
+            </div>
+          </a>
+          <a href="/settings-billing">
+            <span class="material-symbols-outlined">credit_card</span>
+            <div>
+              <strong>Billing</strong>
+              <small>Plan, invoices and usage</small>
+            </div>
+          </a>
+          <a href="/settings-api-keys">
+            <span class="material-symbols-outlined">key</span>
+            <div>
+              <strong>API Keys</strong>
+              <small>Automation credentials</small>
+            </div>
+          </a>
+          <a href="/settings-appearance" class="active">
+            <span class="material-symbols-outlined">palette</span>
+            <div>
+              <strong>Appearance</strong>
+              <small>Theme, density and motion</small>
+            </div>
+          </a>
+          <a href="/settings-ai">
+            <span class="material-symbols-outlined">neurology</span>
+            <div>
+              <strong>AI &amp; Models</strong>
+              <small>Provider keys and model defaults</small>
+            </div>
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-card">
+          <div class="info-label">Ergonomics</div>
+          <strong>Density for operators</strong>
+          <p>Compact density reduces scroll depth during incident response. Comfortable density is better for long review sessions.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Motion</div>
+          <strong>Respect system settings</strong>
+          <p>Reduced motion respects the OS-level preference automatically — no need to override it here unless you want to force a specific mode.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="settings-content">
+      <div class="content-header">
+        <div class="content-label">Operator ergonomics</div>
+        <h1 class="content-title">Appearance</h1>
+        <p class="content-desc">Theme, density, motion and the visual preferences that make the workspace feel like it was built for you.</p>
+      </div>
+
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Active theme<i class="info-tip-icon">i</i><span class="info-tip-bubble">Controls light/dark mode across the entire workspace. "Follow system" syncs with your OS setting.</span></span></div>
+          <div class="stat-value" id="preview-theme-stat">Light</div>
+          <div class="stat-desc">The current colour mode applied to the operator workspace.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Density<i class="info-tip-icon">i</i><span class="info-tip-bubble">Controls how compact the UI feels. Compact reduces padding and font size for higher information density.</span></span></div>
+          <div class="stat-value" id="preview-density-stat">Default</div>
+          <div class="stat-desc">UI spacing and element size mode across all workspace surfaces.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Accent</div>
+          <div class="stat-value" id="preview-accent-stat">Indigo</div>
+          <div class="stat-desc">The primary interactive colour used for actions and focus states.</div>
+        </article>
+      </div>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Presets</div>
+          <h2 class="panel-title">Quick-apply configurations</h2>
+          <p class="panel-desc">Start with a preset and adjust from there. Presets fill every preference at once without touching individual controls.</p>
+        </div>
+        <div class="preset-grid">
+          <button class="preset-card" data-appearance-preset="default">
+            <div class="preset-preview preset-preview-default">
+              <div class="pp-bar"></div>
+              <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+            </div>
+            <strong>Default</strong>
+            <span>Light · Default density · Indigo accent</span>
+          </button>
+          <button class="preset-card" data-appearance-preset="focus">
+            <div class="preset-preview preset-preview-focus">
+              <div class="pp-bar"></div>
+              <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+            </div>
+            <strong>Focus</strong>
+            <span>Light · Compact density · No motion</span>
+          </button>
+          <button class="preset-card" data-appearance-preset="night">
+            <div class="preset-preview preset-preview-night">
+              <div class="pp-bar"></div>
+              <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+            </div>
+            <strong>Night ops</strong>
+            <span>Dark · Compact density · Indigo accent</span>
+          </button>
+          <button class="preset-card" data-appearance-preset="highcontrast">
+            <div class="preset-preview preset-preview-highcontrast">
+              <div class="pp-bar"></div>
+              <div class="pp-content"><div class="pp-line"></div><div class="pp-line pp-short"></div></div>
+            </div>
+            <strong>High contrast</strong>
+            <span>Light · Default density · Slate accent</span>
+          </button>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Preferences</div>
+          <h2 class="panel-title">Individual controls</h2>
+          <p class="panel-desc">Fine-tune each dimension independently. Changes apply to the preview below before you save.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshAppearance" id="appearance-form">
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="app-theme">Theme</label>
+              <select class="field-select" id="app-theme" name="theme">
+                <option value="light" selected>Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">Follow system</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="app-density">Density</label>
+              <select class="field-select" id="app-density" name="density">
+                <option value="comfortable">Comfortable</option>
+                <option value="default" selected>Default</option>
+                <option value="compact">Compact</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="app-accent">Accent colour</label>
+              <select class="field-select" id="app-accent" name="accent">
+                <option value="indigo" selected>Indigo</option>
+                <option value="violet">Violet</option>
+                <option value="slate">Slate</option>
+                <option value="teal">Teal</option>
+                <option value="rose">Rose</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="app-motion"><span class="info-tip">Motion<i class="info-tip-icon">i</i><span class="info-tip-bubble">Controls transitions and animations. Set to None or Reduced if you prefer a static interface or have motion sensitivity.</span></span></label>
+              <select class="field-select" id="app-motion" name="motion">
+                <option value="full" selected>Full</option>
+                <option value="reduced">Reduced</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="app-font">Code font</label>
+              <select class="field-select" id="app-font" name="font">
+                <option value="berkeley" selected>Berkeley Mono</option>
+                <option value="mono">System mono</option>
+                <option value="fira">Fira Code</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="app-sidebar"><span class="info-tip">Sidebar width<i class="info-tip-icon">i</i><span class="info-tip-bubble">How wide the left navigation sidebar renders. Narrow gives more main content space; wide shows longer nav labels.</span></span></label>
+              <select class="field-select" id="app-sidebar" name="sidebarWidth">
+                <option value="narrow">Narrow (220px)</option>
+                <option value="default" selected>Default (248px)</option>
+                <option value="wide">Wide (280px)</option>
+              </select>
+            </div>
+          </div>
+          <div class="switches-list" style="margin-top: 1.5rem;">
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong>Show keyboard shortcut hints</strong>
+                <span>Display shortcut overlays on interactive elements during keyboard navigation.</span>
+              </div>
+              <label class="switch" data-switch="kbHints">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong>Animate route health indicators</strong>
+                <span>Pulse status dots and fade health badges when values change in the workspace overview.</span>
+              </div>
+              <label class="switch" data-switch="animateHealth">
+                <input type="checkbox" checked/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+            <div class="switch-row">
+              <div class="switch-info">
+                <strong>Compact activity feed</strong>
+                <span>Remove the copy line from activity entries so more events fit without scrolling.</span>
+              </div>
+              <label class="switch" data-switch="compactFeed">
+                <input type="checkbox"/>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-ghost" type="button" data-appearance-reset>Reset to defaults</button>
+            <button class="btn-primary" type="submit">Save preferences</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Preview</div>
+          <h2 class="panel-title">Live component preview</h2>
+          <p class="panel-desc">A representative set of workspace components using the selected preferences.</p>
+        </div>
+        <div class="appearance-preview" id="appearance-preview">
+          <div class="ap-topbar">
+            <div class="ap-logo"><img src="assets/brand/wordmark-black.svg" alt="Mesh"/></div>
+            <div class="ap-tabs">
+              <button class="ap-tab active">Overview</button>
+              <button class="ap-tab">Routes</button>
+              <button class="ap-tab">Commands</button>
+            </div>
+            <div class="ap-env">Production</div>
+          </div>
+          <div class="ap-body">
+            <div class="ap-kpis">
+              <div class="ap-kpi">
+                <div class="ap-kpi-label">Edges</div>
+                <div class="ap-kpi-value">148</div>
+              </div>
+              <div class="ap-kpi">
+                <div class="ap-kpi-label">Sessions</div>
+                <div class="ap-kpi-value">12.4k</div>
+              </div>
+              <div class="ap-kpi">
+                <div class="ap-kpi-label">Latency</div>
+                <div class="ap-kpi-value">21ms</div>
+              </div>
+              <div class="ap-kpi">
+                <div class="ap-kpi-label">Deploys</div>
+                <div class="ap-kpi-value">2</div>
+              </div>
+            </div>
+            <div class="ap-cards">
+              <div class="ap-card">
+                <div class="ap-card-label">Route health</div>
+                <div class="ap-route-row"><span class="ap-dot green"></span>api-core<span class="ap-route-score">98</span></div>
+                <div class="ap-route-row"><span class="ap-dot green"></span>web-public<span class="ap-route-score">94</span></div>
+                <div class="ap-route-row"><span class="ap-dot yellow"></span>ap-edge<span class="ap-route-score">71</span></div>
+              </div>
+              <div class="ap-card">
+                <div class="ap-card-label">Activity</div>
+                <div class="ap-activity-row">Time range changed</div>
+                <div class="ap-activity-row">Route selected</div>
+                <div class="ap-activity-row">Command submitted</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <div data-toast-stack class="toast-stack"></div>
+  <script defer src="assets/settings.js"></script>
+  <script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="mesh-theme")document.documentElement.dataset.theme=e.data.theme;});</script>
+</body>
+</html>

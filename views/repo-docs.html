@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mesh Repo Docs</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/icon-color.svg"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/assets/mesh-docs.css">
+  <link rel="stylesheet" href="/assets/repo-docs.css">
+</head>
+<body>
+  <nav class="docs-nav">
+    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="/assets/brand/lockup-color.svg" alt="Mesh"/></a>
+    <div class="nav-links">
+      <a href="/index">Start</a>
+      <a href="/how-it-works">So funktioniert es</a>
+      <a href="/statistics">Statistiken</a>
+      <a href="/docs">Dokumentation</a>
+      <a class="active" href="/repo-docs">Repo Docs</a>
+    </div>
+    <div class="nav-actions">
+      <a class="nav-btn-ghost" href="/app?login=1">Anmelden</a>
+      <a class="nav-btn-primary" href="/app?login=1">Workspace</a>
+    </div>
+  </nav>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar">
+      <div class="side-title">Repository knowledge</div>
+      <div class="repo-docs-brand">
+        <h1>Codebase Explorer</h1>
+        <p>Interactive docs for the current <code>mesh-komp</code> repository.</p>
+      </div>
+
+      <label class="repo-docs-search">
+        <span>Filter files</span>
+        <input id="repoDocsSearch" type="search" placeholder="Type to filter...">
+      </label>
+
+      <div class="side-title">Key Docs</div>
+      <nav id="repoDocsList" class="repo-docs-nav"></nav>
+
+      <div class="side-title">Repository Map</div>
+      <div id="repoTree" class="repo-tree"></div>
+    </aside>
+
+    <main class="docs-main">
+      <header class="repo-docs-topbar">
+        <div>
+          <div class="repo-docs-topline">Live-Repository Surface</div>
+          <div id="repoDocsMeta" class="repo-docs-meta">Loading repo info…</div>
+        </div>
+      </header>
+
+      <article class="repo-docs-content">
+        <div id="repoDocsWelcome" class="repo-docs-welcome animate">
+          <div class="eyebrow">mesh-komp</div>
+          <h2>Interactive Code Surface</h2>
+          <p>This page turns the current repository into a browsable knowledge base. Select a document or file from the left sidebar to render it with transport-level precision here.</p>
+        </div>
+
+        <div id="repoDocsContent" class="repo-docs-rendered" hidden></div>
+      </article>
+
+      <footer class="animate delay-3">
+        &copy; 2026 Mesh. Code Intelligence Surface.
+      </footer>
+    </main>
+  </div>
+
+  <script src="/assets/docs-shared.js"></script>
+  <script src="/assets/repo-docs.js"></script>
+</body>
+</html>

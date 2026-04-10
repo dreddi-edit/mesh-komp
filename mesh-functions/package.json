@@ -1,0 +1,15 @@
+{
+  "name": "mesh-functions",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/functions/blob-capsule-indexer.js",
+  "scripts": {
+    "start": "func start",
+    "test:event": "node src/scripts/invoke-event.js"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.3.0",
+    "@azure/functions": "^4.7.3",
+    "@azure/storage-blob": "^12.31.0"
+  }
+}

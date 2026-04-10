@@ -1,0 +1,209 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - link "Mesh home" [ref=e3] [cursor=pointer]:
+      - /url: index.html
+      - img "Mesh" [ref=e4]
+    - generic [ref=e5]:
+      - link "Home" [ref=e6] [cursor=pointer]:
+        - /url: index.html
+      - link "Terminal" [ref=e7] [cursor=pointer]:
+        - /url: terminal.html
+      - link "How it Works" [ref=e8] [cursor=pointer]:
+        - /url: how-it-works.html
+      - link "Statistics" [ref=e9] [cursor=pointer]:
+        - /url: statistics.html
+      - link "Docs" [ref=e10] [cursor=pointer]:
+        - /url: docs.html
+    - generic [ref=e11]:
+      - link "Login" [ref=e12] [cursor=pointer]:
+        - /url: app.html?login=1
+      - button "Get Started" [ref=e13] [cursor=pointer]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]: v4.2.0 Released — Edge Network Update
+      - generic [ref=e18]:
+        - img [ref=e20]
+        - generic [ref=e27]: Mesh signal online
+      - heading "Proxy at Light Speed" [level=1] [ref=e28]:
+        - generic [ref=e29]: Proxy
+        - generic [ref=e30]: at
+        - generic [ref=e31]: Light
+        - generic [ref=e32]: Speed
+      - paragraph [ref=e33]: High-performance proxy management with real-time compression and sub-millisecond routing. Built for infrastructure teams who demand more.
+      - generic [ref=e34]:
+        - button "terminal Open Terminal arrow_forward" [ref=e35] [cursor=pointer]:
+          - generic [ref=e36]: terminal
+          - text: Open Terminal
+          - generic [ref=e37]: arrow_forward
+        - button "menu_book Read Docs" [ref=e38] [cursor=pointer]:
+          - generic [ref=e39]: menu_book
+          - text: Read Docs
+      - generic [ref=e40]:
+        - generic [ref=e41]:
+          - generic [ref=e46]: root@mesh-core:~ — zsh
+          - generic [ref=e47]: Live
+        - generic [ref=e49]:
+          - generic [ref=e50]: ❯ mesh connect --region eu-west --compress brotli-x
+          - generic [ref=e51]: ——————————————————————————————————————
+          - generic [ref=e52]: ◆ Initializing Mesh Secure Tunnel v4.2.0
+          - generic [ref=e53]: 14:02:11 AUTH Handshake complete · node ::ffff:192.168.1.42
+          - generic [ref=e54]: 14:02:14 CONN Multiplexed stream via FRANKFURT-EDGE-01
+          - generic [ref=e55]: 14:02:15 COMP Brotli-X ratio 8.2× · overhead 0.02ms
+          - generic [ref=e56]: 14:02:19 READY Proxy tunnel active · latency 12ms
+          - generic [ref=e58]: ❯
+      - generic [ref=e61]: Scroll
+    - generic [ref=e63]:
+      - paragraph [ref=e64]: Trusted by infrastructure teams at
+      - generic [ref=e65]:
+        - generic [ref=e66]: Axiom
+        - generic [ref=e67]: Vercel
+        - generic [ref=e68]: Cloudflare
+        - generic [ref=e69]: Supabase
+        - generic [ref=e70]: PlanetScale
+    - generic [ref=e72]:
+      - generic [ref=e73]: TLS 1.3 Encryption
+      - generic [ref=e75]: AES-256 GCM
+      - generic [ref=e77]: Brotli-X Engine
+      - generic [ref=e79]: 180+ Edge Nodes
+      - generic [ref=e81]: Sub-12ms Latency
+      - generic [ref=e83]: 4.2× Compression
+      - generic [ref=e85]: 99.99% Uptime SLA
+      - generic [ref=e87]: Zero-Copy Buffers
+      - generic [ref=e89]: Anycast Routing
+      - generic [ref=e91]: Dynamic IP Rotation
+      - generic [ref=e93]: TLS 1.3 Encryption
+      - generic [ref=e95]: AES-256 GCM
+      - generic [ref=e97]: Brotli-X Engine
+      - generic [ref=e99]: 180+ Edge Nodes
+      - generic [ref=e101]: Sub-12ms Latency
+      - generic [ref=e103]: 4.2× Compression
+      - generic [ref=e105]: 99.99% Uptime SLA
+      - generic [ref=e107]: Zero-Copy Buffers
+      - generic [ref=e109]: Anycast Routing
+      - generic [ref=e111]: Dynamic IP Rotation
+    - generic [ref=e114]:
+      - generic [ref=e115]:
+        - paragraph [ref=e116]: Features
+        - heading "Everything your infrastructure demands." [level=2] [ref=e117]
+        - paragraph [ref=e118]: A unified control plane for proxying, compression, and real-time observability — engineered from first principles.
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - generic [ref=e122]: compress
+          - paragraph [ref=e123]: 01 // BROTLI-X
+          - heading "Intelligent Compression" [level=3] [ref=e124]
+          - paragraph [ref=e125]:
+            - text: Our proprietary Brotli-X engine maintains a dynamic dictionary of HTTP payload patterns — reducing bandwidth by up to
+            - strong [ref=e126]: 85%
+            - text: without any latency penalty.
+          - generic [ref=e135]:
+            - generic [ref=e136]: MON
+            - generic [ref=e137]: TUE
+            - generic [ref=e138]: WED
+            - generic [ref=e139]: THU
+            - generic [ref=e140]: FRI
+            - generic [ref=e141]: SAT
+          - generic [ref=e142]:
+            - generic [ref=e143]: 8.2×
+            - generic [ref=e144]: peak ratio
+        - generic [ref=e145]:
+          - generic [ref=e147]: public
+          - paragraph [ref=e148]: 02 // EDGE NETWORK
+          - heading "Global Coverage" [level=3] [ref=e149]
+          - paragraph [ref=e150]: 180+ nodes across 6 continents. Anycast routing selects the optimal exit point within microseconds.
+          - generic [ref=e153]:
+            - generic [ref=e154]:
+              - generic [ref=e155]: 180+
+              - generic [ref=e156]: Edge Nodes
+            - generic [ref=e157]:
+              - generic [ref=e158]: 12ms
+              - generic [ref=e159]: Avg Latency
+            - generic [ref=e160]:
+              - generic [ref=e161]: 99.99%
+              - generic [ref=e162]: Uptime SLA
+        - generic [ref=e163]:
+          - generic [ref=e165]: encrypted
+          - paragraph [ref=e166]: 03 // SECURITY
+          - heading "Military-Grade Encryption" [level=3] [ref=e167]
+          - paragraph [ref=e168]: TLS 1.3 + AES-256 GCM at every hop. Zero-knowledge architecture.
+          - generic [ref=e170]: AES-256-GCM · TLS 1.3 · ECDH
+        - generic [ref=e171]:
+          - generic [ref=e173]: speed
+          - paragraph [ref=e174]: 04 // LATENCY
+          - heading "Zero-Copy Buffers" [level=3] [ref=e175]
+          - paragraph [ref=e176]: Stream processing directly in kernel space. No CPU wait, no memory copies.
+          - img [ref=e178]
+        - generic [ref=e181]:
+          - generic [ref=e183]: api
+          - paragraph [ref=e184]: 05 // DEVELOPER
+          - heading "CLI-First API" [level=3] [ref=e185]
+          - paragraph [ref=e186]: Robust REST API, native CLI, and real-time WebSocket streams.
+          - generic [ref=e187]: $ mesh deploy --prod
+    - generic [ref=e190]:
+      - generic [ref=e191]:
+        - generic [ref=e192]: 0 TB
+        - generic [ref=e193]: Traffic proxied monthly
+      - generic [ref=e194]:
+        - generic [ref=e195]: 0 ms
+        - generic [ref=e196]: Global average latency
+      - generic [ref=e197]:
+        - generic [ref=e198]: "0"
+        - generic [ref=e199]: Edge nodes worldwide
+      - generic [ref=e200]:
+        - generic [ref=e201]: 0 %
+        - generic [ref=e202]: Uptime SLA guaranteed
+    - generic [ref=e204]:
+      - generic [ref=e205]:
+        - paragraph [ref=e206]: Protocol
+        - heading "The Linear Velocity Protocol." [level=2] [ref=e207]
+        - paragraph [ref=e208]: Four stages. Zero compromise. Every packet flows through a cryptographically verified, maximally compressed pipeline.
+      - generic [ref=e209]:
+        - generic [ref=e210]:
+          - generic [ref=e211]: 01 // INIT
+          - generic [ref=e212]: handshake
+          - heading "TLS Handshake" [level=4] [ref=e213]
+          - paragraph [ref=e214]: Geometric session keys established in a single round trip. Zero-latency negotiation via TLS 1.3.
+        - generic [ref=e215]:
+          - generic [ref=e216]: 02 // PACK
+          - generic [ref=e217]: compress
+          - heading "Brotli-X Compression" [level=4] [ref=e218]
+          - paragraph [ref=e219]: Dynamic dictionary injection reduces HTTP/JSON payload overhead by up to 85% before transmission.
+        - generic [ref=e220]:
+          - generic [ref=e221]: 03 // PATH
+          - generic [ref=e222]: hub
+          - heading "Anycast Routing" [level=4] [ref=e223]
+          - paragraph [ref=e224]: Real-time backbone congestion metrics select the optimal egress across 180+ global nodes.
+        - generic [ref=e225]:
+          - generic [ref=e226]: 04 // SYNC
+          - generic [ref=e227]: cloud_done
+          - heading "Stream Delivery" [level=4] [ref=e228]
+          - paragraph [ref=e229]: First byte reaches destination while remaining packets are still in transit. True zero-copy streaming.
+    - generic [ref=e231]:
+      - generic [ref=e232]:
+        - generic [ref=e233]: Network Stable · 12 ms avg
+        - heading "Ready to route at light speed?" [level=2] [ref=e235]:
+          - text: Ready to route at
+          - text: light speed?
+        - paragraph [ref=e236]: Join 12,000+ engineers who trust Mesh for their most latency-sensitive workloads.
+      - generic [ref=e237]:
+        - button "terminal Start for Free" [ref=e238] [cursor=pointer]:
+          - generic [ref=e239]: terminal
+          - text: Start for Free
+        - button "Talk to Sales" [ref=e240] [cursor=pointer]
+        - paragraph [ref=e241]: No credit card required · Free tier available
+  - contentinfo [ref=e242]:
+    - generic [ref=e243]:
+      - img "Mesh" [ref=e245]
+      - generic [ref=e246]:
+        - link "Documentation" [ref=e247] [cursor=pointer]:
+          - /url: docs.html
+        - link "Privacy Policy" [ref=e248] [cursor=pointer]:
+          - /url: settings-security.html
+        - link "Terms of Service" [ref=e249] [cursor=pointer]:
+          - /url: docs.html#limits
+        - link "Status" [ref=e250] [cursor=pointer]:
+          - /url: statistics.html
+        - link "Contact" [ref=e251] [cursor=pointer]:
+          - /url: settings-account.html
+        - link "GitHub" [ref=e252] [cursor=pointer]:
+          - /url: docs.html#sdk
+      - paragraph [ref=e253]: © 2026 Mesh. Network infrastructure for teams that care about clarity.

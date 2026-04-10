@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+  <title>Settings: API Keys | Mesh</title>
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+</head>
+<body data-settings-page="api-keys">
+  <div class="settings-shell">
+    <header class="settings-topbar">
+      <a class="topbar-logo" href="app" aria-label="Mesh workspace">
+        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+      </a>
+      <a class="topbar-back" href="app">← Workspace</a>
+    </header>
+
+    <aside class="settings-sidebar">
+      <div class="sidebar-top">
+        <div class="workspace-badge">
+          <div class="workspace-dot"></div>
+          <span>mesh-core / production</span>
+        </div>
+        <nav class="settings-nav">
+          <a href="/settings-account">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong>Account</strong>
+              <small>Profile and workspace identity</small>
+            </div>
+          </a>
+          <a href="/settings-security">
+            <span class="material-symbols-outlined">shield</span>
+            <div>
+              <strong>Security</strong>
+              <small>Sessions, 2FA and recovery posture</small>
+            </div>
+          </a>
+          <a href="/settings-billing">
+            <span class="material-symbols-outlined">credit_card</span>
+            <div>
+              <strong>Billing</strong>
+              <small>Plan, invoices and usage</small>
+            </div>
+          </a>
+          <a href="/settings-api-keys" class="active">
+            <span class="material-symbols-outlined">key</span>
+            <div>
+              <strong>API Keys</strong>
+              <small>Automation credentials</small>
+            </div>
+          </a>
+          <a href="/settings-appearance">
+            <span class="material-symbols-outlined">palette</span>
+            <div>
+              <strong>Appearance</strong>
+              <small>Theme, density and motion</small>
+            </div>
+          </a>
+          <a href="/settings-ai">
+            <span class="material-symbols-outlined">neurology</span>
+            <div>
+              <strong>AI &amp; Models</strong>
+              <small>Provider keys and model defaults</small>
+            </div>
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-card">
+          <div class="info-label">Best practice</div>
+          <strong>One key per workflow</strong>
+          <p>Separate deploy automation, read-only observability and local testing so revocation can stay surgical.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Rotation</div>
+          <strong>After every incident</strong>
+          <p>Any key involved in a hotfix or emergency bypass should be rotated after the event closes.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="settings-content">
+      <div class="content-header">
+        <div class="content-label">Automation layer</div>
+        <h1 class="content-title">API Keys</h1>
+        <p class="content-desc">Scoped, visible credentials for every automation workflow. No hidden tokens, no mystery secrets.</p>
+      </div>
+
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-label">Active keys</div>
+          <div class="stat-value" data-key-metric="active">0</div>
+          <div class="stat-desc">Automation credentials currently in local state.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Automation scope<i class="info-tip-icon">i</i><span class="info-tip-bubble">Keys with write access can create or modify routes, policies and deployments. Use with care.</span></span></div>
+          <div class="stat-value" data-key-metric="automation">0</div>
+          <div class="stat-desc">Keys carrying write-capable automation scopes.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Edge environment<i class="info-tip-icon">i</i><span class="info-tip-bubble">Keys scoped to the production edge — they interact with live routing infrastructure, not staging.</span></span></div>
+          <div class="stat-value" data-key-metric="edge">0</div>
+          <div class="stat-desc">Credentials targeting production edge paths.</div>
+        </article>
+      </div>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Create</div>
+          <h2 class="panel-title">Issue a new credential</h2>
+          <p class="panel-desc">Name the workflow, state the environment, define the region and make the scope explicit before a token exists.</p>
+        </div>
+        <form class="panel-form" data-api-key-form>
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="keyName">Key name</label>
+              <input class="field-input" id="keyName" name="name" type="text" placeholder="Deploy Runner"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="keyScope"><span class="info-tip">Scope<i class="info-tip-icon">i</i><span class="info-tip-bubble">Space-separated permission tokens. Use automation.read for read-only and automation.write for full access.</span></span></label>
+              <input class="field-input" id="keyScope" name="scope" type="text" placeholder="automation.read automation.write"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="keyRegion">Region</label>
+              <select class="field-select" id="keyRegion" name="region">
+                <option value="Global">Global</option>
+                <option value="EU Central">EU Central</option>
+                <option value="US East">US East</option>
+                <option value="AP Southeast">AP Southeast</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="keyEnvironment"><span class="info-tip">Environment<i class="info-tip-icon">i</i><span class="info-tip-bubble">Edge = live production traffic. Staging = test environment. Observability = read-only metrics access.</span></span></label>
+              <select class="field-select" id="keyEnvironment" name="environment">
+                <option value="edge">Edge</option>
+                <option value="staging">Staging</option>
+                <option value="observability">Observability</option>
+              </select>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-primary" type="submit">Create key</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Inventory</div>
+          <h2 class="panel-title">Issued keys</h2>
+          <p class="panel-desc">Every token stays reviewable with scope, region, environment and lifecycle actions visible at a glance.</p>
+        </div>
+        <div class="cards-list" data-api-key-list></div>
+        <div class="empty-state" data-api-empty>
+          <span class="material-symbols-outlined">key_off</span>
+          <strong>No keys yet</strong>
+          <p>Create the first automation credential above. Once issued, this area becomes the review surface for copy, reveal, rotate and delete actions.</p>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Reference</div>
+          <h2 class="panel-title">Example control-plane call</h2>
+          <p class="panel-desc">The newest key drops straight into this snippet so the relationship between token scope and control-plane action stays visible.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-block-head">
+            <span>Example request</span>
+            <button class="copy-btn" data-copy-target="#api-key-snippet">Copy</button>
+          </div>
+          <pre id="api-key-snippet" class="code-pre">Create a key above to generate an example snippet.</pre>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Guardrails</div>
+          <h2 class="panel-title">Keeping automation safe</h2>
+          <p class="panel-desc">Credentials are only as safe as the habits around them.</p>
+        </div>
+        <ul class="guardrails-list">
+          <li>Keep production route-write access separate from read-only metrics keys so observation does not imply mutation.</li>
+          <li>Assign one key per automation workflow so revocation does not force unrelated systems to rotate at the same time.</li>
+          <li>Prefer region-specific tokens during staged rollouts to limit the blast radius of misrouted deploy jobs.</li>
+          <li>After a manual hotfix or operator override, rotate the key involved and record why the extra privilege was needed.</li>
+        </ul>
+      </article>
+    </main>
+  </div>
+
+  <div data-toast-stack class="toast-stack"></div>
+  <script defer src="assets/settings.js"></script>
+  <script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="mesh-theme")document.documentElement.dataset.theme=e.data.theme;});</script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>So funktioniert es - Mesh</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/mesh-docs.css"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('.html')) {
+        var newP = p.replace(/\.html$/, '');
+        history.replaceState(null, '', newP + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <nav class="docs-nav">
+    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="assets/brand/lockup-color.svg" alt="Mesh"/></a>
+    <div class="nav-links">
+      <a href="index">Start</a>
+      <a class="active" href="how-it-works">So funktioniert es</a>
+      <a href="statistics">Statistiken</a>
+      <a href="docs">Dokumentation</a>
+      <a href="terminal">Terminal</a>
+    </div>
+    <div class="nav-actions">
+      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
+      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
+    </div>
+  </nav>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar">
+      <div class="side-title">Überblick</div>
+      <nav class="side-nav">
+        <a class="active" href="#pipeline">Kernpipeline</a>
+        <a href="#status">Statusmodell</a>
+        <a href="#details">Technikdetails</a>
+        <a href="#strategie">Recovery-Strategie</a>
+      </nav>
+    </aside>
+
+    <main class="docs-main">
+      <header class="hero animate" id="pipeline">
+        <div class="eyebrow">Methodik & Ablauf</div>
+        <h1>Vom Upload zur verifizierbaren Antwort</h1>
+        <p>Mesh verarbeitet jede Datei in klaren Schritten: Sichtbarkeit schaffen, automatisch verdichten und bei Bedarf Originalzeilen nachladen.</p>
+      </header>
+
+      <div class="section-head animate">
+        <div class="section-label">Ablauf</div>
+        <h2 class="section-title">Die vier Kernstufen der Mesh-Engine</h2>
+      </div>
+
+      <div class="grid-cards animate delay-1">
+        <div class="card">
+          <div class="icon-pill">01</div>
+          <h3>Manifest</h3>
+          <p>Dateien erscheinen sofort als <code>pending</code>. Du siehst die Struktur, bevor die Verarbeitung abgeschlossen ist.</p>
+        </div>
+        <div class="card">
+          <div class="icon-pill">02</div>
+          <h3>Blob Processing</h3>
+          <p>Hintergrundverarbeitung erkennt Typen und übergibt an Parser, um Rohtext in Wissen umzuwandeln.</p>
+        </div>
+        <div class="card">
+          <div class="icon-pill">03</div>
+          <h3>Capsule Sync</h3>
+          <p>Strukturierte Kurzfassung mit Verweisen auf die Originalstellen. Kontext bleibt klein, Bezug bleibt da.</p>
+        </div>
+        <div class="card">
+          <div class="icon-pill">04</div>
+          <h3>Answer Logic</h3>
+          <p>Focused Ansichten zeigen nur Relevantes. Recovery lädt exakte Quellzeilen für Belege nach.</p>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="status">
+        <div class="section-label">Dateilebenszyklus</div>
+        <h2 class="section-title">Statusmodell und Fehlersicherheit</h2>
+      </div>
+
+      <div class="grid-cards animate delay-1">
+        <div class="card">
+          <h3>Pending</h3>
+          <p>Manifest-Eintrag vorhanden, Inhalt wird noch verarbeitet oder wartet auf Worker.</p>
+        </div>
+        <div class="card">
+          <h3>Completed</h3>
+          <p>Vollständig indexiert. Capsule, focused-Ansichten und Recovery-Spans sind bereit.</p>
+        </div>
+        <div class="card">
+          <h3>Failed</h3>
+          <p>Verarbeitung abgebrochen. Der Fehlergrund wird für das Team im Log persistiert.</p>
+        </div>
+      </div>
+
+      <div class="code-wrap animate delay-2">
+        <div class="code-header">
+          <span>Hintergrund-Flow (Pseudo)</span>
+        </div>
+        <pre class="code-pre">workspace.select -> Dateien sichtbar machen
+blob upload -> Background Jobs
+buildWorkspaceFileRecord(path, text)
+upsertWorkspaceFileRecord(status=completed)
+query -> buildFocusedView() -> recoveryIfNecessary()</pre>
+      </div>
+
+      <div class="section-head animate" id="details">
+        <div class="section-label">Deep Dive</div>
+        <h2 class="section-title">Capsule-Erstellung im Detail</h2>
+      </div>
+
+      <div class="timeline animate delay-1">
+        <div class="step">
+          <div class="step-n">A</div>
+          <div class="step-t">Erkennung von Dateitypen (Code, Config, SQL, Markdown etc.).</div>
+        </div>
+        <div class="step">
+          <div class="step-n">B</div>
+          <div class="step-t">Strukturierte Extraktion mit AST-basierten Parsern für Code-Präzision.</div>
+        </div>
+        <div class="step">
+          <div class="step-n">C</div>
+          <div class="step-t">Sektions-Building mit Priorisierung basierend auf Importen & Funktionsköpfen.</div>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="strategie">
+        <div class="section-label">Evidenz</div>
+        <h2 class="section-title">Recovery und Belegführung</h2>
+      </div>
+
+      <div class="matrix animate delay-1">
+        <div class="matrix-row head">
+          <div>Ansicht</div><div>Trigger</div><div>Ausgabe</div>
+        </div>
+        <div class="matrix-row">
+          <div>Kurzfassung</div><div>Übersicht</div><div>Capsule-Text</div>
+        </div>
+        <div class="matrix-row">
+          <div>Quellansicht</div><div>Exakter Beleg</div><div>Original-Text (Zeilen/Bytes)</div>
+        </div>
+      </div>
+
+      <footer class="animate delay-3">
+        &copy; 2026 Mesh. Engineering Intelligence.
+      </footer>
+    </main>
+  </div>
+
+  <script src="assets/docs-shared.js"></script>
+</body>
+</html>

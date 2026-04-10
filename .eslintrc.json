@@ -1,0 +1,25 @@
+{
+  "env": {
+    "node": true,
+    "es2021": true,
+    "browser": true
+  },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-unused-vars": "warn",
+    "no-undef": "error"
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "old/",
+    "output/",
+    "test/fixtures/",
+    "assets/libs/",
+    "mesh-functions/node_modules/",
+    "*.min.js"
+  ]
+}

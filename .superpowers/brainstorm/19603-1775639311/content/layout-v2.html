@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #090c10; color: #e6edf3; font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 13px; padding: 20px; min-height: 100vh; }
+
+  .terminal { background: #0d1117; border: 1px solid #30363d; border-radius: 10px; overflow: hidden; max-width: 960px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+
+  .titlebar { background: #161b22; border-bottom: 1px solid #30363d; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+  .dots { display: flex; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #f85149; }
+  .dot-y { background: #e3b341; }
+  .dot-g { background: #3fb950; }
+  .title-text { color: #8b949e; font-size: 11px; flex: 1; text-align: center; letter-spacing: 0.05em; }
+  .live-badge { background: #1a2e1a; border: 1px solid #3fb950; color: #3fb950; font-size: 10px; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.08em; display: flex; align-items: center; gap: 4px; }
+  .pulse { width: 6px; height: 6px; background: #3fb950; border-radius: 50%; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+  .body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* Header row */
+  .header-row { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+  .project-name { color: #58a6ff; font-size: 14px; font-weight: 600; letter-spacing: 0.02em; }
+  .model-tag { background: #1c2d45; border: 1px solid #1f6feb; color: #58a6ff; font-size: 10px; padding: 3px 10px; border-radius: 4px; }
+  .session-info { color: #8b949e; font-size: 11px; }
+  .session-info span { color: #e6edf3; }
+
+  /* Big metric cards */
+  .metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .metric-card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 12px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+  .metric-card:hover { border-color: #30363d; }
+  .metric-card::before { content:''; position:absolute;top:0;left:0;right:0;height:2px; }
+  .metric-card.blue::before { background: linear-gradient(90deg,#1f6feb,#58a6ff); }
+  .metric-card.green::before { background: linear-gradient(90deg,#196c2e,#3fb950); }
+  .metric-card.yellow::before { background: linear-gradient(90deg,#9e6a03,#e3b341); }
+  .metric-card.purple::before { background: linear-gradient(90deg,#6e40c9,#a371f7); }
+  .metric-card.cyan::before { background: linear-gradient(90deg,#0e7490,#22d3ee); }
+
+  .metric-label { color: #8b949e; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  .metric-value { color: #e6edf3; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+  .metric-value.yellow { color: #e3b341; }
+  .metric-value.green { color: #3fb950; }
+  .metric-sub { margin-top: 6px; font-size: 10px; color: #8b949e; display: flex; align-items: center; gap: 4px; }
+  .metric-sub .up { color: #3fb950; }
+  .metric-sub .down { color: #f85149; }
+
+  /* Sparkline placeholder */
+  .sparkline { margin-top: 8px; height: 24px; display: flex; align-items: flex-end; gap: 2px; }
+  .spark-bar { flex: 1; border-radius: 2px 2px 0 0; opacity: 0.7; }
+
+  /* Context bar */
+  .context-section { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 12px 14px; }
+  .context-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .context-label { color: #8b949e; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .context-pct { font-size: 12px; font-weight: 600; }
+  .context-pct.safe { color: #3fb950; }
+  .context-pct.warn { color: #e3b341; }
+  .context-pct.danger { color: #f85149; }
+  .context-bar-bg { height: 8px; background: #21262d; border-radius: 4px; overflow: hidden; position: relative; }
+  .context-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #1f6feb 0%, #58a6ff 60%, #e3b341 85%, #f85149 100%); transition: width 0.4s ease; position: relative; }
+  .context-bar-fill::after { content:''; position:absolute;right:0;top:0;bottom:0;width:3px;background:white;opacity:0.8;border-radius:0 2px 2px 0; }
+  .context-meta { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #8b949e; }
+  .context-meta span { color: #e6edf3; }
+
+  /* Middle row */
+  .middle-row { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px; }
+
+  /* Token breakdown */
+  .token-breakdown { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 12px; }
+  .section-title { color: #8b949e; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+  .token-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #161b22; }
+  .token-row:last-child { border-bottom: none; }
+  .token-name { color: #8b949e; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+  .token-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .token-val { font-size: 11px; font-weight: 600; }
+  .token-bar-wrap { width: 60px; height: 4px; background: #21262d; border-radius: 2px; overflow: hidden; }
+  .token-bar { height: 100%; border-radius: 2px; }
+
+  /* Speed panel */
+  .speed-panel { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 12px; }
+  .speed-big { font-size: 32px; font-weight: 700; color: #22d3ee; letter-spacing: -0.03em; margin: 6px 0 2px; }
+  .speed-unit { font-size: 11px; color: #8b949e; }
+  .speed-row { display: flex; gap: 12px; margin-top: 10px; }
+  .speed-item { flex: 1; background: #0d1117; border-radius: 6px; padding: 6px 8px; }
+  .speed-item-label { color: #8b949e; font-size: 9px; letter-spacing: 0.1em; }
+  .speed-item-val { color: #e6edf3; font-size: 12px; font-weight: 600; margin-top: 2px; }
+
+  /* History panel */
+  .history-panel { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 12px; }
+  .history-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #21262d; }
+  .history-row:last-child { border-bottom: none; }
+  .history-period { color: #8b949e; font-size: 11px; width: 70px; }
+  .history-sessions { color: #e6edf3; font-size: 11px; width: 55px; }
+  .history-tokens { color: #58a6ff; font-size: 11px; flex: 1; text-align: right; }
+  .history-cost { color: #e3b341; font-size: 11px; width: 48px; text-align: right; font-weight: 600; }
+  .history-bar-wrap { width: 80px; height: 4px; background: #21262d; border-radius: 2px; overflow:hidden; margin: 0 8px; }
+  .history-bar { height: 100%; background: linear-gradient(90deg,#1f6feb,#58a6ff); border-radius: 2px; }
+
+  /* Live feed */
+  .feed-panel { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 12px; }
+  .feed-list { display: flex; flex-direction: column; gap: 4px; }
+  .feed-item { display: flex; align-items: baseline; gap: 8px; padding: 5px 8px; border-radius: 5px; background: #0d1117; font-size: 11px; }
+  .feed-time { color: #484f58; width: 56px; flex-shrink: 0; }
+  .feed-in { color: #58a6ff; width: 60px; }
+  .feed-out { color: #3fb950; width: 56px; }
+  .feed-cache { color: #a371f7; width: 64px; }
+  .feed-cost { color: #e3b341; width: 42px; text-align: right; }
+  .feed-speed { color: #22d3ee; width: 46px; text-align: right; }
+  .feed-item.latest { background: #1a2030; border: 1px solid #1f3a5f; }
+  .feed-header { display: flex; gap: 8px; padding: 0 8px 6px; font-size: 9px; color: #484f58; letter-spacing: 0.08em; border-bottom: 1px solid #21262d; margin-bottom: 4px; text-transform: uppercase; }
+  .feed-header span:nth-child(1) { width: 56px; }
+  .feed-header span:nth-child(2) { width: 60px; }
+  .feed-header span:nth-child(3) { width: 56px; }
+  .feed-header span:nth-child(4) { width: 64px; }
+  .feed-header span:nth-child(5) { width: 42px; text-align:right; }
+  .feed-header span:nth-child(6) { width: 46px; text-align:right; }
+
+  /* Footer */
+  .footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 2px 0; border-top: 1px solid #21262d; }
+  .footer-left { display: flex; gap: 16px; }
+  .footer-item { font-size: 10px; color: #8b949e; }
+  .footer-item span { color: #e6edf3; }
+  .footer-keys { display: flex; gap: 8px; }
+  .key { background: #21262d; border: 1px solid #30363d; border-radius: 4px; padding: 2px 6px; font-size: 10px; color: #8b949e; }
+</style>
+</head>
+<body>
+
+<div style="text-align:center;margin-bottom:16px;color:#8b949e;font-size:12px">
+  Mockup — Full Dashboard (polished). Click anywhere to continue.
+</div>
+
+<div class="terminal">
+  <div class="titlebar">
+    <div class="dots">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+    </div>
+    <div class="title-text">ccmon — mesh-komp</div>
+    <div class="live-badge"><div class="pulse"></div> LIVE</div>
+  </div>
+
+  <div class="body">
+
+    <!-- Header -->
+    <div class="header-row">
+      <div>
+        <div class="project-name">mesh-komp</div>
+        <div class="session-info" style="margin-top:2px">session <span>4m 32s</span> · started <span>12:01:14</span> · <span>34</span> requests</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="model-tag">claude-sonnet-4-6</div>
+        <div style="color:#8b949e;font-size:11px">Tue Apr 08 · 12:05:46</div>
+      </div>
+    </div>
+
+    <!-- Big metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card blue">
+        <div class="metric-label">Tokens In</div>
+        <div class="metric-value">124,830</div>
+        <div class="metric-sub"><span class="up">↑</span> 2,430 last req</div>
+        <div class="sparkline">
+          <div class="spark-bar" style="height:40%;background:#1f6feb"></div>
+          <div class="spark-bar" style="height:65%;background:#1f6feb"></div>
+          <div class="spark-bar" style="height:50%;background:#1f6feb"></div>
+          <div class="spark-bar" style="height:80%;background:#1f6feb"></div>
+          <div class="spark-bar" style="height:55%;background:#1f6feb"></div>
+          <div class="spark-bar" style="height:90%;background:#58a6ff"></div>
+          <div class="spark-bar" style="height:70%;background:#58a6ff"></div>
+          <div class="spark-bar" style="height:100%;background:#58a6ff"></div>
+        </div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-label">Tokens Out</div>
+        <div class="metric-value">18,420</div>
+        <div class="metric-sub"><span class="up">↑</span> 380 last req</div>
+        <div class="sparkline">
+          <div class="spark-bar" style="height:30%;background:#196c2e"></div>
+          <div class="spark-bar" style="height:55%;background:#196c2e"></div>
+          <div class="spark-bar" style="height:40%;background:#196c2e"></div>
+          <div class="spark-bar" style="height:75%;background:#3fb950"></div>
+          <div class="spark-bar" style="height:45%;background:#196c2e"></div>
+          <div class="spark-bar" style="height:85%;background:#3fb950"></div>
+          <div class="spark-bar" style="height:60%;background:#3fb950"></div>
+          <div class="spark-bar" style="height:100%;background:#3fb950"></div>
+        </div>
+      </div>
+      <div class="metric-card purple">
+        <div class="metric-label">Cache Read</div>
+        <div class="metric-value" style="color:#a371f7">98,200</div>
+        <div class="metric-sub" style="color:#a371f7">saved ~$1.47</div>
+        <div class="sparkline">
+          <div class="spark-bar" style="height:60%;background:#6e40c9"></div>
+          <div class="spark-bar" style="height:70%;background:#6e40c9"></div>
+          <div class="spark-bar" style="height:80%;background:#a371f7"></div>
+          <div class="spark-bar" style="height:75%;background:#a371f7"></div>
+          <div class="spark-bar" style="height:85%;background:#a371f7"></div>
+          <div class="spark-bar" style="height:90%;background:#a371f7"></div>
+          <div class="spark-bar" style="height:95%;background:#a371f7"></div>
+          <div class="spark-bar" style="height:100%;background:#a371f7"></div>
+        </div>
+      </div>
+      <div class="metric-card yellow">
+        <div class="metric-label">Session Cost</div>
+        <div class="metric-value yellow">$0.84</div>
+        <div class="metric-sub">today <span style="color:#e3b341;font-weight:600">$3.21</span></div>
+        <div class="sparkline">
+          <div class="spark-bar" style="height:25%;background:#9e6a03"></div>
+          <div class="spark-bar" style="height:40%;background:#9e6a03"></div>
+          <div class="spark-bar" style="height:55%;background:#e3b341"></div>
+          <div class="spark-bar" style="height:45%;background:#9e6a03"></div>
+          <div class="spark-bar" style="height:65%;background:#e3b341"></div>
+          <div class="spark-bar" style="height:75%;background:#e3b341"></div>
+          <div class="spark-bar" style="height:85%;background:#e3b341"></div>
+          <div class="spark-bar" style="height:100%;background:#e3b341"></div>
+        </div>
+      </div>
+      <div class="metric-card cyan">
+        <div class="metric-label">Speed</div>
+        <div class="metric-value" style="color:#22d3ee">42 t/s</div>
+        <div class="metric-sub">avg latency <span style="color:#22d3ee">1.2s</span></div>
+        <div class="sparkline">
+          <div class="spark-bar" style="height:50%;background:#0e7490"></div>
+          <div class="spark-bar" style="height:80%;background:#22d3ee"></div>
+          <div class="spark-bar" style="height:45%;background:#0e7490"></div>
+          <div class="spark-bar" style="height:90%;background:#22d3ee"></div>
+          <div class="spark-bar" style="height:60%;background:#0e7490"></div>
+          <div class="spark-bar" style="height:70%;background:#22d3ee"></div>
+          <div class="spark-bar" style="height:55%;background:#22d3ee"></div>
+          <div class="spark-bar" style="height:85%;background:#22d3ee"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Context window bar -->
+    <div class="context-section">
+      <div class="context-header">
+        <div class="context-label">Context Window</div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <span style="font-size:10px;color:#8b949e">used <span style="color:#58a6ff;font-weight:600">136,104</span> tokens</span>
+          <span style="font-size:10px;color:#8b949e">free <span style="color:#3fb950;font-weight:600">63,896</span> tokens</span>
+          <span style="font-size:10px;color:#8b949e">limit <span style="color:#e6edf3">200,000</span></span>
+          <div class="context-pct warn">68.1%</div>
+        </div>
+      </div>
+      <div class="context-bar-bg">
+        <div class="context-bar-fill" style="width:68.1%"></div>
+      </div>
+      <div class="context-meta">
+        <span>system prompt: <span>12,400</span> · messages: <span>111,204</span> · pending: <span>12,500</span></span>
+        <span style="color:#e3b341">⚠ context filling up — consider /compact</span>
+      </div>
+    </div>
+
+    <!-- Middle row -->
+    <div class="middle-row">
+
+      <!-- Token breakdown -->
+      <div class="token-breakdown">
+        <div class="section-title">Token Breakdown</div>
+        <div class="token-row">
+          <div class="token-name"><span class="token-dot" style="background:#58a6ff"></span>Input</div>
+          <div class="token-bar-wrap"><div class="token-bar" style="width:100%;background:#1f6feb"></div></div>
+          <div class="token-val" style="color:#58a6ff">124,830</div>
+        </div>
+        <div class="token-row">
+          <div class="token-name"><span class="token-dot" style="background:#3fb950"></span>Output</div>
+          <div class="token-bar-wrap"><div class="token-bar" style="width:15%;background:#3fb950"></div></div>
+          <div class="token-val" style="color:#3fb950">18,420</div>
+        </div>
+        <div class="token-row">
+          <div class="token-name"><span class="token-dot" style="background:#a371f7"></span>Cache read</div>
+          <div class="token-bar-wrap"><div class="token-bar" style="width:79%;background:#6e40c9"></div></div>
+          <div class="token-val" style="color:#a371f7">98,200</div>
+        </div>
+        <div class="token-row">
+          <div class="token-name"><span class="token-dot" style="background:#79c0ff"></span>Cache write</div>
+          <div class="token-bar-wrap"><div class="token-bar" style="width:19%;background:#388bfd"></div></div>
+          <div class="token-val" style="color:#79c0ff">24,100</div>
+        </div>
+        <div class="token-row" style="margin-top:6px;padding-top:6px;border-top:1px solid #30363d">
+          <div class="token-name" style="color:#e6edf3;font-weight:600">Total</div>
+          <div></div>
+          <div class="token-val" style="color:#e6edf3">265,550</div>
+        </div>
+      </div>
+
+      <!-- Speed panel -->
+      <div class="speed-panel">
+        <div class="section-title">Performance</div>
+        <div class="speed-big">42</div>
+        <div class="speed-unit">tokens / second</div>
+        <div class="speed-row">
+          <div class="speed-item">
+            <div class="speed-item-label">AVG LATENCY</div>
+            <div class="speed-item-val" style="color:#22d3ee">1.2s</div>
+          </div>
+          <div class="speed-item">
+            <div class="speed-item-label">TTFT</div>
+            <div class="speed-item-val" style="color:#22d3ee">0.8s</div>
+          </div>
+        </div>
+        <div class="speed-row">
+          <div class="speed-item">
+            <div class="speed-item-label">PEAK SPEED</div>
+            <div class="speed-item-val">61 t/s</div>
+          </div>
+          <div class="speed-item">
+            <div class="speed-item-label">REQUESTS</div>
+            <div class="speed-item-val">34</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="history-panel">
+        <div class="section-title">Usage History</div>
+        <div class="history-row">
+          <div class="history-period">This session</div>
+          <div class="history-sessions">34 reqs</div>
+          <div class="history-bar-wrap"><div class="history-bar" style="width:26%"></div></div>
+          <div class="history-tokens">265k tok</div>
+          <div class="history-cost">$0.84</div>
+        </div>
+        <div class="history-row">
+          <div class="history-period">Today</div>
+          <div class="history-sessions">12 sess</div>
+          <div class="history-bar-wrap"><div class="history-bar" style="width:100%"></div></div>
+          <div class="history-tokens">847k tok</div>
+          <div class="history-cost">$3.21</div>
+        </div>
+        <div class="history-row">
+          <div class="history-period">This week</div>
+          <div class="history-sessions">43 sess</div>
+          <div class="history-bar-wrap"><div class="history-bar" style="width:78%"></div></div>
+          <div class="history-tokens">3.2M tok</div>
+          <div class="history-cost">$14.80</div>
+        </div>
+        <div class="history-row">
+          <div class="history-period">This month</div>
+          <div class="history-sessions">98 sess</div>
+          <div class="history-bar-wrap"><div class="history-bar" style="width:55%"></div></div>
+          <div class="history-tokens">7.8M tok</div>
+          <div class="history-cost">$42.30</div>
+        </div>
+        <div class="history-row">
+          <div class="history-period">All time</div>
+          <div class="history-sessions">312 sess</div>
+          <div class="history-bar-wrap"><div class="history-bar" style="width:35%"></div></div>
+          <div class="history-tokens">24.1M tok</div>
+          <div class="history-cost">$98.40</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Live feed -->
+    <div class="feed-panel">
+      <div class="section-title">Live Request Feed</div>
+      <div class="feed-header">
+        <span>time</span>
+        <span>tokens in</span>
+        <span>tokens out</span>
+        <span>cache read</span>
+        <span>cost</span>
+        <span>t/s</span>
+      </div>
+      <div class="feed-list">
+        <div class="feed-item latest">
+          <span class="feed-time">12:05:44</span>
+          <span class="feed-in">+2,430</span>
+          <span class="feed-out">+380</span>
+          <span class="feed-cache">+3,200 ✦</span>
+          <span class="feed-cost">$0.04</span>
+          <span class="feed-speed">42 t/s</span>
+        </div>
+        <div class="feed-item">
+          <span class="feed-time">12:04:58</span>
+          <span class="feed-in">+3,100</span>
+          <span class="feed-out">+290</span>
+          <span class="feed-cache">+2,800 ✦</span>
+          <span class="feed-cost">$0.05</span>
+          <span class="feed-speed">38 t/s</span>
+        </div>
+        <div class="feed-item">
+          <span class="feed-time">12:04:22</span>
+          <span class="feed-in">+1,800</span>
+          <span class="feed-out">+420</span>
+          <span class="feed-cache">+1,400 ✦</span>
+          <span class="feed-cost">$0.03</span>
+          <span class="feed-speed">45 t/s</span>
+        </div>
+        <div class="feed-item">
+          <span class="feed-time">12:03:47</span>
+          <span class="feed-in">+4,200</span>
+          <span class="feed-out">+510</span>
+          <span class="feed-cache">+5,100 ✦</span>
+          <span class="feed-cost">$0.07</span>
+          <span class="feed-speed">61 t/s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <div class="footer-item">uptime <span>4m 32s</span></div>
+        <div class="footer-item">project <span>mesh-komp</span></div>
+        <div class="footer-item">watching <span>~/.claude/projects/…</span></div>
+      </div>
+      <div class="footer-keys">
+        <span class="key">q</span><span style="color:#8b949e;font-size:10px">quit</span>
+        <span class="key">r</span><span style="color:#8b949e;font-size:10px">reset</span>
+        <span class="key">h</span><span style="color:#8b949e;font-size:10px">history</span>
+        <span class="key">?</span><span style="color:#8b949e;font-size:10px">help</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+document.querySelector('.terminal').addEventListener('click', function() {
+  if (window.parent !== window) {
+    window.parent.postMessage({type:'choice',choice:'a',text:'Full dashboard - polished'}, '*');
+  }
+  window.recordChoice && window.recordChoice('a', 'Full dashboard - polished');
+});
+</script>
+</body>
+</html>

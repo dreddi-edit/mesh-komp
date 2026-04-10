@@ -1,0 +1,190 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e241]:
+    - generic [ref=e242]:
+      - generic [ref=e243]:
+        - button "Back to Mesh overview" [ref=e244] [cursor=pointer]:
+          - generic [ref=e245]:
+            - generic [ref=e246]:
+              - generic [ref=e247]: "{"
+              - generic [ref=e248]: "}"
+            - generic [ref=e249]: Mesh.
+        - generic [ref=e250]:
+          - generic [ref=e251]: parity-workspace-worker / parity-workspace-worker/assets/assistant.js
+          - generic [ref=e252]: Editor-first Mesh AI workspace
+      - generic [ref=e253]:
+        - generic [ref=e254]:
+          - generic [ref=e255]: worker connected - workspace loaded
+          - generic [ref=e256]: i
+        - combobox [ref=e257] [cursor=pointer]:
+          - option "Claude Opus 4.6"
+          - option "Claude Sonnet 4.6" [selected]
+          - option "Claude Haiku 4.5"
+          - option "GPT-5.4"
+          - option "GPT-5.3 Codex"
+          - option "GPT-5.4 mini"
+          - option "Gemini 3.1 Pro"
+          - option "Gemini 3 Flash"
+          - option "Gemini 2.5 Pro"
+          - option "No imported BYOK models yet" [disabled]
+        - button "BYOK Settings" [ref=e258] [cursor=pointer]
+        - button "☾" [ref=e259] [cursor=pointer]
+        - button "AI" [ref=e260]
+    - generic [ref=e261]:
+      - complementary [ref=e262]:
+        - button "Explorer" [ref=e263] [cursor=pointer]:
+          - img [ref=e264]
+        - button "Search" [ref=e266] [cursor=pointer]:
+          - img [ref=e267]
+        - button "Changes" [ref=e270] [cursor=pointer]:
+          - img [ref=e271]
+        - button "Source Control" [ref=e275] [cursor=pointer]:
+          - img [ref=e276]
+        - button "Mesh Ops" [ref=e281] [cursor=pointer]:
+          - img [ref=e282]
+        - button "AI" [ref=e287] [cursor=pointer]:
+          - img [ref=e288]
+      - complementary [ref=e293]:
+        - strong [ref=e295]: Explorer
+        - generic [ref=e298]:
+          - generic [ref=e300]:
+            - strong [ref=e302]: Files
+            - generic [ref=e303]:
+              - button "Original" [ref=e304] [cursor=pointer]
+              - button "Compressed" [ref=e305] [cursor=pointer]
+            - generic [ref=e306]:
+              - button "New file" [ref=e307] [cursor=pointer]
+              - button "New folder" [ref=e308] [cursor=pointer]
+              - button "Rename" [ref=e309] [cursor=pointer]
+              - button "Delete" [ref=e310] [cursor=pointer]
+              - button "Close folder" [ref=e311] [cursor=pointer]
+              - button "Open folder" [ref=e312] [cursor=pointer]
+          - generic [ref=e314]: parity-workspace-worker - 3/3 files indexed · saved 87B (28.2%)
+          - generic [ref=e315]:
+            - button "▾ ■ parity-workspace-worker 3" [ref=e316] [cursor=pointer]:
+              - generic [ref=e317]: ▾
+              - generic [ref=e318]: ■
+              - generic [ref=e319]: parity-workspace-worker
+              - generic [ref=e320]: "3"
+            - button "▾ ■ assets 1" [ref=e321] [cursor=pointer]:
+              - generic [ref=e322]: ▾
+              - generic [ref=e323]: ■
+              - generic [ref=e324]: assets
+              - generic [ref=e325]: "1"
+            - button "● assistant.js 200B" [ref=e326] [cursor=pointer]:
+              - generic [ref=e327]: ●
+              - generic [ref=e328]: assistant.js
+              - generic [ref=e329]: 200B
+            - button "▾ ■ dashboard 1" [ref=e330] [cursor=pointer]:
+              - generic [ref=e331]: ▾
+              - generic [ref=e332]: ■
+              - generic [ref=e333]: dashboard
+              - generic [ref=e334]: "1"
+            - button "● home.html 75B" [ref=e335] [cursor=pointer]:
+              - generic [ref=e336]: ●
+              - generic [ref=e337]: home.html
+              - generic [ref=e338]: 75B
+            - button "● notes.md 33B" [ref=e339] [cursor=pointer]:
+              - generic [ref=e340]: ●
+              - generic [ref=e341]: notes.md
+              - generic [ref=e342]: 33B
+      - generic "Resize files sidebar" [ref=e343]
+      - generic [ref=e344]:
+        - generic [ref=e457]:
+          - generic [ref=e458]:
+            - article [ref=e460]:
+              - button "JS assistant.js" [ref=e461] [cursor=pointer]:
+                - generic [ref=e462]: JS
+                - generic [ref=e463]: assistant.js
+              - button "Close assistant.js" [ref=e464] [cursor=pointer]: ×
+            - generic [ref=e465]:
+              - button "parity-workspace-worker" [ref=e466] [cursor=pointer]
+              - generic [ref=e467]: ›
+              - button "assets" [ref=e468] [cursor=pointer]
+              - generic [ref=e469]: ›
+              - button "assistant.js" [ref=e470] [cursor=pointer]
+            - generic [ref=e471]:
+              - generic [ref=e472]:
+                - generic [ref=e473]: parity-workspace-worker/assets/assistant.js
+                - generic [ref=e474]: text
+              - generic [ref=e475]:
+                - generic [ref=e476]: Saved
+                - button "Save" [ref=e477] [cursor=pointer]
+          - code [ref=e480]:
+            - generic [ref=e481]:
+              - generic [ref=e486]: "1"
+              - generic [ref=e492]: i
+              - textbox "Editor content" [ref=e494]: import pat
+        - generic "Resize panel" [ref=e379]
+        - generic [ref=e380]:
+          - generic [ref=e381]:
+            - generic [ref=e382]:
+              - button "Terminal" [ref=e383] [cursor=pointer]
+              - button "Activity" [ref=e384] [cursor=pointer]
+              - button "Changes" [ref=e385] [cursor=pointer]
+              - button "Logs" [ref=e386] [cursor=pointer]
+            - button "Hide Panel" [ref=e387] [cursor=pointer]
+          - generic [ref=e390]:
+            - strong [ref=e392]: Run Activity
+            - generic [ref=e394]: Choose Edit or Agent mode to create a run timeline.
+            - generic [ref=e396]: Approvals, terminal commands, searches and file changes will appear here.
+      - generic "Resize assistant sidebar" [ref=e397]
+      - complementary [ref=e398]:
+        - generic [ref=e399]:
+          - generic [ref=e400]:
+            - generic [ref=e401]: Mesh AI
+            - strong [ref=e402]: Assistant
+          - button "Close AI panel" [ref=e403] [cursor=pointer]:
+            - img [ref=e404]
+        - generic [ref=e407]:
+          - generic [ref=e408]:
+            - button "Ask" [ref=e409] [cursor=pointer]
+            - button "Edit" [ref=e410] [cursor=pointer]
+            - button "Agent" [ref=e411] [cursor=pointer]
+          - generic [ref=e412]:
+            - combobox [ref=e413] [cursor=pointer]:
+              - option "No runs yet" [selected]
+            - combobox [ref=e414] [cursor=pointer]:
+              - option "Review-first" [selected]
+              - option "Auto edit + confirm run"
+              - option "Autonomous"
+            - generic [ref=e415] [cursor=pointer]:
+              - checkbox "Link terminal" [checked] [ref=e416]
+              - text: Link terminal
+          - generic [ref=e417]:
+            - generic [ref=e500]:
+              - strong [ref=e501]: Workspace
+              - text: parity-workspace-worker
+            - generic [ref=e502]:
+              - strong [ref=e503]: Editor
+              - text: parity-workspace-worker/assets/assistant.js
+            - generic [ref=e504]:
+              - strong [ref=e505]: Terminal
+              - text: ready
+        - generic [ref=e423]:
+          - generic [ref=e424]:
+            - generic [ref=e425]: "Connected to Mesh AI · workspace: nova-ops · context: route health + deploy queue"
+            - generic [ref=e426]:
+              - generic [ref=e427]: Mesh AI
+              - generic [ref=e428]: Hi Edgar. Your workspace is connected and your files are compressed and indexed. Tell me what you want to work on first.
+          - generic [ref=e429]:
+            - generic [ref=e430]:
+              - button "Attach file" [ref=e431] [cursor=pointer]:
+                - img [ref=e432]
+                - text: Attach file
+              - button "Attach folder" [ref=e434] [cursor=pointer]:
+                - img [ref=e435]
+                - text: Attach folder
+            - generic [ref=e438]:
+              - textbox "Ask about your files, routes, policies, incidents…" [ref=e439]
+              - button "Send" [ref=e440] [cursor=pointer]
+            - generic [ref=e441]:
+              - generic [ref=e442]: Claude Sonnet 4.6 · workspace context inactive
+              - generic [ref=e443]: 0 / 2000
+    - contentinfo [ref=e444]:
+      - generic [ref=e445]: parity-workspace-worker · parity-workspace-worker/assets/assistant.js
+      - generic [ref=e446]: Ln 1, Col 1 · worker connected - workspace loaded
+      - generic [ref=e447]: Light
+      - generic [ref=e448]: Edgar Baumann · operator · edgar@test.com
+  - generic [ref=e506]:
+    - alert
+    - alert

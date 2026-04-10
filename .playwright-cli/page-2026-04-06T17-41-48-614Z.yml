@@ -1,0 +1,221 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e17]:
+    - generic [ref=e18]:
+      - img [ref=e20]
+      - img "Mesh" [ref=e22]
+      - generic [ref=e23]: Live
+    - generic [ref=e24]:
+      - generic [ref=e25]: parity-workspace-worker
+      - generic [ref=e26]:
+        - generic [ref=e27]: 3 files
+        - generic [ref=e28]: ·
+        - generic [ref=e29]: Indexed
+    - navigation [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]: Workspace
+        - button "◎ Overview Live" [ref=e33] [cursor=pointer]:
+          - generic [ref=e34]:
+            - generic [ref=e35]: ◎
+            - text: Overview
+          - generic [ref=e36]: Live
+        - button "⌘ Routes 1 active" [ref=e37] [cursor=pointer]:
+          - generic [ref=e38]:
+            - generic [ref=e39]: ⌘
+            - text: Routes
+          - generic [ref=e40]: 1 active
+        - button "⬡ Deployments 2" [ref=e41] [cursor=pointer]:
+          - generic [ref=e42]:
+            - generic [ref=e43]: ⬡
+            - text: Deployments
+          - generic [ref=e44]: "2"
+        - button "⊞ Policies 5 active" [ref=e45] [cursor=pointer]:
+          - generic [ref=e46]:
+            - generic [ref=e47]: ⊞
+            - text: Policies
+          - generic [ref=e48]: 5 active
+      - generic [ref=e49]:
+        - generic [ref=e50]: Tools
+        - button ">_ Terminal" [ref=e51] [cursor=pointer]:
+          - generic [ref=e52]:
+            - generic [ref=e53]: ">_"
+            - text: Terminal
+        - button "✦ AI Assistant Beta" [ref=e54] [cursor=pointer]:
+          - generic [ref=e55]:
+            - generic [ref=e56]: ✦
+            - text: AI Assistant
+          - generic [ref=e57]: Beta
+        - button "☰ Logs" [ref=e58] [cursor=pointer]:
+          - generic [ref=e59]:
+            - generic [ref=e60]: ☰
+            - text: Logs
+      - generic [ref=e61]:
+        - generic [ref=e62]: Region health
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - generic [ref=e65]: EU Central
+            - generic [ref=e66]: "98.6"
+          - generic [ref=e67]:
+            - generic [ref=e68]: US East
+            - generic [ref=e69]: "99.1"
+          - generic [ref=e70]:
+            - generic [ref=e71]: AP Southeast
+            - generic [ref=e72]: "91.3"
+    - generic [ref=e73]:
+      - link "⚙ Settings" [ref=e74] [cursor=pointer]:
+        - /url: settings-account.html
+        - generic [ref=e75]: ⚙
+        - generic [ref=e76]: Settings
+      - button "⎋ Log out" [ref=e77] [cursor=pointer]:
+        - generic [ref=e78]: ⎋
+        - generic [ref=e79]: Log out
+      - generic [ref=e80]:
+        - generic [ref=e81]: EB
+        - generic [ref=e82]:
+          - generic [ref=e83]: Edgar Baumann
+          - generic [ref=e84]: operator · edgar@test.com
+  - generic [ref=e87]:
+    - generic [ref=e88]:
+      - generic [ref=e89]:
+        - generic [ref=e90]: Overview
+        - generic [ref=e91]: /
+        - generic [ref=e92]:
+          - generic [ref=e93]: ⌕
+          - textbox "Search routes…" [ref=e94]
+        - generic [ref=e95]:
+          - button "Production" [ref=e96] [cursor=pointer]
+          - button "Staging" [ref=e97] [cursor=pointer]
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - button "24h" [ref=e100] [cursor=pointer]
+          - button "7d" [ref=e101] [cursor=pointer]
+          - button "30d" [ref=e102] [cursor=pointer]
+        - button "Diagnose" [ref=e103] [cursor=pointer]
+        - button "▷ Dry-run" [ref=e104] [cursor=pointer]
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - heading "Workspace overview" [level=1] [ref=e108]
+          - paragraph [ref=e109]: Nova Ops · EU-first production routing · Brotli-X compression active
+        - generic [ref=e110]: All systems operational
+      - generic [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]: Indexed files
+          - generic [ref=e114]: 3/3
+          - generic [ref=e115]: 0 pending · 1 folders · 308B original text
+        - generic [ref=e116]:
+          - generic [ref=e117]: Compression ratio
+          - generic [ref=e118]: 1.39x
+          - generic [ref=e119]: Compressed footprint 221B
+        - generic [ref=e120]:
+          - generic [ref=e121]: Largest file
+          - generic [ref=e122]: 200B
+          - generic [ref=e123]: parity-workspace-worker/assets/assistant.js
+        - generic [ref=e124]:
+          - generic [ref=e125]: Last indexed
+          - generic [ref=e126]: 1d ago
+          - generic [ref=e127]: 5.4.2026, 17:33:39
+      - generic [ref=e128]:
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - generic [ref=e132]:
+              - generic [ref=e133]: Traffic volume
+              - heading "Request throughput" [level=3] [ref=e134]
+              - paragraph [ref=e135]: Edge events across the selected time window.
+            - generic [ref=e137]:
+              - generic [ref=e138]:
+                - strong [ref=e140]: "1"
+                - generic [ref=e141]: js
+              - generic [ref=e142]:
+                - strong [ref=e144]: "1"
+                - generic [ref=e145]: html
+              - generic [ref=e146]:
+                - strong [ref=e148]: "1"
+                - generic [ref=e149]: md
+          - generic [ref=e150]:
+            - generic [ref=e152]:
+              - generic [ref=e153]: Routes
+              - heading "Route table" [level=3] [ref=e154]
+              - paragraph [ref=e155]: Select a route to view its detail and current policy state.
+            - table [ref=e157]:
+              - rowgroup [ref=e158]:
+                - row "File Type Size Compression" [ref=e159]:
+                  - columnheader "File" [ref=e160]
+                  - columnheader "Type" [ref=e161]
+                  - columnheader "Size" [ref=e162]
+                  - columnheader "Compression" [ref=e163]
+              - rowgroup [ref=e164]:
+                - row "assistant.js js 200B 1.56x" [ref=e165] [cursor=pointer]:
+                  - cell "assistant.js" [ref=e166]
+                  - cell "js" [ref=e167]
+                  - cell "200B" [ref=e168]
+                  - cell "1.56x" [ref=e169]:
+                    - generic [ref=e170]: 1.56x
+                - row "home.html html 75B 1.32x" [ref=e171] [cursor=pointer]:
+                  - cell "home.html" [ref=e172]
+                  - cell "html" [ref=e173]
+                  - cell "75B" [ref=e174]
+                  - cell "1.32x" [ref=e175]:
+                    - generic [ref=e176]: 1.32x
+                - row "notes.md md 33B 0.92x" [ref=e177] [cursor=pointer]:
+                  - cell "notes.md" [ref=e178]
+                  - cell "md" [ref=e179]
+                  - cell "33B" [ref=e180]
+                  - cell "0.92x" [ref=e181]:
+                    - generic [ref=e182]: 0.92x
+          - generic [ref=e183]:
+            - generic [ref=e185]:
+              - generic [ref=e186]: Route detail
+              - heading "api-core" [level=3] [ref=e187]
+            - paragraph [ref=e189]: The main customer-facing API route. Prefers low-latency ingress and currently holds the highest route score in EU Central.
+        - generic [ref=e190]:
+          - generic [ref=e191]:
+            - generic [ref=e192]:
+              - generic [ref=e193]:
+                - generic [ref=e194]: Session log
+                - heading "Activity feed" [level=3] [ref=e195]
+              - generic [ref=e196]: Local
+            - generic [ref=e197]:
+              - article [ref=e198]:
+                - time [ref=e199]: 17:41:47 UTC
+                - strong [ref=e200]: Workspace index refreshed
+                - paragraph [ref=e201]: 3 files across 1 folders
+              - article [ref=e202]:
+                - time [ref=e203]: 17:41:47 UTC
+                - strong [ref=e204]: Dominant extension
+                - paragraph [ref=e205]: .js · 1 files
+              - article [ref=e206]:
+                - time [ref=e207]: 17:41:47 UTC
+                - strong [ref=e208]: Largest folder
+                - paragraph [ref=e209]: parity-workspace-worker · 3 files
+              - article [ref=e210]:
+                - time [ref=e211]: 17:41:47 UTC
+                - strong [ref=e212]: Largest source file
+                - paragraph [ref=e213]: parity-workspace-worker/assets/assistant.js · 200B
+          - generic [ref=e214]:
+            - generic [ref=e215]:
+              - generic [ref=e216]:
+                - generic [ref=e217]: Pending actions
+                - heading "Approvals queue" [level=3] [ref=e218]
+              - generic [ref=e219]: 2 pending
+            - generic [ref=e221]:
+              - generic [ref=e222]:
+                - generic [ref=e223]: Low compression gain
+                - generic [ref=e224]: info
+              - paragraph [ref=e225]: parity-workspace-worker/notes.md compresses to 0.92x. Potentially already minified or binary-like.
+              - button "Acknowledge" [ref=e227] [cursor=pointer]
+          - generic [ref=e228]:
+            - generic [ref=e230]:
+              - generic [ref=e231]: Execution
+              - heading "Command studio" [level=3] [ref=e232]
+            - generic [ref=e233]:
+              - generic [ref=e234]:
+                - button "mesh status --watch" [ref=e235] [cursor=pointer]
+                - button "mesh deploy --dry-run" [ref=e236] [cursor=pointer]
+                - button "mesh incidents --open" [ref=e237] [cursor=pointer]
+              - generic [ref=e238]:
+                - textbox "mesh route list --verbose" [ref=e239]
+                - button "Run in feed" [ref=e240] [cursor=pointer]
+  - generic:
+    - generic:
+      - strong: Signed in
+      - generic: Welcome Edgar Baumann

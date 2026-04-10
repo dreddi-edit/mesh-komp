@@ -1,0 +1,204 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: Secure session
+    - heading "Sign in to MESH" [level=2] [ref=e5]
+    - paragraph [ref=e6]: Demo account is already available for testing.
+    - generic [ref=e7]:
+      - generic [ref=e8]: Email
+      - textbox "Email" [active] [ref=e9]: edgar@test.com
+    - generic [ref=e10]:
+      - generic [ref=e11]: Password
+      - textbox "Password" [ref=e12]: "12345"
+    - generic [ref=e14]: "Demo login: edgar@test.com / 12345"
+    - generic [ref=e15]: Session expired. Please sign in again.
+    - button "Sign in" [ref=e16] [cursor=pointer]
+  - complementary:
+    - generic:
+      - generic:
+        - img
+      - generic:
+        - img "Mesh"
+      - generic: Live
+    - generic:
+      - generic: No folder selected
+      - generic:
+        - generic: 0 files
+        - generic: ·
+        - generic: Awaiting folder
+    - navigation:
+      - generic:
+        - generic: Workspace
+        - button "◎ Overview Live":
+          - generic:
+            - generic: ◎
+            - text: Overview
+          - generic: Live
+        - button "⌘ Routes 0 active":
+          - generic:
+            - generic: ⌘
+            - text: Routes
+          - generic: 0 active
+        - button "⬡ Deployments 0":
+          - generic:
+            - generic: ⬡
+            - text: Deployments
+          - generic: "0"
+        - button "⊞ Policies 0 active":
+          - generic:
+            - generic: ⊞
+            - text: Policies
+          - generic: 0 active
+      - generic:
+        - generic: Tools
+        - button ">_ Terminal":
+          - generic:
+            - generic: ">_"
+            - text: Terminal
+        - button "✦ AI Assistant Beta":
+          - generic:
+            - generic: ✦
+            - text: AI Assistant
+          - generic: Beta
+        - button "☰ Logs":
+          - generic:
+            - generic: ☰
+            - text: Logs
+      - generic:
+        - generic: Region health
+        - generic:
+          - generic:
+            - generic: EU Central
+            - generic: "98.6"
+          - generic:
+            - generic: US East
+            - generic: "99.1"
+          - generic:
+            - generic: AP Southeast
+            - generic: "91.3"
+    - generic:
+      - link "⚙ Settings":
+        - /url: settings-account.html
+        - generic: ⚙
+        - generic: Settings
+      - button "⎋ Log out":
+        - generic: ⎋
+        - generic: Log out
+      - generic:
+        - generic: EB
+        - generic:
+          - generic: Edgar Baumann
+          - generic: Operator · local session
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic: Overview
+          - generic: /
+          - generic:
+            - generic: ⌕
+            - textbox "Search routes…"
+          - generic:
+            - button "Production"
+            - button "Staging"
+        - generic:
+          - generic:
+            - button "24h"
+            - button "7d"
+            - button "30d"
+          - button "Diagnose"
+          - button "▷ Dry-run"
+      - generic:
+        - generic:
+          - generic:
+            - heading "Workspace overview" [level=1]
+            - paragraph: Nova Ops · EU-first production routing · Brotli-X compression active
+          - generic: All systems operational
+        - generic:
+          - generic:
+            - generic: Indexed files
+            - generic: 0/0
+            - generic: 0 pending · 0 folders · 0B original text
+          - generic:
+            - generic: Compression ratio
+            - generic: n/a
+            - generic: Compressed footprint 0B
+          - generic:
+            - generic: Largest file
+            - generic: n/a
+            - generic: No file loaded yet
+          - generic:
+            - generic: Last indexed
+            - generic: never
+            - generic: Waiting for folder selection
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Traffic volume
+                  - heading "Request throughput" [level=3]
+                  - paragraph: Edge events across the selected time window.
+              - generic:
+                - generic:
+                  - generic: No indexed files yet.
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Routes
+                  - heading "Route table" [level=3]
+                  - paragraph: Select a route to view its detail and current policy state.
+              - generic:
+                - table:
+                  - rowgroup:
+                    - row "File Type Size Compression":
+                      - columnheader "File"
+                      - columnheader "Type"
+                      - columnheader "Size"
+                      - columnheader "Compression"
+                  - rowgroup:
+                    - row "Index a folder to see real workspace file metrics.":
+                      - cell "Index a folder to see real workspace file metrics."
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Route detail
+                  - heading "api-core" [level=3]
+              - generic:
+                - paragraph: The main customer-facing API route. Prefers low-latency ingress and currently holds the highest route score in EU Central.
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Session log
+                  - heading "Activity feed" [level=3]
+                - generic: Local
+              - generic:
+                - article:
+                  - time: 17:50:21 UTC
+                  - strong: Workspace index refreshed
+                  - paragraph: 0 files across 0 folders
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Pending actions
+                  - heading "Approvals queue" [level=3]
+                - generic: 2 pending
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: No immediate actions
+                    - generic: healthy
+                  - paragraph: Current workspace metrics look stable. No size or compression anomalies detected.
+            - generic:
+              - generic:
+                - generic:
+                  - generic: Execution
+                  - heading "Command studio" [level=3]
+              - generic:
+                - generic:
+                  - button "mesh status --watch"
+                  - button "mesh deploy --dry-run"
+                  - button "mesh incidents --open"
+                - generic:
+                  - textbox "mesh route list --verbose"
+                  - button "Run in feed"

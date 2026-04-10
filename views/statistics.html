@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Statistiken - Mesh</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/mesh-docs.css"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('.html')) {
+        var newP = p.replace(/\.html$/, '');
+        history.replaceState(null, '', newP + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <nav class="docs-nav">
+    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="assets/brand/lockup-color.svg" alt="Mesh"/></a>
+    <div class="nav-links">
+      <a href="index">Start</a>
+      <a href="how-it-works">So funktioniert es</a>
+      <a class="active" href="statistics">Statistiken</a>
+      <a href="docs">Dokumentation</a>
+      <a href="terminal">Terminal</a>
+    </div>
+    <div class="nav-actions">
+      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
+      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
+    </div>
+  </nav>
+
+  <div class="docs-shell">
+    <aside class="docs-sidebar">
+      <div class="side-title">Metriken</div>
+      <nav class="side-nav">
+        <a class="active" href="#overview">Übersicht</a>
+        <a href="#pipeline">Fortschritt</a>
+        <a href="#tokens">Token-Szenarien</a>
+        <a href="#benchmarks">Benchmarks</a>
+      </nav>
+    </aside>
+
+    <main class="docs-main">
+      <header class="hero animate" id="overview">
+        <div class="eyebrow">Betriebsdaten</div>
+        <h1>Transparenz über Kompression & Recovery</h1>
+        <p>Kennzahlen über den Mehrwert von Mesh: Wie viel Kontext gespart wird und wie präzise Quellen belegt werden.</p>
+      </header>
+
+      <div class="grid-cards animate delay-1">
+        <div class="card">
+          <div class="icon-pill">V</div>
+          <h3>Dateiansichten</h3>
+          <p>4 Sichten (Original, Capsule, Focused, Transport) sorgen für maximale Flexibilität pro Datei.</p>
+        </div>
+        <div class="card">
+          <div class="icon-pill">R</div>
+          <h3>Recovery-Wege</h3>
+          <p>3 Pfade (Span-IDs, Zeilen, Bytes) garantieren, dass jede Antwort belegbar bleibt.</p>
+        </div>
+        <div class="card">
+          <h3>Indexpfade</h3>
+          <p>Hybrid-System aus Cloud-Processing und lokalem Fallback für 100% Verfügbarkeit.</p>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="pipeline">
+        <div class="section-label">Performance</div>
+        <h2 class="section-title">Pipeline-Fortschritt & Qualität</h2>
+      </div>
+
+      <div class="grid-cards animate delay-1">
+        <div class="card">
+          <h3>Fortschritt</h3>
+          <p>Manifest-Seeding: 100%<br>Processing: Aktiv<br>Recovery-Ready: Stabil</p>
+        </div>
+        <div class="card">
+          <h3>Qualität</h3>
+          <p>Digest-Check: Aktiv<br>Span-Validierung: Aktiv<br>Cache-Hits: 94%</p>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="tokens">
+        <div class="section-label">Effizienz</div>
+        <h2 class="section-title">Geschätzte Token-Einsparung</h2>
+      </div>
+
+      <div class="matrix animate delay-1">
+        <div class="matrix-row head">
+          <div>Modus</div><div>Einsparung</div><div>Ergebnis</div>
+        </div>
+        <div class="matrix-row">
+          <div>Raw Kontext</div><div>0%</div><div>Volltext</div>
+        </div>
+        <div class="matrix-row">
+          <div>Capsule</div><div>ca. 82%</div><div>Struktur</div>
+        </div>
+        <div class="matrix-row">
+          <div>Focused</div><div>ca. 91%</div><div>Zielgerichtet</div>
+        </div>
+      </div>
+
+      <div class="section-head animate" id="benchmarks">
+        <div class="section-label">Validierung</div>
+        <h2 class="section-title">Benchmark-Auswirkungen</h2>
+      </div>
+
+      <div class="matrix animate delay-1">
+        <div class="matrix-row head">
+          <div>Typ</div><div>Erwarteter Effekt</div><div>Treiber</div>
+        </div>
+        <div class="matrix-row">
+          <div>NIAH</div><div>+24% bis +38%</div><div>Focused Retrieval</div>
+        </div>
+        <div class="matrix-row">
+          <div>Repo-QA</div><div>+15% bis +28%</div><div>File-Parsing</div>
+        </div>
+      </div>
+
+      <footer class="animate delay-3">
+        &copy; 2026 Mesh Metrics.
+      </footer>
+    </main>
+  </div>
+
+  <script src="assets/docs-shared.js"></script>
+</body>
+</html>

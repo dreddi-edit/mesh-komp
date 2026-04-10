@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mesh Marketplace</title>
+  <link rel="stylesheet" href="/assets/app-workspace.css?v=20260408b">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --card-bg: var(--bg2);
+      --card-bd: var(--bd);
+    }
+    body { 
+      background: var(--bg); 
+      color: var(--tx); 
+      margin: 0; 
+      padding: 40px; 
+      font-family: var(--f); 
+      overflow-y: auto; 
+      height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .mp-container { max-width: 1100px; margin: 0 auto; }
+    
+    header { margin-bottom: 48px; border-bottom: 1px solid var(--bd); padding-bottom: 32px; }
+    h1 { font-size: 2.2rem; font-weight: 700; color: var(--txw); margin: 0 0 12px; letter-spacing: -0.02em; }
+    p.subtitle { color: var(--tx3); font-size: 1.05rem; margin: 0; max-width: 600px; line-height: 1.5; }
+    
+    .search-bar { 
+      margin-top: 32px; 
+      display: flex; 
+      gap: 12px; 
+      max-width: 500px; 
+      background: var(--bg4); 
+      border: 1px solid var(--bd); 
+      border-radius: 12px; 
+      padding: 10px 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-bar:focus-within { border-color: var(--ac); box-shadow: 0 0 0 3px var(--acs); }
+    .search-bar input { border: none; background: transparent; outline: none; color: var(--txw); flex: 1; font-size: 0.95rem; }
+    .search-bar svg { color: var(--tx3); flex-shrink: 0; }
+
+    .section-hdr { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      margin: 48px 0 24px; 
+    }
+    .section-title { font-size: 1.2rem; font-weight: 600; color: var(--tx2); }
+    .section-line { flex: 1; height: 1px; background: var(--bd2); margin-left: 20px; }
+
+    .mp-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
+      gap: 20px; 
+    }
+    .mp-card { 
+      background: var(--card-bg); 
+      border: 1px solid var(--card-bd); 
+      border-radius: 16px; 
+      padding: 20px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 16px; 
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: default;
+    }
+    .mp-card:hover { border-color: var(--ac); transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    
+    .mp-top { display: flex; gap: 16px; }
+    .mp-icon { width: 56px; height: 56px; border-radius: 12px; background: var(--bg3); display: grid; place-items: center; overflow: hidden; flex-shrink: 0; border: 1px solid var(--bd2); }
+    .mp-icon img { width: 100%; height: 100%; object-fit: cover; }
+    
+    .mp-meta { flex: 1; min-width: 0; }
+    .mp-name { font-size: 1.05rem; font-weight: 600; color: var(--txw); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mp-pub { font-size: 0.8rem; color: var(--ac); font-weight: 500; }
+    
+    .mp-desc { font-size: 0.9rem; color: var(--tx3); line-height: 1.5; height: 3em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    
+    .mp-stats { display: flex; align-items: center; gap: 16px; font-size: 0.75rem; color: var(--tx3); }
+    .mp-stat { display: flex; align-items: center; gap: 4px; }
+    
+    .mp-btn { 
+      width: 100%; 
+      padding: 10px; 
+      border-radius: 10px; 
+      background: var(--bg3); 
+      color: var(--tx2); 
+      font-weight: 600; 
+      font-size: 0.9rem; 
+      text-align: center; 
+      border: 1px solid var(--bd); 
+      transition: all 0.15s; 
+    }
+    .mp-btn:hover { background: var(--ac); color: #fff; border-color: var(--ac); }
+    .mp-btn.installed { background: var(--grn); color: #000; border: none; cursor: default; }
+    .mp-btn.installed:hover { background: var(--grn); }
+
+    .loading { text-align: center; padding: 60px; color: var(--tx3); }
+    .mp-error { padding: 40px; text-align: center; color: var(--red); background: rgba(241, 76, 76, 0.05); border-radius: 12px; }
+
+    /* Progress Simulation */
+    .prog-ctx { height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; display: none; margin-top: 8px; }
+    .prog-bar { height: 100%; background: var(--ac); width: 0%; transition: width 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="mp-container">
+    <header>
+      <h1>Extensions Marketplace</h1>
+      <p class="subtitle">Search and install real-world extensions from the Open VSX Registry. Professional-grade integration with the global ecosystem.</p>
+      <div class="search-bar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="text" id="marketSearch" placeholder="Search extensions (e.g. Python, Prettier, Go)..." focus>
+      </div>
+    </header>
+
+    <div id="resultsArea">
+      <div class="section-hdr">
+        <span class="section-title">TRENDING EXTENSIONS</span>
+        <div class="section-line"></div>
+      </div>
+      <div id="marketGrid" class="mp-grid">
+        <!-- JS rendered cards -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const grid = document.getElementById('marketGrid');
+    const search = document.getElementById('marketSearch');
+
+    async function fetchExtensions(query = '') {
+      try {
+        grid.innerHTML = '<div class="loading">Fetching the global registry...</div>';
+        const url = query 
+          ? `https://open-vsx.org/api/-/search?q=${encodeURIComponent(query)}&size=30`
+          : `https://open-vsx.org/api/-/search?size=30`; // Default trending
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        // Open VSX API returns extensions in 'extensions' or 'results' depending on query
+        const extensions = data.extensions || data.results || [];
+        renderExtensions(extensions);
+      } catch (e) {
+        grid.innerHTML = `<div class="mp-error">Failed to connect to Open VSX Registry. <br> ${e.message}</div>`;
+      }
+    }
+
+    function renderExtensions(exts) {
+      if (!exts.length) {
+        grid.innerHTML = '<div class="loading">No extensions found for your search.</div>';
+        return;
+      }
+
+      grid.innerHTML = exts.map(ext => {
+        // Handle different API record formats
+        const pub = ext.publisherName || (ext.publisher ? ext.publisher.name : 'Unknown');
+        const name = ext.displayName || ext.name;
+        const icon = ext.iconUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${ext.name}`;
+        const downloads = ext.downloadCount ? ext.downloadCount.toLocaleString() : '1k+';
+        const version = ext.version || 'latest';
+
+        return `
+          <div class="mp-card">
+            <div class="mp-top">
+              <div class="mp-icon"><img src="${icon}" onerror="this.src='https://api.dicebear.com/7.x/identicon/svg?seed=${ext.name}'"></div>
+              <div class="mp-meta">
+                <div class="mp-name" title="${name}">${name}</div>
+                <div class="mp-pub">${pub}</div>
+              </div>
+            </div>
+            <div class="mp-desc">${ext.description || 'Professional extension for your development workflow.'}</div>
+            <div class="mp-stats">
+              <div class="mp-stat">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                ${downloads}
+              </div>
+              <div class="mp-stat">v${version}</div>
+            </div>
+            <div class="mp-action">
+            <button class="mp-btn" onclick="actualInstall(this, '${pub}', '${ext.name}', '${version}')">Install</button>
+            <div class="prog-ctx"><div class="prog-bar"></div></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function actualInstall(btn, publisher, name, version) {
+    if (btn.classList.contains('installed')) return;
+    
+    const ctx = btn.nextElementSibling;
+    const bar = ctx.querySelector('.prog-bar');
+    
+    btn.style.display = 'none';
+    ctx.style.display = 'block';
+    
+    // UI Progress logic for feedback
+    let p = 0;
+    const iv = setInterval(() => {
+      p += Math.random() * 15;
+      if (p >= 90) p = 90;
+      bar.style.width = p + '%';
+    }, 250);
+
+    try {
+      const res = await fetch('/api/assistant/extensions/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publisher, name, version })
+      });
+      const data = await res.json();
+      
+      clearInterval(iv);
+      if (res.ok) {
+        bar.style.width = '100%';
+        setTimeout(() => {
+          ctx.style.display = 'none';
+          btn.style.display = 'block';
+          btn.textContent = 'Installed';
+          btn.classList.add('installed');
+        }, 300);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (e) {
+      clearInterval(iv);
+      alert('Installation failed: ' + e.message);
+      ctx.style.display = 'none';
+      btn.style.display = 'block';
+    }
+  }
+
+    let searchTimeout;
+    search.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        fetchExtensions(e.target.value);
+      }, 500);
+    });
+
+    // Initial Load
+    fetchExtensions();
+  </script>
+</body>
+</html>

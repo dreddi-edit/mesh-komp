@@ -1,0 +1,21 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build & Deploy
+*.zip
+mesh-deploy.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Mesh Specific
+.mesh*
+mesh-secure-v2.db
+*.log
+
+# Workspace
+.idea/
+.vscode/

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <script>
+    (function() {
+      var p = window.location.pathname;
+      if (p.endsWith('/index.html')) {
+        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      }
+    })();
+  </script>
+  <title>Settings: Billing | Mesh</title>
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+</head>
+<body data-settings-page="billing">
+  <div class="settings-shell">
+    <header class="settings-topbar">
+      <a class="topbar-logo" href="app" aria-label="Mesh workspace">
+        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+      </a>
+      <a class="topbar-back" href="app">← Workspace</a>
+    </header>
+
+    <aside class="settings-sidebar">
+      <div class="sidebar-top">
+        <div class="workspace-badge">
+          <div class="workspace-dot"></div>
+          <span>mesh-core / production</span>
+        </div>
+        <nav class="settings-nav">
+          <a href="/settings-account">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong>Account</strong>
+              <small>Profile and workspace identity</small>
+            </div>
+          </a>
+          <a href="/settings-security">
+            <span class="material-symbols-outlined">shield</span>
+            <div>
+              <strong>Security</strong>
+              <small>Sessions, 2FA and recovery posture</small>
+            </div>
+          </a>
+          <a href="/settings-billing" class="active">
+            <span class="material-symbols-outlined">credit_card</span>
+            <div>
+              <strong>Billing</strong>
+              <small>Plan, invoices and usage</small>
+            </div>
+          </a>
+          <a href="/settings-api-keys">
+            <span class="material-symbols-outlined">key</span>
+            <div>
+              <strong>API Keys</strong>
+              <small>Automation credentials</small>
+            </div>
+          </a>
+          <a href="/settings-appearance">
+            <span class="material-symbols-outlined">palette</span>
+            <div>
+              <strong>Appearance</strong>
+              <small>Theme, density and motion</small>
+            </div>
+          </a>
+          <a href="/settings-ai">
+            <span class="material-symbols-outlined">neurology</span>
+            <div>
+              <strong>AI &amp; Models</strong>
+              <small>Provider keys and model defaults</small>
+            </div>
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-info">
+        <div class="info-card">
+          <div class="info-label">Annual savings</div>
+          <strong>2 months free</strong>
+          <p>Switch to annual billing and save the equivalent of two months compared to the monthly rate.</p>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Usage</div>
+          <strong>Predictable at scale</strong>
+          <p>Edge events and session counts are metered separately so costs reflect actual production load, not seat counts.</p>
+        </div>
+      </div>
+    </aside>
+
+    <main class="settings-content">
+      <div class="content-header">
+        <div class="content-label">Plan and usage</div>
+        <h1 class="content-title">Billing</h1>
+        <p class="content-desc">Current plan, invoice history and the usage breakdown that maps production load to cost.</p>
+      </div>
+
+      <div class="stats-row">
+        <article class="stat-card">
+          <div class="stat-label">Current plan</div>
+          <div class="stat-value" data-billing-stat="plan">Pro</div>
+          <div class="stat-desc" data-billing-stat-desc="plan">Billed annually. Next invoice on May 1, 2026.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Monthly spend</div>
+          <div class="stat-value" data-billing-stat="spend">$149</div>
+          <div class="stat-desc" data-billing-stat-desc="spend">Edge events, sessions and operator seats combined.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label"><span class="info-tip">Usage this month<i class="info-tip-icon">i</i><span class="info-tip-bubble">How much of your included edge event quota you've consumed. Overage charges begin at 80%.</span></span></div>
+          <div class="stat-value" data-billing-stat="usage">74%</div>
+          <div class="stat-desc" data-billing-stat-desc="usage">Of included edge event quota. Overage billing starts at 80%.</div>
+        </article>
+      </div>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Plan</div>
+          <h2 class="panel-title">Choose the right tier</h2>
+          <p class="panel-desc">Pricing scales with edge volume and seat count. Annual billing removes the per-month premium.</p>
+          <div class="billing-cycle-toggle">
+            <button class="cycle-btn active" data-billing-cycle="monthly">Monthly</button>
+            <button class="cycle-btn" data-billing-cycle="annual">Annual <span class="badge badge-green">−17%</span></button>
+          </div>
+        </div>
+        <div class="plan-grid">
+          <article class="plan-card" data-plan="starter">
+            <div class="plan-name">Starter</div>
+            <div class="plan-price"><span class="price-amount" data-monthly="$49" data-annual="$41">$49</span><span class="price-period"> / mo</span></div>
+            <div class="plan-desc">For small teams running a single production environment with moderate edge volume.</div>
+            <ul class="plan-features">
+              <li>Up to 3 operators</li>
+              <li>2M edge events / mo</li>
+              <li>EU Central + US East regions</li>
+              <li>14-day audit log</li>
+              <li>Community support</li>
+            </ul>
+            <button class="btn-secondary plan-select-btn" data-select-plan="starter">Select Starter</button>
+          </article>
+          <article class="plan-card is-current" data-plan="pro">
+            <div class="plan-badge">Current plan</div>
+            <div class="plan-name">Pro</div>
+            <div class="plan-price"><span class="price-amount" data-monthly="$149" data-annual="$124">$149</span><span class="price-period"> / mo</span></div>
+            <div class="plan-desc">For growing ops teams with multi-region footprints and tighter SLA requirements.</div>
+            <ul class="plan-features">
+              <li>Up to 12 operators</li>
+              <li>10M edge events / mo</li>
+              <li>All regions including AP Southeast</li>
+              <li>90-day audit log</li>
+              <li>Priority support + SLA</li>
+            </ul>
+            <button class="btn-primary plan-select-btn" data-select-plan="pro" disabled>Current plan</button>
+          </article>
+          <article class="plan-card" data-plan="enterprise">
+            <div class="plan-name">Enterprise</div>
+            <div class="plan-price"><span class="price-amount">Custom</span></div>
+            <div class="plan-desc">Unlimited operators, dedicated infrastructure and a custom edge event quota with negotiated SLAs.</div>
+            <ul class="plan-features">
+              <li>Unlimited operators</li>
+              <li>Unlimited edge events</li>
+              <li>Private edge nodes</li>
+              <li>365-day audit log</li>
+              <li>Dedicated account team</li>
+            </ul>
+            <button class="btn-secondary plan-select-btn" data-select-plan="enterprise">Contact sales</button>
+          </article>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Contact</div>
+          <h2 class="panel-title">Billing contact</h2>
+          <p class="panel-desc">Invoice recipient and payment contact for this workspace. Changes take effect on the next billing cycle.</p>
+        </div>
+        <form class="panel-form" data-storage-key="meshBillingContact">
+          <div class="form-grid">
+            <div class="field-group">
+              <label class="field-label" for="bill-name">Contact name</label>
+              <input class="field-input" id="bill-name" name="contactName" type="text" placeholder="Finance lead or team alias"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="bill-email">Billing email</label>
+              <input class="field-input" id="bill-email" name="contactEmail" type="email" placeholder="billing@yourorg.com"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="bill-company">Company name</label>
+              <input class="field-input" id="bill-company" name="company" type="text" placeholder="Your organisation name"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="bill-vat">VAT / Tax ID</label>
+              <input class="field-input" id="bill-vat" name="vatId" type="text" placeholder="Optional — appears on invoices"/>
+            </div>
+            <div class="field-group span-2">
+              <label class="field-label" for="bill-address">Billing address</label>
+              <textarea class="field-textarea" id="bill-address" name="address" rows="2" placeholder="Street, city, postcode, country"></textarea>
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button class="btn-primary" type="submit">Save contact</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Invoices</div>
+          <h2 class="panel-title">Invoice history</h2>
+          <p class="panel-desc">All past invoices available for download. Enterprise customers can request CSV exports for longer date ranges.</p>
+        </div>
+        <div class="invoice-list" data-invoice-list>
+          <div class="invoice-row">
+            <div class="invoice-period">Loading invoices…</div>
+            <div class="invoice-detail">Your invoice history is syncing.</div>
+            <div class="invoice-amount">...</div>
+            <span class="badge badge-neutral">Syncing</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="settings-panel">
+        <div class="panel-header">
+          <div class="panel-kicker">Usage</div>
+          <h2 class="panel-title">This month's breakdown</h2>
+          <p class="panel-desc">Usage is metered in real time. Overages are billed at the end of the month at the plan's per-unit rate.</p>
+        </div>
+        <div class="usage-list" data-usage-list>
+          <div class="usage-row">
+            <div class="usage-label">Loading usage…</div>
+            <div class="usage-bar-wrap">
+              <div class="usage-bar" style="--pct: 12%"></div>
+            </div>
+            <div class="usage-value">Syncing</div>
+            <span class="badge badge-neutral">...</span>
+          </div>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <div data-toast-stack class="toast-stack"></div>
+  <script defer src="assets/settings.js"></script>
+  <script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="mesh-theme")document.documentElement.dataset.theme=e.data.theme;});</script>
+</body>
+</html>
