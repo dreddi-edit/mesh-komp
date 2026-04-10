@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ccmon - Web</title>
+  <link rel="stylesheet" href="/assets/ccmon.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <div class="titlebar">
+      <h1><span class="blue">ccmon</span> <span id="projectName"></span> <span class="divider">│</span> <span id="modelName">—</span> <span class="divider">│</span> <span id="reqCount">0</span> req <span class="divider">│</span> <span id="uptime">0s</span></h1>
+      <div class="status-indicator"><span class="dot">●</span> LIVE</div>
+    </div>
+    <div id="statusMsg" class="warning" style="display: none;"></div>
+  </header>
+
+  <main>
+    <section class="metrics-grid">
+      <div class="metric-card border-blue">
+        <h3>TOKENS IN</h3>
+        <div class="value" id="val-tokensIn">0</div>
+        <div class="sub" id="sub-tokensIn">—</div>
+      </div>
+      <div class="metric-card border-green">
+        <h3>TOKENS OUT</h3>
+        <div class="value" id="val-tokensOut">0</div>
+        <div class="sub" id="sub-tokensOut">—</div>
+      </div>
+      <div class="metric-card border-magenta">
+        <h3>CACHE READ</h3>
+        <div class="value" id="val-cacheRead">0</div>
+        <div class="sub" id="sub-cacheRead">—</div>
+      </div>
+      <div class="metric-card border-red">
+        <h3>CACHE WRITE</h3>
+        <div class="value" id="val-cacheWrite">0</div>
+        <div class="sub" id="sub-cacheWrite">0 writes</div>
+      </div>
+      <div class="metric-card border-yellow">
+        <h3>COST</h3>
+        <div class="value" id="val-cost">$0.00</div>
+        <div class="sub" id="sub-cost">today $0.00</div>
+      </div>
+      <div class="metric-card border-cyan">
+        <h3>SPEED</h3>
+        <div class="value" id="val-speed">0 t/s</div>
+        <div class="sub" id="sub-speed">peak 0 t/s</div>
+      </div>
+    </section>
+
+    <section class="context-bar border-blue">
+      <h3>CONTEXT WINDOW</h3>
+      <div class="progress-bg">
+        <div class="progress-fill" id="ctx-fill" style="width: 0%"></div>
+      </div>
+      <div class="context-stats" id="ctx-stats">
+        used 0  free 200,000  limit 200,000  0%
+      </div>
+    </section>
+
+    <section class="middle-row">
+      <div class="panel border-white">
+        <h3>TOKEN BREAKDOWN</h3>
+        <div class="panel-content" id="tokenBreakdown"></div>
+      </div>
+      <div class="panel border-cyan">
+        <h3>PERFORMANCE</h3>
+        <div class="panel-content" id="performance"></div>
+      </div>
+      <div class="panel border-yellow">
+        <h3>DAILY COST (7d)</h3>
+        <div class="chart-container">
+          <canvas id="dailyChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="accumulated-panel border-yellow">
+      <h3>ACCUMULATED — ALL SESSIONS</h3>
+      <div class="panel-content grid-4" id="accumulated"></div>
+    </section>
+
+    <section class="feed-panel border-green">
+      <h3>LIVE FEED</h3>
+      <div class="table-container">
+        <table id="feedTable">
+          <thead>
+            <tr>
+              <th>TIME</th>
+              <th>IN</th>
+              <th>OUT</th>
+              <th>CREAD</th>
+              <th>COST</th>
+              <th>SPEED</th>
+              <th>LATENCY</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-left">
+      <span id="footerProject"></span> · ~/.claude/projects
+    </div>
+    <div class="footer-right">
+      <button onclick="ws.send(JSON.stringify({type:'reset'}))">Reset Session</button>
+      <button onclick="ws.send(JSON.stringify({type:'clearFeed'}))">Clear Feed</button>
+    </div>
+  </footer>
+
+  <script src="/assets/ccmon.js"></script>
+</body>
+</html>
