@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
   <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/mesh-docs.css"/>
   <style>
     :root{--p:#0f6a7b;--d:#123f5c;--ink:#102432;--soft:#607787;--bg:#f7fbfd}
     *{box-sizing:border-box;margin:0;padding:0} html{scroll-behavior:smooth}
@@ -64,7 +65,7 @@
   </script>
 </head>
 <body>
-  <nav>
+  <nav class="docs-nav">
     <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="assets/brand/lockup-color.svg" alt="Mesh"/></a>
     <div class="nav-links">
       <a href="index">Start</a>
@@ -72,10 +73,11 @@
       <a href="statistics">Statistiken</a>
       <a href="docs">Dokumentation</a>
       <a class="active" href="terminal">Terminal</a>
+      <a href="repo-docs">Repo Docs</a>
     </div>
-    <div>
-      <a class="btn ghost" href="app?login=1">Anmelden</a>
-      <a class="btn primary" href="app?login=1">Arbeitsbereich öffnen</a>
+    <div class="nav-actions">
+      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
+      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
     </div>
   </nav>
 
