@@ -2,13 +2,14 @@
 
 This document is the canonical deployment procedure for `try-mesh.com`.
 
-Use this runbook for **every production deploy**.
+Two deployment methods are available:
 
-## Goals
+| Method | When to use |
+|--------|-------------|
+| **GitHub Actions (automatic)** | Every normal code push to `main` |
+| **Manual Azure CLI** | Worker-only deploys, emergency redeploys, rollback, or when Actions is unavailable |
 
-- Deploy latest workspace code with one full zip artifact.
-- Keep encrypted user data (API keys, preferences) persistent across deploys.
-- Catch failures early via preflight + post-deploy smoke checks.
+---
 
 ## Critical Facts (Read First)
 
@@ -18,15 +19,79 @@ Use this runbook for **every production deploy**.
 3. Encryption key must stay stable:
    - `MESH_DATA_ENCRYPTION_KEY` must exist and must **not** be rotated casually.
 4. Do not rely on shipping `.mesh-secure.db` inside zip artifacts.
-5. Prefer `--clean false` for normal deploys.
+5. Manual deploys: prefer `--clean false`.
 
 ## Production Targets
 
 - Gateway app: `mesh-gateway-303137`
 - Worker app: `mesh-worker-303137`
 - Resource group: `mesh-rg`
+- GitHub repo: `dreddi-edit/mesh-komp`
 
-## 0) One-Time App Settings Baseline
+---
+
+## Method 1 — GitHub Actions (Automatic, Gateway Only)
+
+Workflow file: `.github/workflows/azure-deploy.yml`
+
+**Triggers automatically on every push to `main`.** No manual steps required after the initial setup below.
+
+### What the workflow does
+
+1. Checks out the repo
+2. Creates a zip excluding `node_modules`, `.git`, `archive`, `output`, and log files
+3. Deploys the zip to `mesh-gateway-303137` via the publish profile
+
+### Prerequisites (one-time setup)
+
+The GitHub secret `AZURE_WEBAPP_PUBLISH_PROFILE` must exist in the repo:
+
+```bash
+# Fetch publish profile from Azure and set as GitHub secret in one step
+az webapp deployment list-publishing-profiles \
+  --name mesh-gateway-303137 \
+  --resource-group mesh-rg \
+  --xml | gh secret set AZURE_WEBAPP_PUBLISH_PROFILE \
+  --repo dreddi-edit/mesh-komp --body "$(cat)"
+```
+
+Verify:
+
+```bash
+gh secret list --repo dreddi-edit/mesh-komp
+# Expected: AZURE_WEBAPP_PUBLISH_PROFILE  <timestamp>
+```
+
+### Monitor a deployment
+
+```bash
+gh run list --repo dreddi-edit/mesh-komp --limit 5
+gh run watch --repo dreddi-edit/mesh-komp
+```
+
+Or: `https://github.com/dreddi-edit/mesh-komp/actions`
+
+### Re-trigger without a code change
+
+```bash
+gh workflow run azure-deploy.yml --repo dreddi-edit/mesh-komp --ref main
+```
+
+### Limitations
+
+- **Gateway only** — the worker is not deployed by this workflow.
+- If worker code changed (`mesh-core/src/*`), use Method 2 to deploy the worker separately.
+
+---
+
+## Method 2 — Manual Azure CLI
+
+Use this for:
+- Worker deploys (Actions does not cover the worker)
+- Emergency redeploys or rollbacks
+- Situations where GitHub Actions is unavailable
+
+### 0) One-Time App Settings Baseline
 
 Run once, then verify on every deploy.
 
@@ -74,7 +139,7 @@ az webapp config appsettings list -g mesh-rg -n mesh-gateway-303137 \
   --query "[?name=='AZURE_OPENAI_VOICE_ENDPOINT' || name=='AZURE_OPENAI_VOICE_TRANSCRIBE_DEPLOYMENT' || name=='AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT' || name=='AZURE_OPENAI_VOICE_TTS_DEPLOYMENT' || name=='AZURE_OPENAI_VOICE_AUDIO_API_VERSION' || name=='AZURE_OPENAI_VOICE_CHAT_API_VERSION' || name=='AZURE_OPENAI_VOICE_TTS_VOICE'].{name:name,value:value}" -o table
 ```
 
-## 1) Preflight (Before Any Deploy)
+### 1) Preflight
 
 From repo root (`mesh-komp`):
 
@@ -84,11 +149,7 @@ node --check mesh-core/src/server.js
 node --check llm-compress.js
 ```
 
-Optional (editor diagnostics): ensure no errors in changed files.
-
-## 2) Full Zip Deploy (Gateway)
-
-This is the canonical **single full zip deploy** command:
+### 2) Full Zip Deploy (Gateway)
 
 ```bash
 cd /Users/edgarbaumann/Downloads/mesh-komp
@@ -105,16 +166,11 @@ az webapp deploy -g mesh-rg -n mesh-gateway-303137 \
   --track-status false
 ```
 
-Notes:
-
-- `--clean false` reduces risk of removing runtime artifacts and is faster.
-- Excluding `.mesh*` is fine because DB lives in `/home/data`.
-
-## 3) Full Zip Deploy (Worker)
+### 3) Full Zip Deploy (Worker)
 
 Deploy worker when worker code changed (`mesh-core/src/server.js`, `mesh-core/src/compression-core.cjs`, etc.).
 
-Important: worker startup command is currently `node mesh-core/src/server.js`, so artifact layout must preserve repository root + `mesh-core/` path.
+Important: worker startup command is `node mesh-core/src/server.js`, so artifact layout must preserve repository root + `mesh-core/` path.
 
 ```bash
 cd /Users/edgarbaumann/Downloads/mesh-komp
@@ -138,11 +194,13 @@ az webapp config show -g mesh-rg -n mesh-worker-303137 \
   --query "appCommandLine" -o tsv
 ```
 
-If startup command changes in the future (for example to `node src/server.js`), update packaging layout accordingly.
+---
 
-## 4) Post-Deploy Smoke Checks
+## Post-Deploy Smoke Checks
 
-### 4.1 Health + Auth + Assistant Status
+Run after either deployment method.
+
+### Health + Auth + Assistant Status
 
 ```bash
 curl -I https://try-mesh.com/
@@ -190,16 +248,15 @@ function req(method, path, payload, cookie='') {
 NODE
 ```
 
-### 4.2 Assistant Chat Smoke
+If the site briefly returns `503` right after deploy, wait for App Service warmup to finish and retry before assuming startup failed.
 
-Chat requires provider keys in user settings (Anthropic/OpenAI/etc.).
-If key is missing, expected 400 with explicit error message.
+---
 
-## 5) DB Persistence Verification (Mandatory)
+## DB Persistence Verification (Mandatory After Manual Deploys)
 
-This confirms user API keys/preferences survive restart/deploy.
+For GitHub Actions deploys this is less critical since no `--clean` flag is involved, but run it after any manual deploy or if user data concerns arise.
 
-### 5.1 Write marker
+### Write marker
 
 ```bash
 node - <<'NODE'
@@ -216,26 +273,28 @@ function req(method,path,payload,cookie=''){const body=payload?JSON.stringify(pa
 NODE
 ```
 
-### 5.2 Restart app
+### Restart app
 
 ```bash
 az webapp restart -g mesh-rg -n mesh-gateway-303137
 ```
 
-### 5.3 Re-read marker
+### Re-read marker
 
 Run same GET check and ensure value still matches marker.
 
 If marker disappears, stop and investigate settings immediately.
 
-## 6) Why Keys Disappear (Known Failure Modes)
+---
+
+## Why Keys Disappear (Known Failure Modes)
 
 1. `MESH_SECURE_DB_FILE` missing/misconfigured and DB resolves to non-persistent location.
 2. `MESH_DATA_ENCRYPTION_KEY` changed (old encrypted rows become unreadable).
 3. Clean deploys plus runtime DB in app root (`/home/site/wwwroot`) cause loss.
 4. Deployment happened to wrong app/slot.
 
-## 7) Emergency Recovery Checklist
+## Emergency Recovery Checklist
 
 1. Confirm app settings:
    - `MESH_SECURE_DB_FILE=/home/data/mesh-secure-v2.db`
@@ -246,15 +305,23 @@ If marker disappears, stop and investigate settings immediately.
    - Check whether `/home/data/mesh-secure.db` exists.
    - If legacy DB exists under app root and `/home/data` DB is missing, copy legacy DB to `/home/data` and restart.
 
-## 8) Recommended Deploy Routine (Short Form)
+---
 
+## Recommended Deploy Routine (Short Form)
+
+### Normal code push
+Push to `main` — GitHub Actions handles it automatically. Monitor via `gh run watch`.
+
+### Worker-only change
+Use Method 2, Step 3 only. Gateway Actions deploy is not needed.
+
+### Full manual deploy
 1. Preflight syntax checks.
 2. Verify app settings (`MESH_SECURE_DB_FILE`, `MESH_DATA_ENCRYPTION_KEY`).
-   For voice deploys also verify `AZURE_OPENAI_VOICE_ENDPOINT`, `AZURE_OPENAI_VOICE_TRANSCRIBE_DEPLOYMENT`, `AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT`, `AZURE_OPENAI_VOICE_TTS_DEPLOYMENT`, `AZURE_OPENAI_VOICE_AUDIO_API_VERSION`, `AZURE_OPENAI_VOICE_CHAT_API_VERSION`, and `AZURE_OPENAI_VOICE_TTS_VOICE`.
+   For voice deploys also verify all `AZURE_OPENAI_VOICE_*` settings.
 3. Full zip deploy gateway (`--clean false`).
 4. Deploy worker if changed.
 5. Smoke checks (auth + status).
-   If the site briefly returns `503` right after deploy, wait for App Service warmup to finish and retry before assuming startup failed.
 6. DB persistence marker test.
 
 If any step fails: stop, fix, redeploy.
