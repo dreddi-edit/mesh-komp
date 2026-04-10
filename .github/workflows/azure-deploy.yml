@@ -1,0 +1,31 @@
+name: Deploy to Azure Web App
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create deployment zip
+        run: |
+          zip -rq deploy.zip . \
+            -x "node_modules/*" \
+            -x "mesh-core/node_modules/*" \
+            -x ".git/*" \
+            -x ".mesh*" \
+            -x "*.DS_Store" \
+            -x "*.log" \
+            -x "archive/*" \
+            -x "output/*" \
+            -x ".playwright-cli/*"
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'mesh-gateway-303137'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: deploy.zip
