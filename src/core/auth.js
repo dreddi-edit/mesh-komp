@@ -43,12 +43,12 @@ const AUTH_COOKIE_SECURE    = parseBooleanFlag(process.env.MESH_AUTH_COOKIE_SECU
 
 const IS_PRODUCTION = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
 const DEMO_USER_ENABLED      = parseBooleanFlag(process.env.MESH_DEMO_USER_ENABLED, !IS_PRODUCTION);
-const DEMO_USER_EMAIL        = 'edgar@test.com';
+const DEMO_USER_EMAIL        = String(process.env.MESH_DEMO_USER_EMAIL || 'edgar@test.com').trim().toLowerCase();
 const DEMO_USER_EMAIL_ALIASES = String(process.env.MESH_DEMO_USER_EMAIL_ALIASES || '')
   .split(',')
   .map((entry) => String(entry || '').trim().toLowerCase())
   .filter(Boolean);
-const DEMO_USER_PASSWORD = '12345';
+const DEMO_USER_PASSWORD = String(process.env.MESH_DEMO_USER_PASSWORD || '12345').trim();
 
 const USER_STORE_ALLOWED_KEYS = new Set([
   'meshAiAnthropic',

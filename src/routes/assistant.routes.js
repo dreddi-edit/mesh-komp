@@ -1501,13 +1501,9 @@ router.post("/api/assistant/workspace/reindex", requireAuth, async (req, res) =>
     const result = await meshTunnelRequest("reindex", { files });
     res.json({ ok: true, ...result });
   } catch (error) {
-    try {
-      if (localAssistantWorkspace.rootPath) {
-        res.json({ ok: true, message: "Reindex queued (local mode)" });
-      } else {
-        throw error;
-      }
-    } catch {
+    if (localAssistantWorkspace.rootPath) {
+      res.json({ ok: true, message: "Reindex queued (local mode)" });
+    } else {
       safeRouteError(res, 400, "Reindex failed", error);
     }
   }
@@ -1574,9 +1570,17 @@ router.get("/api/assistant/workspace/context-budget", requireAuth, async (req, r
 
 
 // --- EXTENSIONS ---
+
+/** Allowlist pattern for Open VSX publisher/extension identifiers and semver-like versions. */
+const EXT_IDENTIFIER_RE = /^[a-zA-Z0-9_.-]+$/;
+
 router.post("/api/assistant/extensions/install", requireAuth, async (req, res) => {
   const { publisher, name, version = "latest" } = req.body;
   if (!publisher || !name) return res.status(400).json({ error: "Missing publisher/name" });
+
+  if (!EXT_IDENTIFIER_RE.test(publisher) || !EXT_IDENTIFIER_RE.test(name) || !EXT_IDENTIFIER_RE.test(version)) {
+    return res.status(400).json({ error: "Invalid publisher, name, or version format" });
+  }
 
   const extensionsDir = path.resolve(__dirname, "../../extensions");
   if (!fs.existsSync(extensionsDir)) fs.mkdirSync(extensionsDir, { recursive: true });
@@ -1589,20 +1593,25 @@ router.post("/api/assistant/extensions/install", requireAuth, async (req, res) =
   const downloadUrl = `https://open-vsx.org/api/${publisher}/${name}/${version}/file/${extId}-${version}.vsix`;
 
   try {
+    const { execFile } = require('child_process');
     const { promisify } = require('util');
-    const exec = promisify(require('child_process').exec);
-    
-    // Download using curl
-    await exec(`curl -L -o "${zipPath}" "${downloadUrl}"`);
-    // Extract using unzip
+    const execFileAsync = promisify(execFile);
+
+    // Download via built-in fetch — no shell involved
+    const response = await fetch(downloadUrl, { signal: AbortSignal.timeout(60_000) });
+    if (!response.ok) throw new Error(`Download failed: HTTP ${response.status}`);
+    fs.writeFileSync(zipPath, Buffer.from(await response.arrayBuffer()));
+
+    // Extract via execFile — args passed as array, never interpolated into a shell string
     if (!fs.existsSync(extPath)) fs.mkdirSync(extPath, { recursive: true });
-    await exec(`unzip -o "${zipPath}" -d "${extPath}"`);
-    // Cleanup zip
+    await execFileAsync('unzip', ['-o', zipPath, '-d', extPath]);
+
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
 
     res.json({ ok: true, message: `Extension ${extId} installed successfully.` });
   } catch (e) {
-    console.error('Install extension fail:', e);
+    if (fs.existsSync(zipPath)) { try { fs.unlinkSync(zipPath); } catch { /* best-effort cleanup */ } }
+    console.error('[assistant-routes] Install extension failed:', String(e?.message || e));
     res.status(500).json({ error: "Installation failed. Ensure the extension exists on Open VSX." });
   }
 });

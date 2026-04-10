@@ -300,11 +300,11 @@ The following six standalone pages remain for direct-URL access and backwards co
   Works with: `src/core/index.js`, `secure-db.js`, `assets/settings.js`, `assets/app-workspace.js`.
 
 - `src/routes/app.routes.js`
-  Purpose: app-level APIs such as user store, billing, operations, logs, AI helper endpoints, and the repo-docs endpoints that expose the current repository as a browsable docs/data surface. All endpoints require auth. Repo-docs file access uses `path.resolve()` traversal guard. Code-block language labels are HTML-escaped before rendering to prevent XSS.
+  Purpose: app-level APIs such as user store, billing, operations, logs, AI helper endpoints, and the repo-docs endpoints that expose the current repository as a browsable docs/data surface. All endpoints require auth. Repo-docs file access uses `path.resolve()` traversal guard. Code-block language labels are HTML-escaped before rendering to prevent XSS. `/api/chat` returns 503 when `ANTHROPIC_API_KEY` is absent.
   Works with: `src/core/index.js`, `secure-db.js`, `assets/settings.js`, `assets/app-workspace.js`, `assets/repo-docs.js`.
 
 - `src/routes/assistant.routes.js`
-  Purpose: assistant/workspace/git/chat/context endpoints, including workspace diff sync and graph fallback routing. Search/grep limits are capped (200/500). Git clone validates URL protocol (https/git/ssh) and restricts target path to the workspace parent. Span lookup escapes regex meta-characters. Error responses use generic messages (details logged server-side only). External API fetch calls have 120s timeout via AbortSignal.
+  Purpose: assistant/workspace/git/chat/context endpoints, including workspace diff sync and graph fallback routing. Search/grep limits are capped (200/500). Git clone validates URL protocol (https/git/ssh) and restricts target path to the workspace parent. Span lookup escapes regex meta-characters. Error responses use generic messages (details logged server-side only). External API fetch calls have 120s timeout via AbortSignal. Extension install validates publisher/name/version against an allowlist regex, downloads via `fetch()`, and extracts via `execFile()` (no shell interpolation).
   Works with: `src/core/index.js`, workbench frontend, graph, search, chat, and workspace flows.
 
 - `src/routes/realtime.routes.js`
@@ -346,7 +346,7 @@ The following six standalone pages remain for direct-URL access and backwards co
   Works with: globals from `src/core/index.js` (accessed at call-time); required by `src/core/index.js`.
 
 - `src/core/auth.js`
-  Purpose: auth/session/cookie layer — password hashing, session lifecycle, `requireAuth` middleware, BYOK credential normalization, and user-store key allowlist. Auth cookie defaults to `SameSite=Strict` (overridable via `MESH_AUTH_COOKIE_SAMESITE` env var). Demo user is gated by `MESH_DEMO_USER_ENABLED` (default: true in dev, false in production).
+  Purpose: auth/session/cookie layer — password hashing, session lifecycle, `requireAuth` middleware, BYOK credential normalization, and user-store key allowlist. Auth cookie defaults to `SameSite=Strict` (overridable via `MESH_AUTH_COOKIE_SAMESITE` env var). Demo user is gated by `MESH_DEMO_USER_ENABLED` (default: true in dev, false in production); credentials configurable via `MESH_DEMO_USER_EMAIL` / `MESH_DEMO_USER_PASSWORD` (defaults: `edgar@test.com` / `12345`).
   Works with: `secure-db.js`, `src/core/index.js` (required by index.js and destructured into scope).
 
 - `src/core/model-providers.js`

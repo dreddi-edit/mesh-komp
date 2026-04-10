@@ -513,9 +513,7 @@ router.post("/api/chat", requireAuth, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey || !Anthropic) {
-    // Mock fallback
-    const last = messages[messages.length - 1]?.content || "";
-    res.json({ content: mockReply(last) });
+    res.status(503).json({ error: "Chat service unavailable: API key not configured." });
     return;
   }
 
@@ -535,11 +533,6 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
     res.status(500).json({ error: "Chat request failed." });
   }
 });
-
-function mockReply() {
-  return "I'm ready to help with your code. Open a folder and ask me about your codebase, architecture, or debugging.";
-}
-
 
 router.post("/api/inline-complete", requireAuth, async (req, res) => {
   const { prefix = "", language = "plaintext" } = req.body || {};
