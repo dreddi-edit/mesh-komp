@@ -1,6 +1,50 @@
 const express = require('express');
 const router = express.Router();
 
+// ── In-memory sliding-window rate limiter for login ──────────────────────────
+
+const LOGIN_RATE_LIMIT_MAX      = 15;
+const LOGIN_RATE_LIMIT_WINDOW_MS = 60_000;
+const loginAttemptStore = new Map();
+
+function getClientIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean)[0];
+  return forwarded || String(req.socket?.remoteAddress || '');
+}
+
+/**
+ * Limits login attempts to LOGIN_RATE_LIMIT_MAX per IP per WINDOW_MS.
+ * Periodic cleanup prevents unbounded memory growth.
+ */
+function loginRateLimiter(req, res, next) {
+  const ip = getClientIp(req);
+  if (!ip) return next();
+
+  const now = Date.now();
+  const record = loginAttemptStore.get(ip) || { count: 0, resetAt: now + LOGIN_RATE_LIMIT_WINDOW_MS };
+
+  if (now > record.resetAt) {
+    record.count = 0;
+    record.resetAt = now + LOGIN_RATE_LIMIT_WINDOW_MS;
+  }
+
+  if (record.count >= LOGIN_RATE_LIMIT_MAX) {
+    res.status(429).json({ ok: false, error: 'Too many login attempts. Please try again later.' });
+    return;
+  }
+
+  record.count += 1;
+  loginAttemptStore.set(ip, record);
+
+  if (loginAttemptStore.size > 10_000) {
+    for (const [key, val] of loginAttemptStore) {
+      if (now > val.resetAt) loginAttemptStore.delete(key);
+    }
+  }
+
+  next();
+}
+
 function readClientIp(req) {
   const forwarded = String(req.headers['x-forwarded-for'] || '').split(',').map((part) => part.trim()).filter(Boolean)[0];
   return forwarded || String(req.socket?.remoteAddress || '').trim();
@@ -70,7 +114,7 @@ function summarizeSession(session, currentSessionId) {
   };
 }
 
-router.post("/api/auth/login", async (req, res) => {
+router.post("/api/auth/login", loginRateLimiter, async (req, res) => {
   const email = normalizeEmail(req.body?.email);
   const password = String(req.body?.password || "");
 

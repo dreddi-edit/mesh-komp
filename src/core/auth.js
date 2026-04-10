@@ -38,7 +38,7 @@ const AUTH_SESSION_TOUCH_INTERVAL_MS = parseIntegerInRange(
 );
 const AUTH_COOKIE_NAME      = String(process.env.MESH_AUTH_COOKIE_NAME || 'mesh_auth').trim() || 'mesh_auth';
 const AUTH_COOKIE_PATH      = String(process.env.MESH_AUTH_COOKIE_PATH || '/').trim() || '/';
-const AUTH_COOKIE_SAME_SITE = String(process.env.MESH_AUTH_COOKIE_SAMESITE || 'Lax').trim() || 'Lax';
+const AUTH_COOKIE_SAME_SITE = String(process.env.MESH_AUTH_COOKIE_SAMESITE || 'Strict').trim() || 'Strict';
 const AUTH_COOKIE_SECURE    = parseBooleanFlag(process.env.MESH_AUTH_COOKIE_SECURE, process.env.NODE_ENV === 'production');
 
 const DEMO_USER_EMAIL        = 'edgar@test.com';

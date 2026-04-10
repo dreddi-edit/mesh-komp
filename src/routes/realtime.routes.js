@@ -23,21 +23,30 @@ const PERF_LOG = ['1', 'true', 'yes', 'on'].includes(String(process.env.MESH_WOR
 function setupRealtimeRelay(server) {
   const wss = new WebSocket.Server({ noServer: true });
 
-  server.on('upgrade', (req, socket, head) => {
+  server.on('upgrade', async (req, socket, head) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname !== '/api/realtime') return;
 
-    let authUser = null;
     try {
       const token = readAuthTokenFromRequest(req);
-      if (token) {
-        authUser = resolveAuthUserFromRequest(req);
+      if (!token) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
       }
-    } catch { /* proceed unauthenticated for dev */ }
-
-    wss.handleUpgrade(req, socket, head, (clientWs) => {
-      handleSession(clientWs, { authUserId: authUser?.id || '' });
-    });
+      const resolved = await resolveAuthUserFromRequest(req);
+      if (!resolved) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      wss.handleUpgrade(req, socket, head, (clientWs) => {
+        handleSession(clientWs, { authUserId: resolved.user.id });
+      });
+    } catch {
+      socket.write('HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+    }
   });
 }
 

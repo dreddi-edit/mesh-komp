@@ -42,7 +42,7 @@ Generated files, dependency trees, local logs, and OS metadata are intentionally
 ### Core backend and shared logic
 
 - `secure-db.js`
-  Purpose: secure persistence abstraction for users, sessions, and per-user store values.
+  Purpose: secure persistence abstraction for users, sessions, and per-user store values. Uses AES-256-GCM encryption for stored data; encryption key is taken from `MESH_DATA_ENCRYPTION_KEY` env var (required in production). In dev without that var, falls back to a machine-derived secret from `os.hostname()` — never a known constant. Session tokens are 32 random bytes.
   Works with: `src/core/index.js`, `src/routes/auth.routes.js`, `src/routes/app.routes.js`.
 
 - `assistant-core.js`
@@ -288,15 +288,15 @@ The following six standalone pages remain for direct-URL access and backwards co
 ### Server bootstrap and routing
 
 - `src/server.js`
-  Purpose: main Express/http server, static file serving (from `views/`), route mounting, terminal websocket, and realtime relay setup; the terminal layer now resolves the active workspace root and materializes uploaded workspaces into a temporary server-side folder before spawning the shell.
+  Purpose: main Express/http server, static file serving (from `views/`), route mounting, terminal websocket, and realtime relay setup. Applies security headers (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy) and a CSRF Origin/Referer guard on all mutating requests. Terminal WebSocket requires a valid auth session before upgrading; spawned shell receives a sanitized copy of `process.env` with sensitive vars (matching `_KEY`, `_SECRET`, `_PASSWORD`, `_TOKEN`, `_CREDENTIAL`, `_PRIVATE`) stripped. The terminal layer also resolves the active workspace root and materializes uploaded workspaces into a temporary server-side folder before spawning the shell.
   Works with: `src/core/index.js`, `src/routes/*.js`, `server.js`, all HTML assets under `views/`.
 
 - `src/routes/auth.routes.js`
-  Purpose: login, session inspection, logout, and session-revoke endpoints.
+  Purpose: login, session inspection, logout, and session-revoke endpoints. The login endpoint is protected by an in-memory sliding-window rate limiter (15 attempts per IP per minute).
   Works with: `src/core/index.js`, `secure-db.js`, `assets/settings.js`, `assets/app-workspace.js`.
 
 - `src/routes/app.routes.js`
-  Purpose: app-level APIs such as user store, billing, operations, logs, AI helper endpoints, and the repo-docs endpoints that expose the current repository as a browsable docs/data surface.
+  Purpose: app-level APIs such as user store, billing, operations, logs, AI helper endpoints, and the repo-docs endpoints that expose the current repository as a browsable docs/data surface. All endpoints require auth. Repo-docs file access uses `path.resolve()` traversal guard. Code-block language labels are HTML-escaped before rendering to prevent XSS.
   Works with: `src/core/index.js`, `secure-db.js`, `assets/settings.js`, `assets/app-workspace.js`, `assets/repo-docs.js`.
 
 - `src/routes/assistant.routes.js`
@@ -304,7 +304,7 @@ The following six standalone pages remain for direct-URL access and backwards co
   Works with: `src/core/index.js`, workbench frontend, graph, search, chat, and workspace flows.
 
 - `src/routes/realtime.routes.js`
-  Purpose: local websocket voice-session server for the workbench voice feature; performs VAD over streamed PCM, calls Azure STT/text/TTS endpoints, coordinates delegated assistant-run actions for the voice agent, and rebuilds capsule context from the active uploaded/local workspace before each voice turn.
+  Purpose: local websocket voice-session server for the workbench voice feature; performs VAD over streamed PCM, calls Azure STT/text/TTS endpoints, coordinates delegated assistant-run actions for the voice agent, and rebuilds capsule context from the active uploaded/local workspace before each voice turn. WebSocket upgrade requires a valid auth session — unauthenticated upgrade attempts are rejected with HTTP 401.
   Works with: `assets/features/voice-chat.js`, `src/core/index.js`, `src/core/voice-agent.js`, `src/core/voice-azure-audio.js`.
 
 ### Core modules
@@ -342,7 +342,7 @@ The following six standalone pages remain for direct-URL access and backwards co
   Works with: globals from `src/core/index.js` (accessed at call-time); required by `src/core/index.js`.
 
 - `src/core/auth.js`
-  Purpose: auth/session/cookie layer — password hashing, session lifecycle, `requireAuth` middleware, BYOK credential normalization, and user-store key allowlist.
+  Purpose: auth/session/cookie layer — password hashing, session lifecycle, `requireAuth` middleware, BYOK credential normalization, and user-store key allowlist. Auth cookie defaults to `SameSite=Strict` (overridable via `MESH_AUTH_COOKIE_SAMESITE` env var).
   Works with: `secure-db.js`, `src/core/index.js` (required by index.js and destructured into scope).
 
 - `src/core/model-providers.js`
@@ -499,18 +499,6 @@ The following six standalone pages remain for direct-URL access and backwards co
   Purpose: historical build/refactor plan from earlier phases.
   Works with: historical context only.
 
-## Asset Archives and Non-Canonical Source Material
-
-All raw/archive assets live under `archive/` at the repo root.
-
-- `archive/Animationen/`
-  Purpose: raw animation source files (Lottie JSON source + preview HTML).
-  Works with: reference only; runtime uses `assets/animations/*`.
-
-- `archive/Logos/`
-  Purpose: raw brand logo exports in jpeg/png/svg for three variants.
-  Works with: reference only; runtime uses `assets/brand/*`.
-
 ## Intentionally Omitted Or Not Maintained Here
 
 - `node_modules/*`
@@ -521,6 +509,10 @@ All raw/archive assets live under `archive/` at the repo root.
 - editor-local files such as `.vscode/*` and `.claude/settings.local.json`
 
 These files are generated, external, local-only, or not part of the maintained application source map.
+
+- `claude-ubuntu.md`
+  Purpose: EC2 environment context for Claude Code on this Ubuntu dev machine — covers machine details, GitHub setup, stack, and typical workflows.
+  Works with: local Claude Code sessions only; not part of the application runtime.
 
 ---
 
@@ -559,3 +551,15 @@ Standalone read-only monitoring tool. Run with `node ccmon.js` or `npm run monit
 - `ccmon/layout.js`
   Purpose: Creates and positions all neo-blessed boxes for the full-screen dashboard layout (titlebar, 6 metric boxes, context bar, middle row, accumulated panel, feed, footer).
   Works with: `ccmon.js`.
+
+## ccmon-server / ccmon-web — Web Dashboard for ccmon
+
+HTTP server + React frontend that expose ccmon metrics over a browser UI instead of the terminal.
+
+- `ccmon-server.js`
+  Purpose: Express server (port 3030) that reads Claude Code JSONL session data, serves a REST + SSE API (`/api/state`, `/api/events`), and streams live token/cost updates to the web frontend.
+  Works with: `ccmon/history.js`, `ccmon/state.js`, `ccmon/parser.js`, `ccmon/watcher.js`, `ccmon-web/`.
+
+- `ccmon-web/`
+  Purpose: React/Vite/TypeScript web app that connects to `ccmon-server.js` and renders token usage, cost, burn rate, and history in a browser dashboard with Recharts charts and Framer Motion animations.
+  Works with: `ccmon-server.js` (via `/api/state` + `/api/events` SSE). Build output served statically or via Vite dev server.

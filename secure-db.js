@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const os = require("os");
 
 let CosmosClientCtor = null;
 try {
@@ -9,9 +10,20 @@ try {
 
 const CIPHER_ALGORITHM = "aes-256-gcm";
 const KEY_ENV_NAME = "MESH_DATA_ENCRYPTION_KEY";
-const FALLBACK_SECRET = "mesh-dev-secret-change-me";
 const IS_PRODUCTION = String(process.env.NODE_ENV || "").trim().toLowerCase() === "production";
 let warnedFallbackSecret = false;
+
+/**
+ * Derives a machine-stable dev fallback secret from non-sensitive system properties.
+ * This is NOT cryptographically secret — it only prevents a known constant from being
+ * baked into source code. Production deployments must set MESH_DATA_ENCRYPTION_KEY.
+ */
+function deriveMachineSecret() {
+  return crypto
+    .createHash("sha256")
+    .update(`mesh-dev:${os.hostname()}:${os.homedir()}`)
+    .digest("hex");
+}
 
 function resolvedSecret() {
   const envSecret = String(process.env[KEY_ENV_NAME] || process.env.AUTH_SECRET || "").trim();
@@ -21,9 +33,11 @@ function resolvedSecret() {
   }
   if (!warnedFallbackSecret) {
     warnedFallbackSecret = true;
-    console.warn(`[mesh-secure-db] ${KEY_ENV_NAME} is not set. Falling back to development secret.`);
+    console.warn(
+      `[mesh-secure-db] ${KEY_ENV_NAME} is not set. Using machine-derived dev secret — set the env var before going to production.`
+    );
   }
-  return FALLBACK_SECRET;
+  return deriveMachineSecret();
 }
 
 function encryptionKey() {
@@ -164,7 +178,7 @@ async function getUserById(userId) {
 async function createSession(userId, ttlMs, metadata = {}) {
   if (!enabled) return null;
   const { sessionsContainer } = await initDb();
-  const token = crypto.randomBytes(24).toString("hex");
+  const token = crypto.randomBytes(32).toString("hex");
   const now = Date.now();
   const doc = {
     id: hashSessionToken(token),

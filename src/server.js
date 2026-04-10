@@ -11,7 +11,62 @@ Object.keys(core).forEach(k => {
 
 const app = express();
 
+// ── Security headers ──────────────────────────────────────────────────────────
+
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self'",
+      "connect-src 'self' ws: wss:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ')
+  );
+  next();
+});
+
+// ── CSRF protection (Origin / Referer check for mutating requests) ────────────
+
+/**
+ * Rejects cross-origin state-changing requests.
+ * Works as defense-in-depth alongside SameSite: Strict cookies.
+ * Requests without Origin/Referer (e.g. curl, server-to-server) are allowed
+ * because those clients cannot carry user session cookies via the browser.
+ */
+function csrfGuard(req, res, next) {
+  const method = req.method.toUpperCase();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return next();
+
+  const origin  = String(req.headers.origin  || '').trim();
+  const referer = String(req.headers.referer || '').trim();
+  const source  = origin || referer;
+  if (!source) return next();
+
+  try {
+    const parsed = new URL(source);
+    const host   = String(req.headers.host || '').trim();
+    if (parsed.host !== host) {
+      res.status(403).json({ ok: false, error: 'CSRF validation failed.' });
+      return;
+    }
+  } catch {
+    res.status(403).json({ ok: false, error: 'CSRF validation failed.' });
+    return;
+  }
+  next();
+}
+
 app.use(express.json({ limit: "200mb" }));
+app.use(csrfGuard);
 
 // Serve root (/) from views/index.html
 app.get('/', (_req, res) => {
@@ -170,13 +225,46 @@ async function resolveTerminalCwd() {
   };
 }
 
-server.on('upgrade', (req, socket, head) => {
+server.on('upgrade', async (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname !== '/terminal') return;
+
+  try {
+    const token = global.readAuthTokenFromRequest ? global.readAuthTokenFromRequest(req) : '';
+    if (!token) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    const resolved = global.resolveAuthUserFromRequest ? await global.resolveAuthUserFromRequest(req) : null;
+    if (!resolved) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+  } catch {
+    socket.write('HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
   wss.handleUpgrade(req, socket, head, (ws) => {
     wss.emit('connection', ws, req);
   });
 });
+
+/**
+ * Strips sensitive environment variables before passing process.env to a spawned shell.
+ * Preserves PATH, HOME, TERM and other runtime necessities.
+ * NOTE: _KEY / _SECRET / _PASSWORD / _TOKEN / _CREDENTIAL patterns are blocked.
+ */
+const SENSITIVE_ENV_PATTERN = /(_KEY|_SECRET|_PASSWORD|_TOKEN|_CREDENTIAL|_PRIVATE)$/i;
+
+function sanitizeEnvForShell(env) {
+  return Object.fromEntries(
+    Object.entries(env).filter(([key]) => !SENSITIVE_ENV_PATTERN.test(key))
+  );
+}
 
 wss.on("connection", async (ws, req) => {
   const ptyModule = nodePty || global.pty;
@@ -208,7 +296,7 @@ wss.on("connection", async (ws, req) => {
     cols: 120,
     rows: 36,
     cwd: cwdInfo.cwd,
-    env: process.env,
+    env: sanitizeEnvForShell(process.env),
   });
 
   proc.onData(data => { try { ws.send(JSON.stringify({ type: "output", data })); } catch {} });

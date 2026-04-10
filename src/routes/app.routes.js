@@ -25,7 +25,7 @@ markedRenderer.code = function(code, lang) {
       highlighted = hljs.highlightAuto(actualCode).value;
     } catch (e) {}
   }
-  return `<pre><code class="hljs ${actualLang || ''}">${highlighted}</code></pre>`;
+  return `<pre><code class="hljs ${escapeHtml(actualLang || '')}">${highlighted}</code></pre>`;
 };
 marked.use({ renderer: markedRenderer });
 
@@ -173,7 +173,7 @@ function renderRepoDocument(relPath, rawContent) {
     highlighted = hljs.highlightAuto(content).value;
   }
 
-  return `<pre><code class="hljs ${lang}">${highlighted}</code></pre>`;
+  return `<pre><code class="hljs ${escapeHtml(lang)}">${highlighted}</code></pre>`;
 }
 
 const DEFAULT_BILLING_STATE = {
@@ -278,8 +278,9 @@ router.get("/api/docs/file", requireAuth, (req, res) => {
       res.status(400).json({ ok: false, error: 'Missing file path' });
       return;
     }
-    const absPath = path.join(REPO_DOCS_ROOT, relPath);
-    if (!absPath.startsWith(REPO_DOCS_ROOT)) {
+    const resolvedRoot = path.resolve(REPO_DOCS_ROOT);
+    const absPath = path.resolve(REPO_DOCS_ROOT, relPath);
+    if (absPath !== resolvedRoot && !absPath.startsWith(resolvedRoot + path.sep)) {
       res.status(400).json({ ok: false, error: 'Invalid file path' });
       return;
     }
@@ -505,7 +506,7 @@ router.post("/api/byok/validate", requireAuth, async (req, res) => {
 });
 
 
-router.post("/api/chat", async (req, res) => {
+router.post("/api/chat", requireAuth, async (req, res) => {
   const { model = "claude-opus-4-6", messages = [] } = req.body;
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
