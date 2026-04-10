@@ -50,6 +50,16 @@
     }
   }
 
+  function getFileIcon(ext) {
+    const e = String(ext).toLowerCase();
+    if (e === ".md") return "📝";
+    if (e === ".js" || e === ".cjs" || e === ".mjs") return "⚡";
+    if (e === ".css") return "🎨";
+    if (e === ".html") return "🌐";
+    if (e === ".json") return "⚙️";
+    return "📄";
+  }
+
   function createTreeNode(node) {
     if (node.type === 'dir') {
       const wrap = document.createElement('div');
@@ -60,7 +70,7 @@
       const head = document.createElement('button');
       head.type = 'button';
       head.className = 'repo-tree-dir-head';
-      head.innerHTML = `<span>${esc(node.name)}</span>`;
+      head.innerHTML = `<span><i class="repo-tree-icon">📁</i>${esc(node.name)}</span>`;
       head.addEventListener('click', () => wrap.classList.toggle('is-open'));
       wrap.appendChild(head);
 
@@ -77,7 +87,8 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'repo-tree-file' + (node.path === state.activePath ? ' is-active' : '');
-    button.innerHTML = `<span>${esc(node.name)}</span><small>${esc(node.ext || '')}</small>`;
+    const icon = getFileIcon(node.ext || '');
+    button.innerHTML = `<span><i class="repo-tree-icon">${icon}</i>${esc(node.name)}</span><small>${esc(node.ext || '')}</small>`;
     button.addEventListener('click', () => openPath(node.path));
     return button;
   }
@@ -103,6 +114,18 @@
     meta.textContent = `${docsCount} docs indexed • generated ${new Date(index.generatedAt).toLocaleString()}`;
   }
 
+  function renderBreadcrumbs(filePath) {
+    if (!filePath) return "";
+    const parts = filePath.split("/");
+    let html = '<div class="repo-docs-breadcrumbs">';
+    parts.forEach((part, i) => {
+      html += `<span class="repo-docs-breadcrumb-part">${esc(part)}</span>`;
+      if (i < parts.length - 1) html += `<span class="repo-docs-breadcrumb-sep">/</span>`;
+    });
+    html += '</div>';
+    return html;
+  }
+
   async function openPath(filePath) {
     state.activePath = filePath;
     renderDocsList();
@@ -119,7 +142,7 @@
       if (!data.ok) throw new Error(data.error || 'Failed to load file');
       if (content) {
         content.innerHTML = `
-          <div class="repo-docs-path">${esc(data.path)}</div>
+          ${renderBreadcrumbs(data.path)}
           <div class="repo-docs-updated">Updated ${esc(new Date(data.updatedAt).toLocaleString())}</div>
           ${data.html || `<pre class="repo-docs-code"><code>${esc(data.content || '')}</code></pre>`}
         `;
@@ -127,7 +150,7 @@
     } catch (error) {
       if (content) {
         content.innerHTML = `
-          <div class="repo-docs-path">${esc(filePath)}</div>
+          ${renderBreadcrumbs(filePath)}
           <div class="repo-docs-updated">Could not load this file</div>
           <pre class="repo-docs-code"><code>${esc(error.message || 'Unknown error')}</code></pre>
         `;
@@ -138,6 +161,8 @@
   async function boot() {
     const search = $('#repoDocsSearch');
     if (search) {
+      const clear = $('#repoDocsSearchClear');
+      if (clear) clear.addEventListener('click', () => { search.value = ''; state.filter = ''; renderDocsList(); renderTree(); });
       search.addEventListener('input', () => {
         state.filter = search.value || '';
         renderDocsList();
