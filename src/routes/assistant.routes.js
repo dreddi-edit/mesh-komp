@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
 
+/**
+ * Logs the full error server-side and returns only the generic fallback to the client.
+ * Prevents leaking internal paths, stack traces, or third-party error details.
+ */
+function safeRouteError(res, statusCode, fallbackMessage, error) {
+  console.error(`[assistant-routes] ${fallbackMessage}:`, String(error?.message || error || 'unknown'));
+  res.status(statusCode).json({ ok: false, error: fallbackMessage });
+}
+
 router.get("/api/assistant/status", requireAuth, async (_req, res) => {
   try {
     const result = await meshTunnelRequest("status", {});
@@ -37,10 +46,7 @@ router.post("/api/assistant/workspace/offload/ingest", requireAuth, async (req, 
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({
-      ok: false,
-      error: error.message || "Offload ingest failed",
-    });
+    safeRouteError(res, 400, "Offload ingest failed", error);
   }
 });
 
@@ -60,9 +66,10 @@ router.post("/api/assistant/workspace/select", requireAuth, async (req, res) => 
     res.json(result);
   } catch (error) {
     const isQueueFull = String(error?.message || "").toLowerCase().includes("queue is full");
+    console.error('[assistant-routes] Workspace select failed:', String(error?.message || error || 'unknown'));
     res.status(isQueueFull ? 429 : 400).json({
       ok: false,
-      error: error.message || "Workspace select failed",
+      error: isQueueFull ? "Workspace select queue is full. Try again later." : "Workspace select failed",
     });
   }
 });
@@ -75,10 +82,7 @@ router.post("/api/assistant/workspace/open-local", requireAuth, async (req, res)
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({
-      ok: false,
-      error: error.message || "Open local workspace failed",
-    });
+    safeRouteError(res, 400, "Open local workspace failed", error);
   }
 });
 
@@ -237,7 +241,7 @@ router.post("/api/assistant/workspace/sync", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message });
+    safeRouteError(res, 400, "Workspace sync failed", error);
   }
 });
 
@@ -251,7 +255,7 @@ router.delete("/api/assistant/workspace/file", requireAuth, (req, res) => {
     }
     res.json({ ok: true, count: localAssistantWorkspace.files.size });
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message });
+    safeRouteError(res, 400, "Workspace file delete failed", error);
   }
 });
 
@@ -265,7 +269,7 @@ router.post("/api/assistant/workspace/recovery", requireAuth, async (req, res) =
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Workspace recovery failed" });
+    safeRouteError(res, 400, "Workspace recovery failed", error);
   }
 });
 
@@ -283,10 +287,7 @@ router.post("/api/assistant/workspace/file", requireAuth, async (req, res) => {
   } catch (error) {
     const shouldUseLocalFallback = isMeshWorkerUnavailableError(error) || isLocalPathWorkspaceState();
     if (!shouldUseLocalFallback) {
-      res.status(400).json({
-        ok: false,
-        error: error.message || "Create file failed",
-      });
+      safeRouteError(res, 400, "Create file failed", error);
       return;
     }
 
@@ -297,7 +298,7 @@ router.post("/api/assistant/workspace/file", requireAuth, async (req, res) => {
     }
     res.json({
       ...local,
-      warning: `Mesh worker unavailable: ${error.message || "offline"}`,
+      warning: "Mesh worker unavailable, used local fallback.",
     });
   }
 });
@@ -315,10 +316,7 @@ router.put("/api/assistant/workspace/file", requireAuth, async (req, res) => {
   } catch (error) {
     const shouldUseLocalFallback = isMeshWorkerUnavailableError(error) || isLocalPathWorkspaceState();
     if (!shouldUseLocalFallback) {
-      res.status(400).json({
-        ok: false,
-        error: error.message || "Save file failed",
-      });
+      safeRouteError(res, 400, "Save file failed", error);
       return;
     }
     const local = await localWorkspaceSave(filePath, content, { workspaceId, sessionId });
@@ -328,7 +326,7 @@ router.put("/api/assistant/workspace/file", requireAuth, async (req, res) => {
     }
     res.json({
       ...local,
-      warning: `Mesh worker unavailable: ${error.message || "offline"}`,
+      warning: "Mesh worker unavailable, used local fallback.",
     });
   }
 });
@@ -342,7 +340,7 @@ router.post("/api/assistant/workspace/purge", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Purge failed" });
+    safeRouteError(res, 400, "Purge failed", error);
   }
 });
 
@@ -354,7 +352,7 @@ router.delete("/api/assistant/workspace/file", requireAuth, async (req, res) => 
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Delete file failed" });
+    safeRouteError(res, 400, "Delete file failed", error);
   }
 });
 
@@ -367,7 +365,7 @@ router.get("/api/assistant/workspace/search", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Workspace search failed" });
+    safeRouteError(res, 400, "Workspace search failed", error);
   }
 });
 
@@ -385,7 +383,7 @@ router.post("/api/assistant/workspace/grep", requireAuth, async (req, res) => {
     }
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Workspace grep failed" });
+    safeRouteError(res, 400, "Workspace grep failed", error);
   }
 });
 
@@ -403,7 +401,7 @@ router.post("/api/assistant/workspace/rename", requireAuth, async (req, res) => 
     );
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Workspace rename failed" });
+    safeRouteError(res, 400, "Workspace rename failed", error);
   }
 });
 
@@ -419,7 +417,7 @@ router.post("/api/assistant/workspace/batch", requireAuth, async (req, res) => {
     }
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Workspace batch failed" });
+    safeRouteError(res, 400, "Workspace batch failed", error);
   }
 });
 
@@ -429,7 +427,7 @@ router.post("/api/assistant/terminal/session", requireAuth, (req, res) => {
     const created = createAssistantTerminalSession({ shell: req.body?.shell });
     res.status(201).json(created);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Terminal session failed" });
+    safeRouteError(res, 400, "Terminal session failed", error);
   }
 });
 
@@ -439,7 +437,7 @@ router.get("/api/assistant/terminal/session/:id/output", requireAuth, (req, res)
     const payload = listAssistantTerminalOutput(req.params.id, req.query.since);
     res.json(payload);
   } catch (error) {
-    res.status(404).json({ ok: false, error: error.message || "Terminal session not found" });
+    safeRouteError(res, 404, "Terminal session not found", error);
   }
 });
 
@@ -449,7 +447,7 @@ router.post("/api/assistant/terminal/session/:id/input", requireAuth, (req, res)
     const payload = writeAssistantTerminalInput(req.params.id, req.body?.input);
     res.json(payload);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Terminal input failed" });
+    safeRouteError(res, 400, "Terminal input failed", error);
   }
 });
 
@@ -459,7 +457,7 @@ router.delete("/api/assistant/terminal/session/:id", requireAuth, (req, res) => 
     const payload = destroyAssistantTerminalSession(req.params.id);
     res.json(payload);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Terminal close failed" });
+    safeRouteError(res, 400, "Terminal close failed", error);
   }
 });
 
@@ -491,7 +489,7 @@ router.post("/api/assistant/runs", requireAuth, async (req, res) => {
       usage: run.plannerUsage,
     });
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Assistant run failed" });
+    safeRouteError(res, 400, "Assistant run failed", error);
   }
 });
 
@@ -532,7 +530,7 @@ router.post("/api/assistant/runs/:runId/actions/:actionId", requireAuth, async (
       artifacts: run.artifacts,
     });
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Run action failed" });
+    safeRouteError(res, 400, "Run action failed", error);
   }
 });
 
@@ -542,7 +540,7 @@ router.get("/api/assistant/git/status", requireAuth, async (_req, res) => {
     const result = await runGitWithFallback("git.status", {}, () => localGitStatus());
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git status failed" });
+    safeRouteError(res, 400, "Git status failed", error);
   }
 });
 
@@ -570,7 +568,7 @@ router.get("/api/assistant/git/branches", requireAuth, async (_req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git branches failed" });
+    safeRouteError(res, 400, "Git branches failed", error);
   }
 });
 
@@ -588,7 +586,7 @@ router.post("/api/assistant/git/checkout", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git checkout failed" });
+    safeRouteError(res, 400, "Git checkout failed", error);
   }
 });
 
@@ -603,7 +601,7 @@ router.post("/api/assistant/git/stage", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git stage failed" });
+    safeRouteError(res, 400, "Git stage failed", error);
   }
 });
 
@@ -618,7 +616,7 @@ router.post("/api/assistant/git/unstage", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git unstage failed" });
+    safeRouteError(res, 400, "Git unstage failed", error);
   }
 });
 
@@ -641,7 +639,7 @@ router.post("/api/assistant/git/commit", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git commit failed" });
+    safeRouteError(res, 400, "Git commit failed", error);
   }
 });
 
@@ -654,7 +652,7 @@ router.post("/api/assistant/git/push", requireAuth, async (_req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git push failed" });
+    safeRouteError(res, 400, "Git push failed", error);
   }
 });
 
@@ -667,7 +665,7 @@ router.post("/api/assistant/git/pull", requireAuth, async (_req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git pull failed" });
+    safeRouteError(res, 400, "Git pull failed", error);
   }
 });
 
@@ -707,7 +705,7 @@ router.get("/api/assistant/git/diff", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git diff failed" });
+    safeRouteError(res, 400, "Git diff failed", error);
   }
 });
 
@@ -725,7 +723,7 @@ router.get("/api/assistant/git/log", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git log failed" });
+    safeRouteError(res, 400, "Git log failed", error);
   }
 });
 
@@ -748,7 +746,7 @@ router.post("/api/assistant/git/stash", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git stash failed" });
+    safeRouteError(res, 400, "Git stash failed", error);
   }
 });
 
@@ -789,7 +787,7 @@ router.post("/api/assistant/git/clone", requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git clone failed" });
+    safeRouteError(res, 400, "Git clone failed", error);
   }
 });
 
@@ -802,7 +800,7 @@ router.post("/api/assistant/git/init", requireAuth, async (_req, res) => {
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git init failed" });
+    safeRouteError(res, 400, "Git init failed", error);
   }
 });
 
@@ -823,7 +821,7 @@ router.post("/api/assistant/git/create-branch", requireAuth, async (req, res) =>
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git create branch failed" });
+    safeRouteError(res, 400, "Git create branch failed", error);
   }
 });
 
@@ -841,7 +839,7 @@ router.post("/api/assistant/git/delete-branch", requireAuth, async (req, res) =>
     });
     res.json(result);
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Git delete branch failed" });
+    safeRouteError(res, 400, "Git delete branch failed", error);
   }
 });
 
@@ -1235,6 +1233,7 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(streamBody),
+          signal: AbortSignal.timeout(120_000),
         });
 
         if (!streamResponse.ok) {
@@ -1332,7 +1331,8 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
     res.end();
   } catch (error) {
     try {
-      sendSSE("error", { error: error.message || "Stream failed" });
+      console.error("[assistant-routes] Stream failed:", String(error?.message || error || "unknown"));
+      sendSSE("error", { error: "Stream failed" });
       res.end();
     } catch { /* response already ended */ }
   }
@@ -1360,6 +1360,7 @@ async function streamOpenAICompatible({ apiKey, model, messages, baseUrl, orgId,
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000),
   });
 
   if (!streamResponse.ok) {
@@ -1478,7 +1479,8 @@ router.post("/api/inline-complete", requireAuth, async (req, res) => {
     sendSSE("done", {});
     res.end();
   } catch (error) {
-    sendSSE("error", { error: error.message || "Completion failed" });
+    console.error("[assistant-routes] Completion failed:", String(error?.message || error || "unknown"));
+    sendSSE("error", { error: "Completion failed" });
     res.end();
   }
 });
@@ -1504,7 +1506,7 @@ router.post("/api/assistant/workspace/reindex", requireAuth, async (req, res) =>
         throw error;
       }
     } catch {
-      res.status(400).json({ ok: false, error: error.message || "Reindex failed" });
+      safeRouteError(res, 400, "Reindex failed", error);
     }
   }
 });
@@ -1537,7 +1539,7 @@ router.get("/api/assistant/workspace/span", requireAuth, async (req, res) => {
 
     res.json({ ok: false, error: "Span not found" });
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Span lookup failed" });
+    safeRouteError(res, 400, "Span lookup failed", error);
   }
 });
 
@@ -1564,7 +1566,7 @@ router.get("/api/assistant/workspace/context-budget", requireAuth, async (req, r
       files: files.slice(0, 20),
     });
   } catch (error) {
-    res.status(400).json({ ok: false, error: error.message || "Context budget failed" });
+    safeRouteError(res, 400, "Context budget failed", error);
   }
 });
 

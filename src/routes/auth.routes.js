@@ -124,14 +124,16 @@ router.post("/api/auth/login", loginRateLimiter, async (req, res) => {
   }
 
   try {
-    const acceptedDemoEmails = new Set([
-      normalizeEmail(DEMO_USER_EMAIL),
-      ...DEMO_USER_EMAIL_ALIASES.map((entry) => normalizeEmail(entry)).filter(Boolean),
-    ]);
-    const isDemoLogin = acceptedDemoEmails.has(email) && password === DEMO_USER_PASSWORD;
+    let isDemoLogin = false;
+    if (DEMO_USER_ENABLED) {
+      const acceptedDemoEmails = new Set([
+        normalizeEmail(DEMO_USER_EMAIL),
+        ...DEMO_USER_EMAIL_ALIASES.map((entry) => normalizeEmail(entry)).filter(Boolean),
+      ]);
+      isDemoLogin = acceptedDemoEmails.has(email) && password === DEMO_USER_PASSWORD;
+    }
     let user = await secureDb.getUserByEmail(email);
 
-    // Self-heal demo credentials for instances with stale auth migrations.
     if (isDemoLogin && (!user || !verifyPassword(password, user.passwordHash))) {
       user = (await ensureDemoUserRecord()) || (await secureDb.getUserByEmail(email));
     }

@@ -300,7 +300,7 @@ The following six standalone pages remain for direct-URL access and backwards co
   Works with: `src/core/index.js`, `secure-db.js`, `assets/settings.js`, `assets/app-workspace.js`, `assets/repo-docs.js`.
 
 - `src/routes/assistant.routes.js`
-  Purpose: assistant/workspace/git/chat/context endpoints, including workspace diff sync and graph fallback routing. Search/grep limits are capped (200/500). Git clone validates URL protocol (https/git/ssh) and restricts target path to the workspace parent. Span lookup escapes regex meta-characters.
+  Purpose: assistant/workspace/git/chat/context endpoints, including workspace diff sync and graph fallback routing. Search/grep limits are capped (200/500). Git clone validates URL protocol (https/git/ssh) and restricts target path to the workspace parent. Span lookup escapes regex meta-characters. Error responses use generic messages (details logged server-side only). External API fetch calls have 120s timeout via AbortSignal.
   Works with: `src/core/index.js`, workbench frontend, graph, search, chat, and workspace flows.
 
 - `src/routes/realtime.routes.js`
@@ -342,7 +342,7 @@ The following six standalone pages remain for direct-URL access and backwards co
   Works with: globals from `src/core/index.js` (accessed at call-time); required by `src/core/index.js`.
 
 - `src/core/auth.js`
-  Purpose: auth/session/cookie layer — password hashing, session lifecycle, `requireAuth` middleware, BYOK credential normalization, and user-store key allowlist. Auth cookie defaults to `SameSite=Strict` (overridable via `MESH_AUTH_COOKIE_SAMESITE` env var).
+  Purpose: auth/session/cookie layer — password hashing, session lifecycle, `requireAuth` middleware, BYOK credential normalization, and user-store key allowlist. Auth cookie defaults to `SameSite=Strict` (overridable via `MESH_AUTH_COOKIE_SAMESITE` env var). Demo user is gated by `MESH_DEMO_USER_ENABLED` (default: true in dev, false in production).
   Works with: `secure-db.js`, `src/core/index.js` (required by index.js and destructured into scope).
 
 - `src/core/model-providers.js`

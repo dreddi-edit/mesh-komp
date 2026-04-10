@@ -529,7 +529,8 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
     });
     res.json({ content: resp.content[0]?.text || "" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[app-routes] Chat request failed:", String(err?.message || err || "unknown"));
+    res.status(500).json({ error: "Chat request failed." });
   }
 });
 
@@ -566,9 +567,11 @@ router.post("/api/inline-complete", requireAuth, async (req, res) => {
       method: "POST",
       headers: { "api-key": azureKey, "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60_000),
     });
   } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
+    console.error("[app-routes] Inline completion failed:", String(err?.message || err || "unknown"));
+    res.status(502).json({ ok: false, error: "Inline completion request failed." });
     return;
   }
 
