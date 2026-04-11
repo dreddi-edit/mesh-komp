@@ -1,0 +1,219 @@
+{
+  "main": {
+    "id": "4a54ccba4c4bab25",
+    "type": "split",
+    "children": [
+      {
+        "id": "a52258d184dd9c58",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "541d63d70ee16a97",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Architecture/Compression Pipeline.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Compression Pipeline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a4b59407195236d6",
+    "type": "split",
+    "children": [
+      {
+        "id": "932bf28309999e8b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e80f7989317ee888",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Dateiexplorer"
+            }
+          },
+          {
+            "id": "9199b42b31198594",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Suchen"
+            }
+          },
+          {
+            "id": "20aa22d3a89898ae",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Lesezeichen"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "a03fd030a60296f8",
+    "type": "split",
+    "children": [
+      {
+        "id": "532d41e107df1ba6",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "aabdaed87c7227b4",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Rückverweise"
+            }
+          },
+          {
+            "id": "50b071f298c1824a",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Ausgehende Links"
+            }
+          },
+          {
+            "id": "4b38acaa4207eca5",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "9745500430a2c01b",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Alle Eigenschaften"
+            }
+          },
+          {
+            "id": "77737151e4736bb0",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Gliederung"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Schnellauswahl öffnen": false,
+      "graph:Graph-Ansicht öffnen": false,
+      "canvas:Neuen Canvas erstellen": false,
+      "daily-notes:Heutige Notiz öffnen": false,
+      "templates:Vorlage einfügen": false,
+      "command-palette:Befehlspalette öffnen": false,
+      "bases:Neue Base erstellen": false
+    }
+  },
+  "active": "541d63d70ee16a97",
+  "lastOpenFiles": [
+    "Home.md",
+    "Overview.canvas",
+    "Architecture/Authentication.md",
+    "Architecture/Compression Pipeline.md",
+    "Unbenannt.canvas",
+    "Projects.md",
+    "Reading List.md",
+    "Ideas.md",
+    "Projects/Mesh Platform.md",
+    "Resources/The Managers Path.md",
+    "Backend/Core Orchestrator.md",
+    "Data/Blob Storage.md",
+    "Data/Cosmos Data Model.md",
+    "Development/Testing.md",
+    "Development/ccmon Dashboard.md",
+    "Development/Scripts and Commands.md",
+    "Operations/Troubleshooting.md",
+    "Operations/Environment Variables.md",
+    "Backend/Azure Functions.md",
+    "Daily Notes/2026-04-10.md",
+    "Areas/Health.md",
+    "Architecture/Voice System.md",
+    "Operations/Deploy Runbook.md",
+    "Architecture/System Architecture.md",
+    "Architecture/Azure Architecture.md",
+    "Backend/Worker (mesh-core).md",
+    "Frontend/App Shell.md",
+    "Data",
+    "Development",
+    "Operations",
+    "Backend",
+    "Frontend",
+    "Architecture"
+  ]
+}
