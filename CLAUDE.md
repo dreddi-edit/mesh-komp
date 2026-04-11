@@ -48,10 +48,8 @@ You think in systems, write production-grade code, and never produce throwaway p
 - `// HACK:`, `// FIXME:`, `// NOTE:` are acceptable prefixes for exceptional cases
 
 ### 2.4 Documentation Hygiene
-- Before changing repository structure or code behavior, review `CODEBASE-MAP.md`
-- Any meaningful code change must keep `CODEBASE-MAP.md` accurate for the touched files
-- New files must be added to `CODEBASE-MAP.md` unless they are clearly generated, external, or local-only
-- Deleted, renamed, or repurposed files must be reflected in `CODEBASE-MAP.md` in the same change
+- The canonical project knowledge base lives in the Obsidian vault at `~/Documents/mesh/` (and mirrored at `mesh-vault/` in the repo)
+- For structural or behavioral changes, update the relevant vault note in the same session
 
 ---
 
