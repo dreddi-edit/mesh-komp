@@ -2,13 +2,16 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { randomUUID } = require('node:crypto');
+
+const logger = require('./logger');
 
 // ── Fail fast if critical env vars are missing ────────────────────────────────
 const { runStartupChecks } = require('./core/startup-checks');
 const startupResult = runStartupChecks();
-startupResult.warnings.forEach((w) => console.warn(`[startup] ${w}`));
+startupResult.warnings.forEach((w) => logger.warn(w, { phase: 'startup' }));
 if (!startupResult.ok) {
-  startupResult.errors.forEach((e) => console.error(`[startup] FATAL: ${e}`));
+  startupResult.errors.forEach((e) => logger.error(e, { phase: 'startup', fatal: true }));
   process.exit(1);
 }
 
@@ -20,6 +23,13 @@ Object.keys(core).forEach(k => {
 });
 
 const app = express();
+
+// ── Request ID ────────────────────────────────────────────────────────────────
+// Attaches a unique ID to every request so log lines can be correlated.
+app.use((req, _res, next) => {
+  req.requestId = randomUUID();
+  next();
+});
 
 // ── Security headers ──────────────────────────────────────────────────────────
 
@@ -360,5 +370,5 @@ wss.on("connection", async (ws, req) => {
 
 const PORT = Number(process.env.PORT || 8080);
 server.listen(PORT, () => {
-    console.log('Server successfully started on port ' + PORT);
+  logger.info('Server started', { port: PORT });
 });
