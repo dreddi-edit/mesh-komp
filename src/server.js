@@ -168,7 +168,7 @@ app.use('/', createAssistantRouter(core));
    WebSocket terminal — ws://localhost:8080/terminal
 ───────────────────────────────────────── */
 const { setupTerminalRelay } = require('./routes/terminal.routes');
-setupTerminalRelay(server, { projectRoot: REPO_ROOT });
+setupTerminalRelay(server, { projectRoot: REPO_ROOT, core });
 
 const PORT = Number(process.env.PORT || 8080);
 server.listen(PORT, () => {

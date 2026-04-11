@@ -7,7 +7,7 @@
  * For local-path workspaces, CWD is the real rootPath.
  * For upload workspaces, files are materialized to a local temp dir before the shell spawns.
  *
- * Call setupTerminalRelay(server, { projectRoot }) once after the HTTP server is created.
+ * Call setupTerminalRelay(server, { projectRoot, core }) once after the HTTP server is created.
  */
 
 const fs   = require('fs');
@@ -77,12 +77,14 @@ async function shouldReuseMaterializedWorkspace(targetRoot, workspace = {}) {
 
 /**
  * @param {{ workspaceId?: string, files?: Map<string, unknown> }} workspace
+ * @param {{ workspaceMetadataStore: { enabled: boolean, listWorkspaceFiles: Function } }} deps
  * @returns {Promise<Array<{ path: string }>>}
  */
-async function listMaterializableWorkspaceFiles(workspace = {}) {
+async function listMaterializableWorkspaceFiles(workspace = {}, deps = {}) {
   const workspaceId = String(workspace.workspaceId || '').trim();
-  if (global.workspaceMetadataStore?.enabled && workspaceId) {
-    const docs = await global.workspaceMetadataStore.listWorkspaceFiles(workspaceId);
+  const { workspaceMetadataStore } = deps;
+  if (workspaceMetadataStore?.enabled && workspaceId) {
+    const docs = await workspaceMetadataStore.listWorkspaceFiles(workspaceId);
     return docs.filter((doc) => String(doc?.status || 'completed').toLowerCase() === 'completed' && doc?.path);
   }
   return [...(workspace.files?.values?.() || [])].filter((doc) => doc?.path);
@@ -93,30 +95,39 @@ async function listMaterializableWorkspaceFiles(workspace = {}) {
  * then writes a marker file so subsequent connections can reuse the materialized tree.
  *
  * @param {{ workspaceId?: string, folderName?: string, indexedAt?: string, fileCountCompleted?: number, sessionId?: string }} workspace
+ * @param {{ workspaceMetadataStore: object, toSafePath: Function, toWorkspaceRelativePath: Function, openWorkspaceFileWithFallback: Function, mapWithConcurrency: Function }} deps
  * @returns {Promise<string>} Absolute path to the materialized workspace root
  */
-async function materializeUploadWorkspaceRoot(workspace = {}) {
+async function materializeUploadWorkspaceRoot(workspace = {}, deps = {}) {
+  const {
+    workspaceMetadataStore,
+    toSafePath,
+    toWorkspaceRelativePath,
+    openWorkspaceFileWithFallback,
+    mapWithConcurrency,
+  } = deps;
+
   const targetRoot = buildMaterializedWorkspaceRoot(workspace);
   if (await shouldReuseMaterializedWorkspace(targetRoot, workspace)) {
     return targetRoot;
   }
 
-  const files = await listMaterializableWorkspaceFiles(workspace);
+  const files = await listMaterializableWorkspaceFiles(workspace, { workspaceMetadataStore });
   await fs.promises.rm(targetRoot, { recursive: true, force: true });
   await fs.promises.mkdir(targetRoot, { recursive: true });
 
   const writeOne = async (meta) => {
-    const workspacePath = global.toSafePath
-      ? global.toSafePath(meta?.path)
+    const workspacePath = toSafePath
+      ? toSafePath(meta?.path)
       : String(meta?.path || '').trim();
     if (!workspacePath) return;
 
-    const relativePath = global.toWorkspaceRelativePath
-      ? global.toWorkspaceRelativePath(workspacePath, workspace.folderName)
+    const relativePath = toWorkspaceRelativePath
+      ? toWorkspaceRelativePath(workspacePath, workspace.folderName)
       : workspacePath;
     if (!relativePath) return;
 
-    const opened = await global.openWorkspaceFileWithFallback(workspacePath, 'original', {
+    const opened = await openWorkspaceFileWithFallback(workspacePath, 'original', {
       workspaceId: workspace.workspaceId || '',
       sessionId:   workspace.sessionId   || '',
     });
@@ -125,7 +136,7 @@ async function materializeUploadWorkspaceRoot(workspace = {}) {
     await fs.promises.writeFile(absolutePath, String(opened?.content || ''), 'utf8');
   };
 
-  const mapper = global.mapWithConcurrency
+  const mapper = mapWithConcurrency
     || (async (items, _limit, fn) => Promise.all(items.map(fn)));
   await mapper(files, 6, writeOne);
 
@@ -152,17 +163,18 @@ async function materializeUploadWorkspaceRoot(workspace = {}) {
  *   3. Fallback              → project root
  *
  * @param {string} projectRoot  Fallback CWD when no workspace is active
+ * @param {{ localAssistantWorkspace: object, workspaceMetadataStore: object, toSafePath: Function, toWorkspaceRelativePath: Function, openWorkspaceFileWithFallback: Function, mapWithConcurrency: Function }} deps
  * @returns {Promise<{ cwd: string, note: string }>}
  */
-async function resolveTerminalCwd(projectRoot) {
-  const workspace = global.localAssistantWorkspace || {};
+async function resolveTerminalCwd(projectRoot, deps = {}) {
+  const workspace = deps.localAssistantWorkspace || {};
 
   if (String(workspace.sourceKind || '').trim() === 'local-path' && workspace.rootPath) {
     return { cwd: workspace.rootPath, note: workspace.rootPath };
   }
 
   if (String(workspace.workspaceId || '').trim() && String(workspace.folderName || '').trim()) {
-    const cwd = await materializeUploadWorkspaceRoot(workspace);
+    const cwd = await materializeUploadWorkspaceRoot(workspace, deps);
     return { cwd, note: `${cwd} (materialized from uploaded workspace)` };
   }
 
@@ -173,9 +185,28 @@ async function resolveTerminalCwd(projectRoot) {
  * Attaches terminal WebSocket handling to an existing HTTP server.
  *
  * @param {import('http').Server} server
- * @param {{ projectRoot: string }} opts
+ * @param {{ projectRoot: string, core: object }} opts
  */
-function setupTerminalRelay(server, { projectRoot }) {
+function setupTerminalRelay(server, { projectRoot, core }) {
+  const {
+    workspaceMetadataStore,
+    toSafePath,
+    toWorkspaceRelativePath,
+    openWorkspaceFileWithFallback,
+    mapWithConcurrency,
+    readAuthTokenFromRequest,
+    resolveAuthUserFromRequest,
+  } = core;
+
+  // Stable material deps passed to workspace helpers on each connection
+  const materialDeps = {
+    workspaceMetadataStore,
+    toSafePath,
+    toWorkspaceRelativePath,
+    openWorkspaceFileWithFallback,
+    mapWithConcurrency,
+  };
+
   let nodePty;
   try { nodePty = require('node-pty'); } catch { nodePty = null; }
 
@@ -186,15 +217,13 @@ function setupTerminalRelay(server, { projectRoot }) {
     if (url.pathname !== '/terminal') return;
 
     try {
-      const token = global.readAuthTokenFromRequest ? global.readAuthTokenFromRequest(req) : '';
+      const token = readAuthTokenFromRequest(req);
       if (!token) {
         socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
         socket.destroy();
         return;
       }
-      const resolved = global.resolveAuthUserFromRequest
-        ? await global.resolveAuthUserFromRequest(req)
-        : null;
+      const resolved = await resolveAuthUserFromRequest(req);
       if (!resolved) {
         socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
         socket.destroy();
@@ -210,8 +239,7 @@ function setupTerminalRelay(server, { projectRoot }) {
   });
 
   wss.on('connection', async (ws, req) => {
-    const ptyModule = nodePty || global.pty;
-    if (!ptyModule) {
+    if (!nodePty) {
       ws.send(JSON.stringify({ type: 'output', data: '\r\n\x1b[31m● node-pty not available on this server.\x1b[0m\r\n' }));
       return;
     }
@@ -227,7 +255,11 @@ function setupTerminalRelay(server, { projectRoot }) {
 
     let cwdInfo = { cwd: projectRoot, note: projectRoot };
     try {
-      cwdInfo = await resolveTerminalCwd(projectRoot);
+      // Access core.localAssistantWorkspace directly for live state (not a snapshot from setup time)
+      cwdInfo = await resolveTerminalCwd(projectRoot, {
+        localAssistantWorkspace: core.localAssistantWorkspace,
+        ...materialDeps,
+      });
     } catch (error) {
       try {
         ws.send(JSON.stringify({
@@ -237,7 +269,7 @@ function setupTerminalRelay(server, { projectRoot }) {
       } catch {}
     }
 
-    const proc = ptyModule.spawn(shell, [], {
+    const proc = nodePty.spawn(shell, [], {
       name: 'xterm-color',
       cols: 120,
       rows: 36,
@@ -264,4 +296,4 @@ function setupTerminalRelay(server, { projectRoot }) {
   });
 }
 
-module.exports = { setupTerminalRelay };
+module.exports = { setupTerminalRelay, listMaterializableWorkspaceFiles, resolveTerminalCwd };
