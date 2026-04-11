@@ -75,7 +75,8 @@ function csrfGuard(req, res, next) {
   next();
 }
 
-app.use(express.json({ limit: "200mb" }));
+// Tight default — only the offload/ingest route overrides this per-route.
+app.use(express.json({ limit: '1mb' }));
 app.use(csrfGuard);
 
 // Serve root (/) from views/index.html

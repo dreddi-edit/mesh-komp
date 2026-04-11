@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
+// Only the offload/ingest endpoint accepts large bodies (workspace file chunks).
+// All other routes inherit the 1mb default set in src/server.js.
+const largeJsonBody = express.json({ limit: '200mb' });
+
 /**
  * Logs the full error server-side and returns only the generic fallback to the client.
  * Prevents leaking internal paths, stack traces, or third-party error details.
@@ -39,7 +43,7 @@ router.get("/api/assistant/workspace/offload-config", requireAuth, (_req, res) =
 });
 
 
-router.post("/api/assistant/workspace/offload/ingest", requireAuth, async (req, res) => {
+router.post("/api/assistant/workspace/offload/ingest", requireAuth, largeJsonBody, async (req, res) => {
   try {
     const result = await ingestWorkspaceChunkFromOffload(req.body || {}, {
       userId: req.authUser?.id,
