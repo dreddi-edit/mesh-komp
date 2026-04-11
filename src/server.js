@@ -153,7 +153,7 @@ app.use(express.static(path.join(__dirname, '..'), {
 }));
 
 
-const authRoutes = require('./routes/auth.routes');
+const { createAuthRouter } = require('./routes/auth.routes');
 const appRoutes = require('./routes/app.routes');
 const assistantRoutes = require('./routes/assistant.routes');
 const { setupRealtimeRelay } = require('./routes/realtime.routes');
@@ -164,7 +164,7 @@ const server = http.createServer(app);
 /* Voice: WebSocket relay to Azure OpenAI Realtime API */
 setupRealtimeRelay(server);
 
-app.use('/', authRoutes);
+app.use('/', createAuthRouter(core));
 app.use('/', appRoutes);
 app.use('/', assistantRoutes);
 
