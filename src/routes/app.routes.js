@@ -44,7 +44,6 @@ const REPO_DOCS_INCLUDED_EXTENSIONS = new Set([
 ]);
 const REPO_DOCS_PRIORITY = [
   'CURRENT-SYSTEM-OVERVIEW.md',
-  'CODEBASE-MAP.md',
   'UI-REVIEW.md',
   'DEPLOY.md',
   'CLAUDE.md',
