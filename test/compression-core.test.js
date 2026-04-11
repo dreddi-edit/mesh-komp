@@ -355,6 +355,37 @@ test("buildWorkspaceFileView focused mode ranks exact function name matches abov
   }
 });
 
+test("transport Brotli fallback params: quality 9 + LGWIN:22 produces smaller output than quality 6", async () => {
+  const { promisify } = require("util");
+  const brotliCompress = promisify(zlib.brotliCompress);
+
+  // Diverse source — varied class names per iteration so the compressor can't trivially collapse it
+  const source = Array.from({ length: 60 }, (_, i) => [
+    `export class Repository${i} {`,
+    `  constructor(db${i}, cache${i}) { this.db = db${i}; this.cache = cache${i}; }`,
+    `  async findById${i}(id) { const hit = await this.cache${i}.get(id); if (hit) return hit; return this.db${i}.query('SELECT * FROM table${i} WHERE id = ?', [id]); }`,
+    `  async save${i}(entity) { await this.db${i}.execute('INSERT INTO table${i} VALUES (?)', [JSON.stringify(entity)]); await this.cache${i}.set(entity.id, entity); }`,
+    `}`,
+  ].join("\n")).join("\n");
+
+  const buf = Buffer.from(source, "utf8");
+
+  const [q6, q9win] = await Promise.all([
+    brotliCompress(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 6 } }),
+    brotliCompress(buf, {
+      params: {
+        [zlib.constants.BROTLI_PARAM_QUALITY]: 9,
+        [zlib.constants.BROTLI_PARAM_LGWIN]: 22,
+      },
+    }),
+  ]);
+
+  assert.ok(
+    q9win.length < q6.length,
+    `Quality 9 + LGWIN:22 (${q9win.length}B) must be smaller than quality 6 (${q6.length}B)`,
+  );
+});
+
 test("buildWorkspaceFileRecord transport envelope digest matches pre-computed rawStorage digest", async () => {
   const source = "export const x = 1;\n".repeat(50);
   const storage = encodeRawStorage(source);

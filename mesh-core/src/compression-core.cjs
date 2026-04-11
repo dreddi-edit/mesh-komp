@@ -1549,7 +1549,8 @@ async function compressTransportChunk(rawBuffer) {
 
   return legacyBrotliCompress(buffer, {
     params: {
-      [zlib.constants.BROTLI_PARAM_QUALITY]: 6,
+      [zlib.constants.BROTLI_PARAM_QUALITY]: 9,
+      [zlib.constants.BROTLI_PARAM_LGWIN]: 22,
     },
   });
 }
