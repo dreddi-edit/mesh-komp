@@ -26,7 +26,7 @@ node --test <file> # run specific file
 
 | File | What It Tests |
 |------|--------------|
-| `test/compression-core.test.js` | Capsule pipeline behavior in `mesh-core/src/compression-core.cjs` |
+| `test/compression-core.test.js` | 15 tests: capsule pipeline, raw storage encoding (Brotli-9 vs deflate-6), transport envelope integrity, focused query ranking, tiered token budget, legacy encoding backward compat |
 | `test/compression-benchmark.test.js` | Benchmark/compression assumptions |
 
 ### ccmon

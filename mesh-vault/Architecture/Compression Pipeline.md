@@ -25,7 +25,7 @@ Each indexed file is stored not as raw text but as a rich record:
 
 ```javascript
 {
-  rawStorage,           // original file bytes (for upload: in Blob)
+  rawStorage,           // original file bytes (Brotli-9 compressed)
   baseCapsule,          // base capsule built at index time
   capsuleCache,         // cached capsule variants
   capsuleVariants,      // per-tier capsule objects
@@ -68,6 +68,19 @@ Each tier has distinct:
 - Rendering compactness settings
 - Mode preference order
 
+## Token Budget System
+
+`buildClampedCapsule` uses a **tiered budget** based on raw token estimate of the file:
+
+| File size (tokens) | Budget |
+|--------------------|--------|
+| ≤ 500 | 60% of raw |
+| ≤ 2000 | 40% of raw |
+| ≤ 8000 | 25% of raw |
+| > 8000 | 15% of raw |
+
+Minimum budget floor: 160 tokens — prevents tiny files from being crushed to uselessness.
+
 ## Focused Capsules
 
 On top of the three base tiers, focused capsules are built:
@@ -75,7 +88,7 @@ On top of the three base tiers, focused capsules are built:
 - From a query string
 - Using the relevant tier as the base
 
-This allows: compress generally → re-expand selectively around a query.
+Scoring uses **word-boundary weighted matching**: exact whole-word matches score 3×, substring matches score 1×. This ensures a function definition `processUser()` ranks above a comment that merely mentions it.
 
 Useful for: the assistant asking "show me how the auth middleware works" against a compressed workspace.
 
@@ -91,14 +104,53 @@ Recovery endpoint on Worker: `workspace.recovery.fetch`
 
 Pattern: reason with compressed context → pull exact source fragments on demand.
 
+## Raw Storage
+
+`encodeRawStorage` compresses file text using **Brotli sync quality 9** before base64-encoding:
+
+```js
+// Encoding: "brotli-base64"
+zlib.brotliCompressSync(buffer, { params: { [BROTLI_PARAM_QUALITY]: 9 } })
+```
+
+`decodeRawStorage` handles three encodings for full backward compatibility:
+
+| Encoding | Status |
+|----------|--------|
+| `brotli-base64` | Current — Brotli sync quality 9 |
+| `deflate-base64` | Legacy — deflate level 6 (still decodeable) |
+| `utf8-base64` | Oldest — plain base64, no compression (still decodeable) |
+
 ## Transport Envelope
 
-Files may also have a transport envelope with:
-- Chunk manifest
-- SHA256 digest per chunk
-- Integrity/recovery metadata
+Each file also gets a transport envelope with:
 
-Used for chunked storage and index reconstruction.
+| Field | Description |
+|-------|-------------|
+| `chunkIndex` | Per-chunk manifest: rawOffset, rawLength, compressedBytes, SHA-256 digest |
+| `spanIndex` | Span-to-chunk mapping for partial recovery |
+| `digest` | SHA-256 of the full raw buffer |
+| `rawBytes` | Uncompressed size |
+| `compressedBytes` | Total compressed size across all chunks |
+
+### Chunk Parameters
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `DEFAULT_CHUNK_SIZE` | 256 KB | Target uncompressed bytes per chunk |
+| `MAX_TRANSPORT_CHUNK_BYTES` | 256 KB | Hard cap enforced in `buildTransportEnvelope` |
+| `TRANSPORT_CHUNK_PARALLELISM` | 4 (default) | Concurrent chunk compression workers |
+
+### Chunk Compression Algorithm
+
+Transport chunks are compressed with the best available algorithm at runtime:
+
+| Algorithm | Condition | Settings |
+|-----------|-----------|---------|
+| **zstd** | Node.js 22+ (`zlib.zstdCompress` available) | Default level |
+| **Brotli** | Fallback for older Node.js | Quality 9, `LGWIN: 22` (4MB window) |
+
+The active encoding is stored in `transportEnvelope.contentEncoding` (`"zstd-chunked"` or `"brotli-chunked"`).
 
 ## Tree-Sitter Integration
 
