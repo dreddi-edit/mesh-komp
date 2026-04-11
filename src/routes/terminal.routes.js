@@ -240,7 +240,8 @@ function setupTerminalRelay(server, { projectRoot, core }) {
 
   wss.on('connection', async (ws, req) => {
     if (!nodePty) {
-      ws.send(JSON.stringify({ type: 'output', data: '\r\n\x1b[31m● node-pty not available on this server.\x1b[0m\r\n' }));
+      try { ws.send(JSON.stringify({ type: 'output', data: '\r\n\x1b[31m● node-pty not available on this server.\x1b[0m\r\n' })); } catch {}
+      ws.close();
       return;
     }
 

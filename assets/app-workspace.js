@@ -1591,7 +1591,7 @@ function bind(){
   // Accordion
   $$('.sb-acc-h').forEach(h=>{h.addEventListener('click',()=>{const body=document.querySelector('.sb-acc-body[data-acc="'+h.dataset.acc+'"]');if(body){body.classList.toggle('open');h.textContent=(body.classList.contains('open')?'▾ ':'▸ ')+h.dataset.acc.toUpperCase();}});});
   // Auth
-  $('#loginForm')?.addEventListener('submit',async e=>{e.preventDefault();const em=$('#emailIn')?.value?.trim()||'',pw=$('#pwIn')?.value?.trim()||'';if(!em||!pw)return;const b=$('#loginBtn');if(b)b.disabled=true;try{const d=await api('/api/auth/login',{method:'POST',skip:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});applyUser(d?.user);setAuth(false);await bootstrap();}catch(e){setAuth(true,String(e?.message||'Login failed'));}finally{if(b)b.disabled=false;}});
+  $('#loginForm')?.addEventListener('submit',async e=>{e.preventDefault();const em=$('#emailIn')?.value?.trim()||'',pw=$('#pwIn')?.value?.trim()||'';if(!em||!pw)return;const b=$('#loginBtn');if(b)b.disabled=true;try{const d=await api('/api/auth/login',{method:'POST',skip:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password:pw})});applyUser(d?.user);setAuth(false);if(new URLSearchParams(window.location.search).has('login'))history.replaceState(null,'',window.location.pathname+window.location.hash);await bootstrap();}catch(e){setAuth(true,String(e?.message||'Login failed'));}finally{if(b)b.disabled=false;}});
   $('#btnLogout')?.addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST'});}catch{}S.user=null;setAuth(true,'');});
   // Chat
   $('#btnSend')?.addEventListener('click',()=>{const ta=$('#chatIn');const t=ta?.value||'';if(ta){ta.value='';ta.style.height='auto';}sendChat(t);});
@@ -1627,12 +1627,12 @@ async function refreshOps(){try{const d=await api('/api/app/ops');S.ops=d||{};}c
 async function bootstrap(){loadS();await Promise.allSettled([refreshOps(),loadUserStore(),refreshGitStatus()]);setInterval(()=>refreshOps().catch(()=>{}),15000);}
 async function init(){
   bind();loadS();renderChat();initMonaco(()=>{});
-  const params = new URLSearchParams(window.location.search);
-  const forceLogin = params.get('login') === '1';
 
-  if (forceLogin) {
-    setAuth(true, '');
-    return;
+  // Strip ?login=1 from the URL immediately — it was a one-time signal from settings
+  // that the session expired. Always verify the session regardless; the param must
+  // never block already-authenticated users from loading the app.
+  if (new URLSearchParams(window.location.search).has('login')) {
+    history.replaceState(null, '', window.location.pathname + window.location.hash);
   }
 
   const u = await api('/api/auth/session',{skip:true}).then(d=>d?.user||null).catch(()=>null);

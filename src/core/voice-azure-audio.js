@@ -85,7 +85,7 @@ function buildAzureVoiceConfig(env = process.env) {
     audioApiVersion: trimText(env.AZURE_OPENAI_VOICE_AUDIO_API_VERSION || '2025-04-01-preview'),
     chatApiVersion: trimText(env.AZURE_OPENAI_VOICE_CHAT_API_VERSION || '2025-04-01-preview'),
     transcribeDeployment: trimText(env.AZURE_OPENAI_VOICE_TRANSCRIBE_DEPLOYMENT || 'gpt-4o-mini-transcribe'),
-    textDeployment: trimText(env.AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT || 'gpt-5.4-nano'),
+    textDeployment: trimText(env.AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT || 'gpt-4.1-mini'),
     ttsDeployment: trimText(env.AZURE_OPENAI_VOICE_TTS_DEPLOYMENT || 'gpt-4o-mini-tts'),
     voice: trimText(env.AZURE_OPENAI_VOICE_TTS_VOICE || env.AZURE_OPENAI_REALTIME_VOICE || 'alloy'),
     transcriptionLanguage: trimText(env.AZURE_OPENAI_VOICE_TRANSCRIBE_LANGUAGE || ''),
