@@ -1814,9 +1814,13 @@ function buildInitialTransportEnvelope(pathValue, rawStorage, spanMap = {}, opti
 
 function encodeRawStorage(rawText) {
   const buffer = Buffer.from(String(rawText || ""), "utf8");
-  const compressed = zlib.deflateSync(buffer, { level: 6 });
+  const compressed = zlib.brotliCompressSync(buffer, {
+    params: {
+      [zlib.constants.BROTLI_PARAM_QUALITY]: 9,
+    },
+  });
   return {
-    encoding: "deflate-base64",
+    encoding: "brotli-base64",
     contentBase64: compressed.toString("base64"),
     rawBytes: buffer.length,
     digest: sha256Hex(buffer),
@@ -1836,8 +1840,15 @@ function buildExternalRawStorage(rawText, options = {}) {
 function decodeRawStorage(rawStorage) {
   if (!rawStorage || typeof rawStorage !== "object") return "";
   if (rawStorage.encoding === "external-azure-blob") return "";
+  if (rawStorage.encoding === "brotli-base64") {
+    return zlib.brotliDecompressSync(
+      Buffer.from(String(rawStorage.contentBase64 || ""), "base64"),
+    ).toString("utf8");
+  }
   if (rawStorage.encoding === "deflate-base64") {
-    return zlib.inflateSync(Buffer.from(String(rawStorage.contentBase64 || ""), "base64")).toString("utf8");
+    return zlib.inflateSync(
+      Buffer.from(String(rawStorage.contentBase64 || ""), "base64"),
+    ).toString("utf8");
   }
   if (rawStorage.encoding === "utf8-base64") {
     return Buffer.from(String(rawStorage.contentBase64 || ""), "base64").toString("utf8");

@@ -177,25 +177,30 @@ test("transport envelope uses 128KB chunk size and produces fewer chunks for lar
   );
 });
 
-test("encodeRawStorage uses deflate compression and decodeRawStorage round-trips correctly", () => {
+test("encodeRawStorage uses Brotli-9 compression, outcompresses deflate-6, and round-trips correctly", () => {
   const { decodeRawStorage } = require("../mesh-core/src/compression-core.cjs");
 
-  const source = "export function greet(name) {\n  return `Hello, ${name}!`;\n}\n".repeat(200);
+  // Diverse-ish source — varied function names so the compressor can't trivially collapse it
+  const source = Array.from({ length: 80 }, (_, i) =>
+    `export function handler${i}(request, context) {\n  const id${i} = request.params.id;\n  return { status: 200, body: context.store.get(id${i}) };\n}`,
+  ).join("\n");
+
   const storage = encodeRawStorage(source);
 
-  assert.equal(storage.encoding, "deflate-base64", "encoding must be deflate-base64");
+  // Encoding must be brotli-base64
+  assert.equal(storage.encoding, "brotli-base64", "encoding must be brotli-base64");
 
-  // Compressed size must be meaningfully smaller than raw
-  const rawBytes = Buffer.byteLength(source, "utf8");
-  const compressedBytes = Buffer.from(storage.contentBase64, "base64").length;
+  // Brotli-9 must produce a smaller result than deflate-6 on the same input
+  const rawBuffer = Buffer.from(source, "utf8");
+  const deflateSize = zlib.deflateSync(rawBuffer, { level: 6 }).length;
+  const brotliSize = Buffer.from(storage.contentBase64, "base64").length;
   assert.ok(
-    compressedBytes < rawBytes * 0.6,
-    `Expected compressed < 60% of raw, got ${compressedBytes}/${rawBytes}`,
+    brotliSize < deflateSize,
+    `Brotli-9 (${brotliSize}B) must be smaller than deflate-6 (${deflateSize}B) on the same input`,
   );
 
   // Round-trip must be lossless
-  const decoded = decodeRawStorage(storage);
-  assert.equal(decoded, source);
+  assert.equal(decodeRawStorage(storage), source, "round-trip must be lossless");
 });
 
 test("decodeRawStorage still handles legacy utf8-base64 encoding", () => {
@@ -209,6 +214,19 @@ test("decodeRawStorage still handles legacy utf8-base64 encoding", () => {
   };
 
   assert.equal(decodeRawStorage(legacy), source);
+});
+
+test("decodeRawStorage still handles legacy deflate-base64 encoding", () => {
+  const { decodeRawStorage } = require("../mesh-core/src/compression-core.cjs");
+
+  const source = "export const config = { host: 'localhost', port: 8080 };\n".repeat(40);
+  const legacy = {
+    encoding: "deflate-base64",
+    contentBase64: zlib.deflateSync(Buffer.from(source, "utf8"), { level: 6 }).toString("base64"),
+    rawBytes: Buffer.byteLength(source, "utf8"),
+  };
+
+  assert.equal(decodeRawStorage(legacy), source, "legacy deflate-base64 must decode correctly");
 });
 
 test("buildWorkspaceFileView defaults to ultra capsule tier and keeps aggressive compression for large files", async () => {
