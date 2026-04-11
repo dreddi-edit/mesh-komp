@@ -20,6 +20,7 @@
 
     {"id":"a-sys","type":"file","file":"Architecture/System Architecture.md","x":-1400,"y":-2100,"width":280,"height":100},
     {"id":"a-comp","type":"file","file":"Architecture/Compression Pipeline.md","x":-1100,"y":-2100,"width":280,"height":100},
+    {"id":"a-bench","type":"file","file":"Architecture/Compression Benchmark.md","x":-1100,"y":-1980,"width":280,"height":100},
     {"id":"a-voice","type":"file","file":"Architecture/Voice System.md","x":-800,"y":-2100,"width":280,"height":100},
     {"id":"a-auth","type":"file","file":"Architecture/Authentication.md","x":-500,"y":-2100,"width":280,"height":100},
     {"id":"a-ws","type":"file","file":"Architecture/Workspace Model.md","x":-200,"y":-2100,"width":280,"height":100},
@@ -63,6 +64,7 @@
     {"id":"e-worker-comp","fromNode":"b-worker","fromSide":"bottom","toNode":"tn-comp","toSide":"top","color":"4"},
     {"id":"e-gw-auth","fromNode":"b-srv","fromSide":"bottom","toNode":"d-cos","toSide":"top","color":"6","label":"sessions / user store"},
     {"id":"e-comp-arch","fromNode":"a-comp","fromSide":"bottom","toNode":"tn-comp","toSide":"top","color":"2","label":"docs"},
+    {"id":"e-bench-comp","fromNode":"a-bench","fromSide":"bottom","toNode":"tn-comp","toSide":"top","color":"2","label":"results"},
     {"id":"e-voice-gw","fromNode":"a-voice","fromSide":"bottom","toNode":"tn-gateway","toSide":"top","color":"2","label":"docs"},
     {"id":"e-sys-gw","fromNode":"a-sys","fromSide":"bottom","toNode":"b-srv","toSide":"top","color":"2","label":"docs"},
     {"id":"e-auth-srv","fromNode":"a-auth","fromSide":"bottom","toNode":"b-core","toSide":"top","color":"2","label":"docs"},
