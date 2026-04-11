@@ -46,7 +46,7 @@ const TRANSPORT_ENCODING_ZSTD = "zstd-chunked";
 const TRANSPORT_ENCODING_BROTLI = "brotli-chunked";
 const TRANSPORT_CONTENT_ENCODING = HAS_ZSTD_TRANSPORT ? TRANSPORT_ENCODING_ZSTD : TRANSPORT_ENCODING_BROTLI;
 const LEGACY_WORKSPACE_ENCODING = "base64-brotli";
-const DEFAULT_CHUNK_SIZE = 128 * 1024;
+const DEFAULT_CHUNK_SIZE = 256 * 1024;
 const MAX_TRANSPORT_DECOMPRESSED_BYTES = 8 * 1024 * 1024;
 const MAX_TRANSPORT_CHUNKS = 512;
 const MAX_TRANSPORT_CHUNK_BYTES = 256 * 1024;
@@ -1646,7 +1646,7 @@ async function decodeTransportEnvelope(metaOrEnvelope, options = {}) {
 }
 
 async function buildTransportEnvelope(pathValue, rawText, spanMap, options = {}) {
-  const chunkSize = Math.max(2048, Math.min(Number(options.chunkSize) || DEFAULT_CHUNK_SIZE, 128 * 1024));
+  const chunkSize = Math.max(2048, Math.min(Number(options.chunkSize) || DEFAULT_CHUNK_SIZE, MAX_TRANSPORT_CHUNK_BYTES));
   const includeChunks = options.includeTransportChunks !== false;
   const rawBuffer = Buffer.from(String(rawText || ""), "utf8");
   const chunkIndex = [];

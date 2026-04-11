@@ -386,6 +386,27 @@ test("transport Brotli fallback params: quality 9 + LGWIN:22 produces smaller ou
   );
 });
 
+test("transport envelope uses 256KB chunk size — 700KB input produces at most 3 chunks", async () => {
+  // ~750KB of varied source — at 256KB chunks: ceil(750/256) = 3 chunks
+  // At the old 128KB cap: ceil(750/128) = 6 chunks — this test would fail
+  const source = Array.from({ length: 7000 }, (_, i) =>
+    `export const reducer${i} = (state, action) => ({ ...state, item${i}: action.payload, ts${i}: Date.now() });`,
+  ).join("\n");
+
+  assert.ok(
+    Buffer.byteLength(source, "utf8") >= 700 * 1024,
+    `Source must be at least 700KB to distinguish chunk sizes (got ${Buffer.byteLength(source, "utf8")} bytes)`,
+  );
+
+  const record = await buildWorkspaceFileRecord("src/reducers.js", source);
+  const envelope = record.transportEnvelope;
+
+  assert.ok(
+    envelope.chunkIndex.length <= 3,
+    `Expected ≤3 chunks at 256KB chunk size, got ${envelope.chunkIndex.length}`,
+  );
+});
+
 test("buildWorkspaceFileRecord transport envelope digest matches pre-computed rawStorage digest", async () => {
   const source = "export const x = 1;\n".repeat(50);
   const storage = encodeRawStorage(source);
