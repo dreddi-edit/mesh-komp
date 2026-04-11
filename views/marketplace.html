@@ -129,6 +129,16 @@
   </div>
 
   <script>
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     const grid = document.getElementById('marketGrid');
     const search = document.getElementById('marketSearch');
 
@@ -146,7 +156,7 @@
         const extensions = data.extensions || data.results || [];
         renderExtensions(extensions);
       } catch (e) {
-        grid.innerHTML = `<div class="mp-error">Failed to connect to Open VSX Registry. <br> ${e.message}</div>`;
+        grid.innerHTML = `<div class="mp-error">Failed to connect to Open VSX Registry. <br> ${escapeHtml(e.message)}</div>`;
       }
     }
 
@@ -158,22 +168,24 @@
 
       grid.innerHTML = exts.map(ext => {
         // Handle different API record formats
-        const pub = ext.publisherName || (ext.publisher ? ext.publisher.name : 'Unknown');
-        const name = ext.displayName || ext.name;
-        const icon = ext.iconUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${ext.name}`;
-        const downloads = ext.downloadCount ? ext.downloadCount.toLocaleString() : '1k+';
-        const version = ext.version || 'latest';
+        const pub = escapeHtml(ext.publisherName || (ext.publisher ? ext.publisher.name : 'Unknown'));
+        const name = escapeHtml(ext.displayName || ext.name);
+        const icon = escapeHtml(ext.iconUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${ext.name}`);
+        const downloads = escapeHtml(ext.downloadCount ? ext.downloadCount.toLocaleString() : '1k+');
+        const version = escapeHtml(ext.version || 'latest');
+        const desc = escapeHtml(ext.description || 'Professional extension for your development workflow.');
+        const extNameEscapedAttr = escapeHtml(ext.name);
 
         return `
           <div class="mp-card">
             <div class="mp-top">
-              <div class="mp-icon"><img src="${icon}" onerror="this.src='https://api.dicebear.com/7.x/identicon/svg?seed=${ext.name}'"></div>
+              <div class="mp-icon"><img src="${icon}" data-fallback-seed="${extNameEscapedAttr}" class="mp-icon-img"></div>
               <div class="mp-meta">
                 <div class="mp-name" title="${name}">${name}</div>
                 <div class="mp-pub">${pub}</div>
               </div>
             </div>
-            <div class="mp-desc">${ext.description || 'Professional extension for your development workflow.'}</div>
+            <div class="mp-desc">${desc}</div>
             <div class="mp-stats">
               <div class="mp-stat">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -182,12 +194,30 @@
               <div class="mp-stat">v${version}</div>
             </div>
             <div class="mp-action">
-            <button class="mp-btn" onclick="actualInstall(this, '${pub}', '${ext.name}', '${version}')">Install</button>
+            <button class="mp-btn install-btn" data-publisher="${escapeHtml(ext.publisherName || (ext.publisher ? ext.publisher.name : 'Unknown'))}" data-name="${extNameEscapedAttr}" data-version="${escapeHtml(ext.version || 'latest')}">Install</button>
             <div class="prog-ctx"><div class="prog-bar"></div></div>
           </div>
         </div>
       `;
     }).join('');
+
+    // Attach event listeners instead of using inline handlers
+    document.querySelectorAll('.mp-icon-img').forEach(img => {
+      img.onerror = function() {
+        this.src = 'https://api.dicebear.com/7.x/identicon/svg?seed=' + encodeURIComponent(this.getAttribute('data-fallback-seed') || 'fallback');
+      };
+    });
+
+    document.querySelectorAll('.install-btn').forEach(btn => {
+      btn.onclick = function() {
+        actualInstall(
+          this,
+          this.getAttribute('data-publisher'),
+          this.getAttribute('data-name'),
+          this.getAttribute('data-version')
+        );
+      };
+    });
   }
 
   async function actualInstall(btn, publisher, name, version) {
