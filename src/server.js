@@ -154,7 +154,7 @@ app.use(express.static(path.join(__dirname, '..'), {
 
 
 const { createAuthRouter } = require('./routes/auth.routes');
-const appRoutes = require('./routes/app.routes');
+const { createAppRouter } = require('./routes/app.routes');
 const assistantRoutes = require('./routes/assistant.routes');
 const { setupRealtimeRelay } = require('./routes/realtime.routes');
 
@@ -165,7 +165,7 @@ const server = http.createServer(app);
 setupRealtimeRelay(server);
 
 app.use('/', createAuthRouter(core));
-app.use('/', appRoutes);
+app.use('/', createAppRouter(core));
 app.use('/', assistantRoutes);
 
 /* ─────────────────────────────────────────
