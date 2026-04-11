@@ -1,5 +1,6 @@
+'use strict';
+
 const express = require('express');
-const router = express.Router();
 
 // Only the offload/ingest endpoint accepts large bodies (workspace file chunks).
 // All other routes inherit the 1mb default set in src/server.js.
@@ -13,6 +14,90 @@ function safeRouteError(res, statusCode, fallbackMessage, error) {
   console.error(`[assistant-routes] ${fallbackMessage}:`, String(error?.message || error || 'unknown'));
   res.status(statusCode).json({ ok: false, error: fallbackMessage });
 }
+
+/**
+ * @param {object} core  All exports from src/core/index.js
+ * @returns {import('express').Router}
+ */
+function createAssistantRouter(core) {
+  const {
+    requireAuth,
+    meshTunnelRequest,
+    localAssistantWorkspace,
+    normalizeWorkspaceSourceKind,
+    workspaceOffloadClientConfig,
+    ingestWorkspaceChunkFromOffload,
+    shouldQueueWorkspaceSelectPayload,
+    enqueueWorkspaceSelectJob,
+    buildWorkspaceSelectAcceptedResponse,
+    executeWorkspaceSelectWithFallback,
+    getWorkspaceSelectJobForUser,
+    snapshotWorkspaceSelectJob,
+    pruneWorkspaceSelectJobs,
+    openLocalWorkspaceWithFallback,
+    localWorkspaceFiles,
+    localWorkspaceGraph,
+    localWorkspaceSave,
+    localWorkspaceCreate,
+    syncWorkspaceFiles,
+    deleteWorkspaceFileWithFallback,
+    renameWorkspaceFileWithFallback,
+    applyWorkspaceBatchWithFallback,
+    grepWorkspaceWithFallback,
+    searchWorkspaceWithFallback,
+    recoverWorkspaceWithFallback,
+    resolveLocalWorkspaceAbsolutePath,
+    toSafePath,
+    gitPathFromWorkspacePath,
+    workspacePathFromGitPath,
+    getLocalGitCwd,
+    runLocalGit,
+    runGitWithFallback,
+    localGitStatus,
+    openWorkspaceFileWithFallback,
+    readLocalWorkspaceFileText,
+    buildWorkspaceBlobReadUrl,
+    createAssistantTerminalSession,
+    destroyAssistantTerminalSession,
+    listAssistantTerminalOutput,
+    writeAssistantTerminalInput,
+    createAssistantRun,
+    assistantRunSnapshot,
+    applyAssistantRunDecision,
+    localAssistantReply,
+    buildCapsuleContextBlock,
+    loadCapsuleContextEntries,
+    loadRecoveredSpanEntries,
+    buildServerCodecRecovery,
+    resolveAdaptiveCompressedContextBudget,
+    inferReferencedFilesFromWorkspace,
+    localResolveReferencedFiles,
+    dedupePaths,
+    extractActiveFilePathFromMessages,
+    normalizeChatSessionId,
+    normalizeMessages,
+    mergeChatCredentials,
+    getStoredCredentialsForUser,
+    injectMeshSystemPrompt,
+    runModelChat,
+    resolveProviderForModel,
+    buildModelResponseTransport,
+    encodeMeshModelCodec,
+    decodeCompressedModelResponse,
+    hasCodecContextMarker,
+    injectCodecContextIntoMessages,
+    injectCompressedContextIntoMessages,
+    isCodecContextInitializedForSession,
+    markCodecContextInitialized,
+    looksLikeCodecProtocolRefusal,
+    polishDecompressedAssistantText,
+    escapeRegexLiteral,
+    isMeshWorkerUnavailableError,
+    isLocalPathWorkspaceState,
+    isArray,
+  } = core;
+
+  const router = express.Router();
 
 router.get("/api/assistant/status", requireAuth, async (_req, res) => {
   try {
@@ -1620,4 +1705,7 @@ router.post("/api/assistant/extensions/install", requireAuth, async (req, res) =
   }
 });
 
-module.exports = router;
+  return router;
+} // end createAssistantRouter
+
+module.exports = { createAssistantRouter };

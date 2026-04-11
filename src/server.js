@@ -16,10 +16,6 @@ if (!startupResult.ok) {
 
 const core = require('./core/index');
 
-// Destructure all required core logic directly into global scope for routes (fast monolithic refactor)
-Object.keys(core).forEach(k => {
-    global[k] = core[k];
-});
 
 const app = express();
 
@@ -155,7 +151,7 @@ app.use(express.static(path.join(__dirname, '..'), {
 
 const { createAuthRouter } = require('./routes/auth.routes');
 const { createAppRouter } = require('./routes/app.routes');
-const assistantRoutes = require('./routes/assistant.routes');
+const { createAssistantRouter } = require('./routes/assistant.routes');
 const { setupRealtimeRelay } = require('./routes/realtime.routes');
 
 const http = require('http');
@@ -166,7 +162,7 @@ setupRealtimeRelay(server);
 
 app.use('/', createAuthRouter(core));
 app.use('/', createAppRouter(core));
-app.use('/', assistantRoutes);
+app.use('/', createAssistantRouter(core));
 
 /* ─────────────────────────────────────────
    WebSocket terminal — ws://localhost:8080/terminal
