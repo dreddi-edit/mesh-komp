@@ -158,7 +158,7 @@ const http = require('http');
 const server = http.createServer(app);
 
 /* Voice: WebSocket relay to Azure OpenAI Realtime API */
-setupRealtimeRelay(server);
+setupRealtimeRelay(server, core);
 
 app.use('/', createAuthRouter(core));
 app.use('/', createAppRouter(core));

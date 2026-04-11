@@ -19,8 +19,10 @@ const PERF_LOG = ['1', 'true', 'yes', 'on'].includes(String(process.env.MESH_WOR
 
 /**
  * @param {import('http').Server} server
+ * @param {object} core  All exports from src/core/index.js
  */
-function setupRealtimeRelay(server) {
+function setupRealtimeRelay(server, core) {
+  const { readAuthTokenFromRequest, resolveAuthUserFromRequest } = core;
   const wss = new WebSocket.Server({ noServer: true });
 
   server.on('upgrade', async (req, socket, head) => {
@@ -41,7 +43,7 @@ function setupRealtimeRelay(server) {
         return;
       }
       wss.handleUpgrade(req, socket, head, (clientWs) => {
-        handleSession(clientWs, { authUserId: resolved.user.id });
+        handleSession(clientWs, { authUserId: resolved.user.id, core });
       });
     } catch {
       socket.write('HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
@@ -50,7 +52,32 @@ function setupRealtimeRelay(server) {
   });
 }
 
-function buildVoiceDeps() {
+/**
+ * @param {object} core
+ * @returns {object}
+ */
+function buildVoiceDeps(core) {
+  const {
+    MESH_DEFAULT_MODEL,
+    toSafePath,
+    assistantRuns,
+    assistantRunSnapshot,
+    createAssistantRun,
+    applyAssistantRunDecision,
+    getStoredCredentialsForUser,
+    mergeChatCredentials,
+    openWorkspaceFileWithFallback,
+    recoverWorkspaceWithFallback,
+    searchWorkspaceWithFallback,
+    runGitWithFallback,
+    localGitStatus,
+    runLocalGit,
+    gitPathFromWorkspacePath,
+    workspacePathFromGitPath,
+    resolveLocalWorkspaceAbsolutePath,
+    readLocalWorkspaceFileText,
+    localWorkspaceSave,
+  } = core;
   return {
     MESH_DEFAULT_MODEL,
     toSafePath,
@@ -141,41 +168,58 @@ function buildAssistantResponseText(result) {
   return 'I finished the request.';
 }
 
-async function listVoiceContextPaths(context = {}) {
-  const preferred = (global.dedupePaths ? global.dedupePaths([
+/**
+ * @param {object} context
+ * @param {object} core
+ * @returns {Promise<string[]>}
+ */
+async function listVoiceContextPaths(context = {}, core = {}) {
+  const { dedupePaths, toSafePath, workspaceMetadataStore } = core;
+  // Access localAssistantWorkspace directly on core — live state, not a startup snapshot
+  const localAssistantWorkspace = core.localAssistantWorkspace;
+
+  const rawPaths = [
     context.activeFilePath,
     ...(Array.isArray(context.selectedPaths) ? context.selectedPaths : []),
-  ]) : [context.activeFilePath, ...(Array.isArray(context.selectedPaths) ? context.selectedPaths : [])])
-    .map((entry) => global.toSafePath ? global.toSafePath(entry) : String(entry || '').trim())
+  ];
+  const preferred = (dedupePaths ? dedupePaths(rawPaths) : rawPaths)
+    .map((entry) => toSafePath ? toSafePath(entry) : String(entry || '').trim())
     .filter(Boolean);
 
   if (preferred.length) return preferred.slice(0, 6);
 
-  const workspaceId = String(context.workspaceId || global.localAssistantWorkspace?.workspaceId || '').trim();
-  if (global.workspaceMetadataStore?.enabled && workspaceId) {
+  const workspaceId = String(context.workspaceId || localAssistantWorkspace?.workspaceId || '').trim();
+  if (workspaceMetadataStore?.enabled && workspaceId) {
     try {
-      const docs = await global.workspaceMetadataStore.listWorkspaceFiles(workspaceId);
+      const docs = await workspaceMetadataStore.listWorkspaceFiles(workspaceId);
       return docs
-        .map((doc) => global.toSafePath ? global.toSafePath(doc?.path) : String(doc?.path || '').trim())
+        .map((doc) => toSafePath ? toSafePath(doc?.path) : String(doc?.path || '').trim())
         .filter(Boolean)
         .slice(0, 6);
     } catch { /* ignore metadata listing errors */ }
   }
 
-  return Array.from(global.localAssistantWorkspace?.files?.keys?.() || []).slice(0, 6);
+  return Array.from(localAssistantWorkspace?.files?.keys?.() || []).slice(0, 6);
 }
 
-async function buildVoiceCapsuleContext(voiceSession) {
+/**
+ * @param {object} voiceSession
+ * @param {object} core
+ * @returns {Promise<string>}
+ */
+async function buildVoiceCapsuleContext(voiceSession, core = {}) {
+  const { loadCapsuleContextEntries, buildCapsuleContextBlock } = core;
   const context = typeof voiceSession?.getContextSnapshot === 'function'
     ? voiceSession.getContextSnapshot()
     : {};
-  const paths = await listVoiceContextPaths(context);
+  const paths = await listVoiceContextPaths(context, core);
   if (!paths.length) return '';
-  const result = await global.loadCapsuleContextEntries(paths, { maxFiles: 5, maxModelChars: 5000 });
-  return global.buildCapsuleContextBlock(result.entries || [], []);
+  const result = await loadCapsuleContextEntries(paths, { maxFiles: 5, maxModelChars: 5000 });
+  return buildCapsuleContextBlock(result.entries || [], []);
 }
 
 async function handleSession(clientWs, options = {}) {
+  const { core } = options;
   const voiceConfig = buildAzureVoiceConfig(process.env);
   try {
     ensureAzureVoiceConfig(voiceConfig);
@@ -191,7 +235,7 @@ async function handleSession(clientWs, options = {}) {
   const speechState = createSpeechState();
   const voiceSession = createVoiceAgentSession({
     authUserId: String(options?.authUserId || ''),
-    deps: buildVoiceDeps(),
+    deps: buildVoiceDeps(core),
     sendClientEvent,
     sendAzureEvent: () => {},
   });
@@ -278,7 +322,7 @@ async function handleSession(clientWs, options = {}) {
 
       let capsuleContext = '';
       try {
-        capsuleContext = await buildVoiceCapsuleContext(voiceSession);
+        capsuleContext = await buildVoiceCapsuleContext(voiceSession, core);
       } catch { /* proceed without context */ }
 
       const messages = [
@@ -429,4 +473,4 @@ async function handleSession(clientWs, options = {}) {
   });
 }
 
-module.exports = { setupRealtimeRelay };
+module.exports = { setupRealtimeRelay, listVoiceContextPaths, buildVoiceCapsuleContext };
