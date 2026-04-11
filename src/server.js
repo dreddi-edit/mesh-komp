@@ -79,20 +79,53 @@ function csrfGuard(req, res, next) {
 app.use(express.json({ limit: '1mb' }));
 app.use(csrfGuard);
 
+// ── Pre-computed clean-URL route map ─────────────────────────────────────────
+// Built once at startup — eliminates fs.existsSync() on every request.
+const REPO_ROOT = path.join(__dirname, '..');
+
+/**
+ * Scans views/ and the repo root for .html files and maps clean URL paths to
+ * their absolute file paths. views/ takes priority over root-level files.
+ *
+ * @param {string} repoRoot
+ * @returns {Map<string, string>}
+ */
+function buildViewRouteMap(repoRoot) {
+  const map = new Map();
+  const viewsDir = path.join(repoRoot, 'views');
+
+  if (fs.existsSync(viewsDir)) {
+    for (const file of fs.readdirSync(viewsDir)) {
+      if (file.endsWith('.html')) {
+        map.set('/' + file.slice(0, -5), path.join(viewsDir, file));
+      }
+    }
+  }
+
+  for (const file of fs.readdirSync(repoRoot)) {
+    if (file.endsWith('.html')) {
+      const route = '/' + file.slice(0, -5);
+      if (!map.has(route)) {
+        map.set(route, path.join(repoRoot, file));
+      }
+    }
+  }
+
+  return map;
+}
+
+const VIEW_ROUTE_MAP = buildViewRouteMap(REPO_ROOT);
+
 // Serve root (/) from views/index.html
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'views', 'index.html'));
+  res.sendFile(path.join(REPO_ROOT, 'views', 'index.html'));
 });
 
-// Clean URL support: check views/ first, then root, for any path with no file extension
+// Clean URL support — O(1) map lookup built once at startup.
 app.use((req, res, next) => {
-  if (req.path === '/') return next();
-  if (req.path.slice(1).indexOf('.') === -1) {
-    const inViews = path.join(__dirname, '..', 'views', req.path + '.html');
-    if (fs.existsSync(inViews)) return res.sendFile(inViews);
-    const atRoot = path.join(__dirname, '..', req.path + '.html');
-    if (fs.existsSync(atRoot)) return res.sendFile(atRoot);
-  }
+  if (req.path === '/' || req.path.slice(1).includes('.')) return next();
+  const filePath = VIEW_ROUTE_MAP.get(req.path);
+  if (filePath) return res.sendFile(filePath);
   next();
 });
 
