@@ -100,6 +100,7 @@ async function requestJson(baseUrl, pathname, jar, options = {}) {
     method: options.method || "GET",
     headers,
     body: options.body,
+    signal: AbortSignal.timeout(30000),
   });
 
   const setCookie = response.headers.get("set-cookie");
@@ -465,7 +466,7 @@ test("fallback gateway serves the workbench and supports terminal plus multi-fil
   assert.equal(finalRun.artifacts.proposalBatches[0].status, "partial");
 });
 
-test("integration tests", async (t) => {
+test("integration tests", { timeout: 120000 }, async (t) => {
   const rootName = `test-workspace-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const workerPort = nextPort();
   const fallbackPort = nextPort();

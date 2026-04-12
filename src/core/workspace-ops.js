@@ -8,6 +8,8 @@
  * call-time. No Node.js built-ins are needed directly.
  */
 
+const logger = require('./logger');
+
 let localWorkspaceEnrichmentRunning = false;
 const localWorkspaceEnrichmentPending = [];
 
@@ -26,7 +28,7 @@ async function drainLocalWorkspaceEnrichmentQueue() {
     try {
       await enrichLocalWorkspaceRecords(ctx);
     } catch (error) {
-      console.error("[mesh] local enrichment failed:", error?.message || error);
+      logger.error('Local enrichment failed', { scope: 'workspace-ops', error: String(error?.message || error) });
     }
   }
   localWorkspaceEnrichmentRunning = false;

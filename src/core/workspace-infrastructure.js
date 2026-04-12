@@ -16,6 +16,7 @@ const path   = require('path');
 const zlib   = require('zlib');
 
 const { MESH_SYSTEM_PROMPT } = require('./model-providers');
+const logger = require('./logger');
 
 // ---------------------------------------------------------------------------
 // Inlined utilities — needed at require-time by createWorkspaceOffloadConfig
@@ -65,7 +66,7 @@ function createWorkspacePerfTracker(scope, meta = {}) {
         const previousAt = index > 0 ? marks[index - 1].at : startedAt;
         return `${mark.label}:${mark.at - previousAt}ms`;
       }).join(" | ");
-      console.log(`[mesh-perf] ${scope} total=${totalMs}ms meta=${JSON.stringify({ ...meta, ...extra })}${detail ? ` steps=${detail}` : ""}`);
+      logger.info(`Perf: ${scope}`, { scope: 'mesh-perf', totalMs, ...meta, ...extra, steps: detail || undefined });
     },
   };
 }
@@ -430,7 +431,7 @@ async function provisionMeshWorkspaceMetadata(ctx = {}) {
       const meshDir = path.join(rootPath, ".mesh");
       await fs.promises.mkdir(meshDir, { recursive: true });
       await fs.promises.writeFile(path.join(meshDir, "workspace-instructions.md"), content, "utf8");
-      console.log(`[mesh] Provisioned local metadata to ${meshDir}`);
+      logger.info('Provisioned local metadata', { scope: 'workspace-infra', meshDir });
     } else if (isCloud) {
       // In cloud mode, we insert a virtual file record
       const meshFilePath = `${folderName}/${meshPath}`;
@@ -453,10 +454,10 @@ async function provisionMeshWorkspaceMetadata(ctx = {}) {
           storage: { provider: "virtual", blobPath: meshFilePath },
         },
       });
-      console.log(`[mesh] Provisioned virtual metadata for cloud workspace ${workspaceId}`);
+      logger.info('Provisioned virtual metadata', { scope: 'workspace-infra', workspaceId });
     }
   } catch (error) {
-    console.error(`[mesh] Failed to provision metadata: ${error.message}`);
+    logger.error('Failed to provision metadata', { scope: 'workspace-infra', error: error.message });
   }
 }
 

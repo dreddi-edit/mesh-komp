@@ -7,6 +7,7 @@ const {
   synthesizeSpeech,
   runAzureVoiceToolLoop,
 } = require('../core/voice-azure-audio');
+const logger = require('../logger');
 
 const SAMPLE_RATE = 24000;
 const SPEECH_RMS_THRESHOLD = Number(process.env.MESH_VOICE_VAD_THRESHOLD || 0.012);
@@ -115,7 +116,7 @@ function createSpeechState() {
 function logVoicePerf(label, meta = {}) {
   if (!PERF_LOG) return;
   try {
-    console.log(`[voice][perf] ${label}`, meta);
+    logger.info(label, { scope: 'voice-perf', ...meta });
   } catch { /* ignore log errors */ }
 }
 

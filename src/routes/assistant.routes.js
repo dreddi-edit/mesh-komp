@@ -1,6 +1,9 @@
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
+const logger = require('../logger');
 
 // Only the offload/ingest endpoint accepts large bodies (workspace file chunks).
 // All other routes inherit the 1mb default set in src/server.js.
@@ -11,7 +14,7 @@ const largeJsonBody = express.json({ limit: '200mb' });
  * Prevents leaking internal paths, stack traces, or third-party error details.
  */
 function safeRouteError(res, statusCode, fallbackMessage, error) {
-  console.error(`[assistant-routes] ${fallbackMessage}:`, String(error?.message || error || 'unknown'));
+  logger.error(fallbackMessage, { scope: 'assistant-routes', error: String(error?.message || error || 'unknown') });
   res.status(statusCode).json({ ok: false, error: fallbackMessage });
 }
 
@@ -95,6 +98,10 @@ function createAssistantRouter(core) {
     isMeshWorkerUnavailableError,
     isLocalPathWorkspaceState,
     isArray,
+    assistantRuns,
+    MESH_DEFAULT_MODEL,
+    MESH_MODEL_CODEC_VERSION,
+    toAnthropicMessages,
   } = core;
 
   const router = express.Router();
@@ -155,7 +162,7 @@ router.post("/api/assistant/workspace/select", requireAuth, async (req, res) => 
     res.json(result);
   } catch (error) {
     const isQueueFull = String(error?.message || "").toLowerCase().includes("queue is full");
-    console.error('[assistant-routes] Workspace select failed:', String(error?.message || error || 'unknown'));
+    logger.error('Workspace select failed', { scope: 'assistant-routes', error: String(error?.message || error || 'unknown') });
     res.status(isQueueFull ? 429 : 400).json({
       ok: false,
       error: isQueueFull ? "Workspace select queue is full. Try again later." : "Workspace select failed",
@@ -1327,7 +1334,7 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
 
         if (!streamResponse.ok) {
           const errBody = await streamResponse.text();
-          console.error(`[assistant-routes] Anthropic error (${streamResponse.status}):`, errBody.slice(0, 500));
+          logger.error(`Anthropic API error (${streamResponse.status})`, { scope: 'assistant-routes', body: errBody.slice(0, 500) });
           sendSSE("error", { error: `Anthropic API error (${streamResponse.status})` });
           res.end();
           return;
@@ -1421,7 +1428,7 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
     res.end();
   } catch (error) {
     try {
-      console.error("[assistant-routes] Stream failed:", String(error?.message || error || "unknown"));
+      logger.error('Stream failed', { scope: 'assistant-routes', error: String(error?.message || error || 'unknown') });
       sendSSE("error", { error: "Stream failed" });
       res.end();
     } catch { /* response already ended */ }
@@ -1455,7 +1462,7 @@ async function streamOpenAICompatible({ apiKey, model, messages, baseUrl, orgId,
 
   if (!streamResponse.ok) {
     const errBody = await streamResponse.text();
-    console.error(`[assistant-routes] Provider error (${streamResponse.status}):`, errBody.slice(0, 500));
+    logger.error(`Provider API error (${streamResponse.status})`, { scope: 'assistant-routes', body: errBody.slice(0, 500) });
     sendSSE("error", { error: `Provider API error (${streamResponse.status})` });
     return;
   }
@@ -1570,7 +1577,7 @@ router.post("/api/inline-complete", requireAuth, async (req, res) => {
     sendSSE("done", {});
     res.end();
   } catch (error) {
-    console.error("[assistant-routes] Completion failed:", String(error?.message || error || "unknown"));
+    logger.error('Completion failed', { scope: 'assistant-routes', error: String(error?.message || error || 'unknown') });
     sendSSE("error", { error: "Completion failed" });
     res.end();
   }
@@ -1700,7 +1707,7 @@ router.post("/api/assistant/extensions/install", requireAuth, async (req, res) =
     res.json({ ok: true, message: `Extension ${extId} installed successfully.` });
   } catch (e) {
     if (fs.existsSync(zipPath)) { try { fs.unlinkSync(zipPath); } catch { /* best-effort cleanup */ } }
-    console.error('[assistant-routes] Install extension failed:', String(e?.message || e));
+    logger.error('Install extension failed', { scope: 'assistant-routes', error: String(e?.message || e) });
     res.status(500).json({ error: "Installation failed. Ensure the extension exists on Open VSX." });
   }
 });

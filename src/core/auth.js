@@ -9,6 +9,7 @@
 const path   = require('path');
 const crypto = require('crypto');
 const secureDb = require('../../secure-db');
+const logger = require('./logger');
 
 // ── Utility helpers (duplicated from index.js — keep in sync if changed) ──
 
@@ -119,7 +120,7 @@ function reportAuthStoreError(scope, error) {
   if (now - lastAuthStoreErrorLogAt < 30_000) return;
   lastAuthStoreErrorLogAt = now;
   const message = String(error?.message || error || 'unknown auth store error');
-  console.error(`[auth-store] ${scope}: ${message}`);
+  logger.error(message, { scope: `auth-store.${scope}` });
 }
 
 function buildDemoUserSeed() {

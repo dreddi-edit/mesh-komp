@@ -41,6 +41,7 @@ app.use((_req, res, next) => {
       "img-src 'self' data: blob:",
       "font-src 'self'",
       "connect-src 'self' ws: wss:",
+      "worker-src 'self'",
       "object-src 'none'",
       "base-uri 'self'",
       "frame-ancestors 'none'",

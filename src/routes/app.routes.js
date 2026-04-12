@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const hljs = require('highlight.js');
 const { marked } = require('marked');
+const logger = require('../logger');
 
 const markedRenderer = new marked.Renderer();
 markedRenderer.code = function(code, lang) {
@@ -294,7 +295,7 @@ function createAppRouter(core) {
         generatedAt: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('[app-routes] Failed to build repo docs index:', String(error?.message || error || 'unknown'));
+      logger.error('Failed to build repo docs index', { scope: 'app-routes', error: String(error?.message || error || 'unknown') });
       res.status(500).json({ ok: false, error: 'Failed to build repo docs index' });
     }
   });
@@ -332,7 +333,7 @@ function createAppRouter(core) {
         updatedAt: stat.mtime.toISOString(),
       });
     } catch (error) {
-      console.error('[app-routes] Failed to read docs file:', String(error?.message || error || 'unknown'));
+      logger.error('Failed to read docs file', { scope: 'app-routes', error: String(error?.message || error || 'unknown') });
       res.status(500).json({ ok: false, error: 'Failed to read docs file' });
     }
   });
@@ -539,7 +540,7 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
       });
       res.json({ content: resp.content[0]?.text || "" });
     } catch (err) {
-      console.error("[app-routes] Chat request failed:", String(err?.message || err || "unknown"));
+      logger.error('Chat request failed', { scope: 'app-routes', error: String(err?.message || err || 'unknown') });
       res.status(500).json({ error: "Chat request failed." });
     }
   });
@@ -554,7 +555,7 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
       return;
     }
 
-    const deployment = "gpt-5.4-nano";
+    const deployment = "gpt-4.1-mini";
     const url = `${azureEndpoint}/openai/deployments/${deployment}/chat/completions?api-version=2024-12-01-preview`;
     const body = {
       messages: [
@@ -575,14 +576,14 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
         signal: AbortSignal.timeout(60_000),
       });
     } catch (err) {
-      console.error("[app-routes] Inline completion failed:", String(err?.message || err || "unknown"));
+      logger.error('Inline completion failed', { scope: 'app-routes', error: String(err?.message || err || 'unknown') });
       res.status(502).json({ ok: false, error: "Inline completion request failed." });
       return;
     }
 
     if (!upstream.ok) {
       const errText = await upstream.text().catch(() => "");
-      console.error('[app-routes] Inline completion upstream error:', upstream.status, errText.slice(0, 200));
+      logger.error('Inline completion upstream error', { scope: 'app-routes', status: upstream.status, body: errText.slice(0, 200) });
       res.status(upstream.status).json({ ok: false, error: "Inline completion upstream error." });
       return;
     }
