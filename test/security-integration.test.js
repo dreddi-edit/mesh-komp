@@ -74,7 +74,7 @@ async function startServer(envOverrides = {}) {
   child.stderr.on("data", capture);
 
   try {
-    await waitFor(() => /Server successfully started/i.test(output), { timeoutMs: 25000, intervalMs: 120 });
+    await waitFor(() => /"msg":"Server started"/.test(output), { timeoutMs: 25000, intervalMs: 120 });
   } catch (error) {
     child.kill("SIGTERM");
     throw new Error(`Failed to start server: ${error.message}\n${output}`);

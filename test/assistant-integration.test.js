@@ -301,7 +301,7 @@ test("fallback gateway serves the workbench and supports terminal plus multi-fil
       MESH_AUTH_COOKIE_NAME: `mesh_auth_${port}`,
       MESH_AUTH_COOKIE_SECURE: "false",
     },
-    /MESH dev server running/
+    /"msg":"Server started"/
   );
   t.after(() => stopNodeProcess(gateway));
 
@@ -311,8 +311,8 @@ test("fallback gateway serves the workbench and supports terminal plus multi-fil
   const paths = workspacePaths(rootName);
 
   const appHtml = await fetch(`${baseUrl}/app.html`).then((response) => response.text());
-  assert.match(appHtml, /assets\/assistant-workbench\.css/);
-  assert.match(appHtml, /assets\/assistant-workbench\.js/);
+  assert.match(appHtml, /assets\/app-workspace\.css/);
+  assert.match(appHtml, /assets\/app-workspace\.js/);
   assert.match(appHtml, /meshAssistantWorkbenchBridge/);
 
   await login(baseUrl, jar);
@@ -467,8 +467,9 @@ test("fallback gateway serves the workbench and supports terminal plus multi-fil
 
 test("integration tests", async (t) => {
   const rootName = `test-workspace-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const backendPort = nextPort();
-  const meshPort = nextPort();
+  const workerPort = nextPort();
+  const fallbackPort = nextPort();
+  const workerGatewayPort = nextPort();
   const fallbackTmp = makeTempEnvDir("mesh-gateway-compare-fallback");
   const workerTmp = makeTempEnvDir("mesh-gateway-compare-worker");
 
@@ -488,7 +489,7 @@ test("integration tests", async (t) => {
       MESH_AUTH_COOKIE_NAME: `mesh_auth_${fallbackPort}`,
       MESH_AUTH_COOKIE_SECURE: "false",
     },
-    /MESH dev server running/
+    /"msg":"Server started"/
   );
   const workerGateway = await startNodeProcess(
     "server.js",
@@ -499,7 +500,7 @@ test("integration tests", async (t) => {
       MESH_AUTH_COOKIE_NAME: `mesh_auth_${workerGatewayPort}`,
       MESH_AUTH_COOKIE_SECURE: "false",
     },
-    /MESH dev server running/
+    /"msg":"Server started"/
   );
 
   t.after(() => stopNodeProcess(workerGateway));
