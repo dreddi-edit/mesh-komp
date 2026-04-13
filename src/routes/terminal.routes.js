@@ -14,8 +14,9 @@ const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
 const { WebSocketServer } = require('ws');
+const config = require('../config');
 
-const TERMINAL_UPLOAD_ROOT = process.env.MESH_TERMINAL_UPLOAD_ROOT
+const TERMINAL_UPLOAD_ROOT = config.MESH_TERMINAL_UPLOAD_ROOT
   || path.join(os.tmpdir(), 'mesh-terminal-workspaces');
 
 /**

@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const hljs = require('highlight.js');
 const { marked } = require('marked');
+const config = require('../config');
 const logger = require('../logger');
 
 const markedRenderer = new marked.Renderer();
@@ -521,7 +522,7 @@ function createAppRouter(core) {
 
   router.post("/api/chat", requireAuth, async (req, res) => {
     const { model = "claude-opus-4-6", messages = [] } = req.body;
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = config.ANTHROPIC_API_KEY;
 
     if (!apiKey || !Anthropic) {
       res.status(503).json({ error: "Chat service unavailable: API key not configured." });
@@ -547,8 +548,8 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
 
   router.post("/api/inline-complete", requireAuth, async (req, res) => {
     const { prefix = "", language = "plaintext" } = req.body || {};
-    const azureEndpoint = String(process.env.AZURE_OPENAI_ENDPOINT || "").trim().replace(/\/+$/, "");
-    const azureKey = String(process.env.AZURE_OPENAI_KEY || "").trim();
+    const azureEndpoint = config.AZURE_OPENAI_ENDPOINT;
+    const azureKey = config.AZURE_OPENAI_KEY;
 
     if (!azureEndpoint || !azureKey) {
       res.status(503).json({ ok: false, error: "Inline completion not configured." });
