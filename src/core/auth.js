@@ -51,16 +51,32 @@ let lastAuthStoreErrorLogAt = 0;
 
 // ── Auth functions ──
 
+/**
+ * @param {string} email
+ * @returns {string} Lowercased, trimmed email address.
+ */
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+/**
+ * Hash a password using scrypt with a random or provided salt.
+ * @param {string} password
+ * @param {string} [saltHex] - Hex-encoded salt; generated if omitted.
+ * @returns {string} Format: `<salt>:<hash>` (both hex-encoded).
+ */
 function hashPassword(password, saltHex) {
   const salt = saltHex || crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(String(password || ''), salt, 64).toString('hex');
   return `${salt}:${hash}`;
 }
 
+/**
+ * Verify a password against a stored `salt:hash` string using timing-safe comparison.
+ * @param {string} password
+ * @param {string} storedHash - Format: `<salt>:<hash>`.
+ * @returns {boolean}
+ */
 function verifyPassword(password, storedHash) {
   const raw = String(storedHash || '');
   const separator = raw.indexOf(':');
@@ -81,6 +97,11 @@ function verifyPassword(password, storedHash) {
   }
 }
 
+/**
+ * Extract and stringify safe user fields for client-facing responses.
+ * @param {object} user
+ * @returns {{ id: string, email: string, name: string, role: string, createdAt: string }}
+ */
 function sanitizeAuthUser(user) {
   return {
     id:        String(user?.id || ''),
@@ -125,11 +146,22 @@ async function loadAuthStore() {
   }
 }
 
+/**
+ * Create a new auth session and return its token.
+ * @param {string} userId
+ * @param {object} [metadata]
+ * @returns {Promise<string>} Session token.
+ */
 async function issueAuthSession(userId, metadata = {}) {
   const session = await secureDb.createSession(userId, AUTH_SESSION_TTL_MS, metadata);
   return session.token;
 }
 
+/**
+ * Parse a raw Cookie header string into a key-value map.
+ * @param {string} headerValue
+ * @returns {Record<string, string>}
+ */
 function parseCookiesFromHeader(headerValue) {
   const cookies = {};
   const raw = String(headerValue || '').trim();
@@ -171,6 +203,13 @@ function normalizeSameSiteValue(rawValue) {
   return 'Lax';
 }
 
+/**
+ * Build a Set-Cookie header string with the given options.
+ * @param {string} name
+ * @param {string} value
+ * @param {{ path?: string, maxAge?: number, sameSite?: string, httpOnly?: boolean, secure?: boolean }} [options]
+ * @returns {string}
+ */
 function createCookieHeader(name, value, options = {}) {
   const parts     = [`${name}=${encodeURIComponent(String(value || ''))}`];
   const pathValue = String(options.path || '/').trim() || '/';
@@ -252,6 +291,14 @@ async function resolveAuthUserFromRequest(req) {
   }
 }
 
+/**
+ * Express middleware that validates auth session from cookie.
+ * Sets req.authUser, req.authToken, req.authSession on success.
+ * Returns 401 on failure.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
 async function requireAuth(req, res, next) {
   const resolved = await resolveAuthUserFromRequest(req);
   if (!resolved) {
@@ -316,6 +363,11 @@ function normalizeStoredByokProviders(byokConfig, registry) {
   ];
 }
 
+/**
+ * Load and normalize all AI provider credentials for a user.
+ * @param {string} userId
+ * @returns {Promise<{ anthropic: { apiKey: string, maxTokens: number }, openai: { apiKey: string, orgId: string }, google: { apiKey: string }, byok: { providers: Array } }>}
+ */
 async function getStoredCredentialsForUser(userId) {
   const values = await secureDb.getUserStoreValues(userId, [
     'meshAiAnthropic',
