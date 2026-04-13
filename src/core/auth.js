@@ -10,46 +10,22 @@ const path   = require('path');
 const crypto = require('crypto');
 const secureDb = require('../../secure-db');
 const logger = require('../logger');
-
-// ── Utility helpers (duplicated from index.js — keep in sync if changed) ──
-
-function parseBooleanFlag(rawValue, fallback = false) {
-  if (rawValue === undefined || rawValue === null || rawValue === '') return fallback;
-  const normalized = String(rawValue).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
-  return fallback;
-}
-
-function parseIntegerInRange(rawValue, fallback, min, max) {
-  const numeric = Number(rawValue);
-  const selected = Number.isFinite(numeric) ? Math.trunc(numeric) : fallback;
-  return Math.min(max, Math.max(min, selected));
-}
+const config = require('../config');
 
 // ── Auth constants ──
 
 const AUTH_STORE_FILE          = path.join(__dirname, '.mesh-auth-store.json');
 const AUTH_SESSION_TTL_MS      = 1000 * 60 * 60 * 24 * 14;
-const AUTH_SESSION_TOUCH_INTERVAL_MS = parseIntegerInRange(
-  process.env.MESH_AUTH_SESSION_TOUCH_INTERVAL_MS,
-  2 * 60 * 1000,
-  0,
-  AUTH_SESSION_TTL_MS,
-);
-const AUTH_COOKIE_NAME      = String(process.env.MESH_AUTH_COOKIE_NAME || 'mesh_auth').trim() || 'mesh_auth';
-const AUTH_COOKIE_PATH      = String(process.env.MESH_AUTH_COOKIE_PATH || '/').trim() || '/';
-const AUTH_COOKIE_SAME_SITE = String(process.env.MESH_AUTH_COOKIE_SAMESITE || 'Strict').trim() || 'Strict';
-const AUTH_COOKIE_SECURE    = parseBooleanFlag(process.env.MESH_AUTH_COOKIE_SECURE, process.env.NODE_ENV === 'production');
+const AUTH_SESSION_TOUCH_INTERVAL_MS = config.MESH_AUTH_SESSION_TOUCH_INTERVAL_MS;
+const AUTH_COOKIE_NAME      = config.AUTH_COOKIE_NAME;
+const AUTH_COOKIE_PATH      = config.AUTH_COOKIE_PATH;
+const AUTH_COOKIE_SAME_SITE = config.AUTH_COOKIE_SAME_SITE;
+const AUTH_COOKIE_SECURE    = config.AUTH_COOKIE_SECURE;
 
-const IS_PRODUCTION = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
-const DEMO_USER_ENABLED      = parseBooleanFlag(process.env.MESH_DEMO_USER_ENABLED, !IS_PRODUCTION);
-const DEMO_USER_EMAIL        = String(process.env.MESH_DEMO_USER_EMAIL || 'edgar@test.com').trim().toLowerCase();
-const DEMO_USER_EMAIL_ALIASES = String(process.env.MESH_DEMO_USER_EMAIL_ALIASES || '')
-  .split(',')
-  .map((entry) => String(entry || '').trim().toLowerCase())
-  .filter(Boolean);
-const DEMO_USER_PASSWORD = String(process.env.MESH_DEMO_USER_PASSWORD || '12345').trim();
+const DEMO_USER_ENABLED      = config.DEMO_USER_ENABLED;
+const DEMO_USER_EMAIL        = config.DEMO_USER_EMAIL;
+const DEMO_USER_EMAIL_ALIASES = config.DEMO_USER_EMAIL_ALIASES;
+const DEMO_USER_PASSWORD     = config.DEMO_USER_PASSWORD;
 
 const USER_STORE_ALLOWED_KEYS = new Set([
   'meshAiAnthropic',
