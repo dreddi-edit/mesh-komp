@@ -15,6 +15,7 @@ const zlib    = require("zlib");
 const { execFile } = require("child_process");
 const { promisify } = require("util");
 const { WebSocketServer } = require("ws");
+const config = require('../config');
 const secureDb = require('../../secure-db');
 const {
   buildStructuralEditFallback,
@@ -279,27 +280,22 @@ try { pty = require("node-pty"); } catch { pty = null; }
 // Moved server initialization to src/server.js
 const brotliCompress = promisify(zlib.brotliCompress);
 const brotliDecompress = promisify(zlib.brotliDecompress);
-const MESH_CORE_URL = process.env.MESH_CORE_URL || "http://localhost:8080/mesh/tunnel";
+const MESH_CORE_URL = config.MESH_CORE_URL;
 const LOCAL_WORKSPACE_CACHE_FILE = path.join(__dirname, ".mesh-workspace-cache.json");
 const OPERATIONS_STORE_FILE = path.join(__dirname, ".mesh-operations-store.json");
 // NOTE: AUTH_STORE_FILE is imported from ./auth (above)
-const WORKSPACE_BROTLI_QUALITY = clampBrotliQuality(process.env.MESH_WORKSPACE_BROTLI_QUALITY, 5);
-const WORKSPACE_INITIAL_BROTLI_QUALITY = clampBrotliQuality(process.env.MESH_WORKSPACE_INITIAL_BROTLI_QUALITY, 3);
-const MESH_TUNNEL_BROTLI_QUALITY = clampBrotliQuality(process.env.MESH_TUNNEL_BROTLI_QUALITY, 4);
-const RAW_MESH_WORKSPACE_INDEX_PARALLELISM = process.env.MESH_WORKSPACE_INDEX_PARALLELISM;
-const MESH_WORKSPACE_INDEX_PARALLELISM = parseIntegerInRange(process.env.MESH_WORKSPACE_INDEX_PARALLELISM, 8, 1, 24);
-const MESH_WORKSPACE_READ_CONCURRENCY = parseIntegerInRange(process.env.MESH_WORKSPACE_READ_CONCURRENCY, RAW_MESH_WORKSPACE_INDEX_PARALLELISM !== undefined ? MESH_WORKSPACE_INDEX_PARALLELISM : 16, 1, 64);
-const MESH_WORKSPACE_BUILD_CONCURRENCY = parseIntegerInRange(process.env.MESH_WORKSPACE_BUILD_CONCURRENCY, RAW_MESH_WORKSPACE_INDEX_PARALLELISM !== undefined ? MESH_WORKSPACE_INDEX_PARALLELISM : 6, 1, 32);
-const MESH_WORKSPACE_ENRICH_CONCURRENCY = parseIntegerInRange(process.env.MESH_WORKSPACE_ENRICH_CONCURRENCY, RAW_MESH_WORKSPACE_INDEX_PARALLELISM !== undefined ? Math.min(MESH_WORKSPACE_INDEX_PARALLELISM, 16) : 4, 1, 24);
-const MESH_WORKSPACE_PERF_LOG = parseBooleanFlag(process.env.MESH_WORKSPACE_PERF_LOG, false);
-const WORKSPACE_SELECT_ASYNC_MODE = String(process.env.MESH_WORKSPACE_SELECT_ASYNC_MODE || "off").trim().toLowerCase();
-const WORKSPACE_SELECT_ASYNC_ENABLED = parseBooleanFlag(
-  process.env.MESH_WORKSPACE_SELECT_ASYNC_ENABLED,
-  ["queue", "async", "background", "on", "enabled", "true", "1"].includes(WORKSPACE_SELECT_ASYNC_MODE),
-);
-const WORKSPACE_SELECT_JOB_TTL_MS = parseIntegerInRange(process.env.MESH_WORKSPACE_SELECT_JOB_TTL_MS, 20 * 60 * 1000, 60 * 1000, 24 * 60 * 60 * 1000);
-const WORKSPACE_SELECT_MAX_JOB_HISTORY = parseIntegerInRange(process.env.MESH_WORKSPACE_SELECT_MAX_JOB_HISTORY, 500, 50, 5000);
-const WORKSPACE_SELECT_MAX_PENDING = parseIntegerInRange(process.env.MESH_WORKSPACE_SELECT_MAX_PENDING, 12, 1, 200);
+const WORKSPACE_BROTLI_QUALITY = config.WORKSPACE_BROTLI_QUALITY;
+const WORKSPACE_INITIAL_BROTLI_QUALITY = config.WORKSPACE_INITIAL_BROTLI_QUALITY;
+const MESH_TUNNEL_BROTLI_QUALITY = config.MESH_TUNNEL_BROTLI_QUALITY;
+const MESH_WORKSPACE_INDEX_PARALLELISM = config.MESH_WORKSPACE_INDEX_PARALLELISM;
+const MESH_WORKSPACE_READ_CONCURRENCY = config.MESH_WORKSPACE_READ_CONCURRENCY;
+const MESH_WORKSPACE_BUILD_CONCURRENCY = config.MESH_WORKSPACE_BUILD_CONCURRENCY;
+const MESH_WORKSPACE_ENRICH_CONCURRENCY = config.MESH_WORKSPACE_ENRICH_CONCURRENCY;
+const MESH_WORKSPACE_PERF_LOG = config.MESH_WORKSPACE_PERF_LOG;
+const WORKSPACE_SELECT_ASYNC_ENABLED = config.WORKSPACE_SELECT_ASYNC_ENABLED;
+const WORKSPACE_SELECT_JOB_TTL_MS = config.WORKSPACE_SELECT_JOB_TTL_MS;
+const WORKSPACE_SELECT_MAX_JOB_HISTORY = config.WORKSPACE_SELECT_MAX_JOB_HISTORY;
+const WORKSPACE_SELECT_MAX_PENDING = config.WORKSPACE_SELECT_MAX_PENDING;
 const WORKSPACE_SOURCE_UPLOAD = "upload";
 const WORKSPACE_SOURCE_LOCAL_PATH = "local-path";
 const LOCAL_WORKSPACE_SKIP_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|mp4|mp3|zip|gz|tar|lock)$/i;
@@ -340,33 +336,7 @@ const workspaceSelectJobOrder = [];
 const workspaceSelectChains = new Map();
 const execFileAsync = promisify(execFile);
 
-function clampBrotliQuality(rawValue, fallback) {
-  const numeric = Number(rawValue);
-  const selected = Number.isFinite(numeric) ? Math.trunc(numeric) : fallback;
-  return Math.min(11, Math.max(0, selected));
-}
-
-function parseBooleanFlag(rawValue, fallback = false) {
-  if (rawValue === undefined || rawValue === null || rawValue === "") return fallback;
-  const normalized = String(rawValue).trim().toLowerCase();
-  if (["1", "true", "yes", "on", "enabled"].includes(normalized)) return true;
-  if (["0", "false", "no", "off", "disabled"].includes(normalized)) return false;
-  return fallback;
-}
-
-function parseIntegerInRange(rawValue, fallback, min, max) {
-  const numeric = Number(rawValue);
-  const selected = Number.isFinite(numeric) ? Math.trunc(numeric) : fallback;
-  return Math.min(max, Math.max(min, selected));
-}
-
-function trimTrailingSlashes(value) {
-  return String(value || "").trim().replace(/\/+$/g, "");
-}
-
-function normalizeSasToken(rawToken) {
-  return String(rawToken || "").trim().replace(/^\?+/, "");
-}
+const { clampBrotliQuality, parseBooleanFlag, parseIntegerInRange, trimTrailingSlashes, normalizeSasToken } = require('../config/env-utils');
 
 function sanitizeBlobContainerName(rawValue) {
   return String(rawValue || "")
