@@ -61,3 +61,48 @@ test("sanitizeBlobContainerName lowercases and strips invalid chars", () => {
   assert.equal(sanitizeBlobContainerName("My_Container!"), "mycontainer");
   assert.equal(sanitizeBlobContainerName("valid-name-123"), "valid-name-123");
 });
+
+// ── config module tests ──
+
+test("config module exports all expected keys", () => {
+  const config = require("../src/config");
+  assert.equal(typeof config.NODE_ENV, "string");
+  assert.equal(typeof config.IS_PRODUCTION, "boolean");
+  assert.equal(typeof config.PORT, "number");
+  assert.equal(typeof config.MESH_CORE_URL, "string");
+  assert.equal(typeof config.ANTHROPIC_API_KEY, "string");
+  assert.equal(typeof config.MESH_DEFAULT_MODEL, "string");
+  assert.equal(typeof config.WORKSPACE_BROTLI_QUALITY, "number");
+  assert.equal(typeof config.MESH_WORKSPACE_PERF_LOG, "boolean");
+});
+
+test("config validation fails in production without encryption key", () => {
+  const { validateConfig } = require("../src/config");
+  const result = validateConfig({
+    NODE_ENV: "production",
+    MESH_COSMOS_ENDPOINT: "https://example.com",
+    MESH_COSMOS_KEY: "key",
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((e) => e.includes("MESH_DATA_ENCRYPTION_KEY")));
+});
+
+test("config validation passes in production with all required vars", () => {
+  const { validateConfig } = require("../src/config");
+  const result = validateConfig({
+    NODE_ENV: "production",
+    MESH_DATA_ENCRYPTION_KEY: "a-real-secret-key-here-32chars!!",
+    MESH_COSMOS_ENDPOINT: "https://example.com",
+    MESH_COSMOS_KEY: "key",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.errors.length, 0);
+});
+
+test("config validation warns when ANTHROPIC_API_KEY is missing", () => {
+  const { validateConfig } = require("../src/config");
+  const result = validateConfig({
+    NODE_ENV: "development",
+  });
+  assert.ok(result.warnings.some((w) => w.includes("ANTHROPIC_API_KEY")));
+});
