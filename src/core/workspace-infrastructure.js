@@ -16,7 +16,7 @@ const path   = require('path');
 const zlib   = require('zlib');
 
 const { MESH_SYSTEM_PROMPT } = require('./model-providers');
-const logger = require('./logger');
+const logger = require('../logger');
 
 // ---------------------------------------------------------------------------
 // Inlined utilities — needed at require-time by createWorkspaceOffloadConfig

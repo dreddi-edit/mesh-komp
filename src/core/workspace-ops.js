@@ -8,7 +8,7 @@
  * call-time. No Node.js built-ins are needed directly.
  */
 
-const logger = require('./logger');
+const logger = require('../logger');
 
 let localWorkspaceEnrichmentRunning = false;
 const localWorkspaceEnrichmentPending = [];

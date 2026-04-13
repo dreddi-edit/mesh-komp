@@ -9,7 +9,7 @@
 const path   = require('path');
 const crypto = require('crypto');
 const secureDb = require('../../secure-db');
-const logger = require('./logger');
+const logger = require('../logger');
 
 // ── Utility helpers (duplicated from index.js — keep in sync if changed) ──
 
