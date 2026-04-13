@@ -85,6 +85,11 @@ function csrfGuard(req, res, next) {
 app.use(express.json({ limit: '1mb' }));
 app.use(csrfGuard);
 
+const { apiLimiter, uploadLimiter } = require('./middleware/rate-limiter');
+app.use('/api', apiLimiter);
+app.use('/api/workspace/offload', uploadLimiter);
+app.use('/api/workspace/ingest', uploadLimiter);
+
 // ── Pre-computed clean-URL route map ─────────────────────────────────────────
 // Built once at startup — eliminates fs.existsSync() on every request.
 const REPO_ROOT = path.join(__dirname, '..');
