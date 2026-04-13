@@ -1,3 +1,5 @@
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
 const NAV_ITEMS = [
   { id: "home", href: "index.html", label: "Home" },
   { id: "terminal", href: "terminal.html", label: "Terminal" },
@@ -240,7 +242,13 @@ function showToast(title, message) {
   if (!stack) return;
   const node = document.createElement("div");
   node.className = "toast glass";
-  node.innerHTML = `<strong>${title}</strong><span>${message}</span>`;
+  node.textContent = '';
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  const span = document.createElement('span');
+  span.textContent = message;
+  node.appendChild(strong);
+  node.appendChild(span);
   stack.appendChild(node);
   setTimeout(() => {
     node.style.opacity = "0";

@@ -16,41 +16,9 @@ const path   = require('path');
 const zlib   = require('zlib');
 
 const { MESH_SYSTEM_PROMPT } = require('./model-providers');
-const logger = require('./logger');
-
-// ---------------------------------------------------------------------------
-// Inlined utilities — needed at require-time by createWorkspaceOffloadConfig
-// (originals live in index.js; these copies allow standalone module loading)
-// ---------------------------------------------------------------------------
-
-function parseBooleanFlag(rawValue, fallback = false) {
-  if (rawValue === undefined || rawValue === null || rawValue === "") return fallback;
-  const normalized = String(rawValue).trim().toLowerCase();
-  if (["1", "true", "yes", "on", "enabled"].includes(normalized)) return true;
-  if (["0", "false", "no", "off", "disabled"].includes(normalized)) return false;
-  return fallback;
-}
-
-function parseIntegerInRange(rawValue, fallback, min, max) {
-  const numeric = Number(rawValue);
-  const selected = Number.isFinite(numeric) ? Math.trunc(numeric) : fallback;
-  return Math.min(max, Math.max(min, selected));
-}
-
-function trimTrailingSlashes(value) {
-  return String(value || "").trim().replace(/\/+$/g, "");
-}
-
-function normalizeSasToken(rawToken) {
-  return String(rawToken || "").trim().replace(/^\?+/, "");
-}
-
-function sanitizeBlobContainerName(rawValue) {
-  return String(rawValue || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "");
-}
+const config = require('../config');
+const logger = require('../logger');
+const { normalizeSasToken, trimTrailingSlashes } = require('../config/env-utils');
 
 function createWorkspacePerfTracker(scope, meta = {}) {
   const startedAt = Date.now();
@@ -963,7 +931,7 @@ function buildWorkspaceBlobReadUrl(storage = {}) {
   if (!normalized) {
     throw new Error("Azure blob storage reference missing.");
   }
-  const readToken = normalizeSasToken(process.env.MESH_AZURE_BLOB_READ_SAS_TOKEN || azureBlob.ingestSasToken || azureBlob.uploadSasToken || "");
+  const readToken = normalizeSasToken(config.MESH_AZURE_BLOB_READ_SAS_TOKEN || azureBlob.ingestSasToken || azureBlob.uploadSasToken || "");
   if (!azureBlob.baseUrl || !azureBlob.container || !readToken) {
     throw new Error("Azure blob read access is not configured on this gateway.");
   }
@@ -976,16 +944,16 @@ function buildWorkspaceBlobReadUrl(storage = {}) {
 }
 
 function createWorkspaceOffloadConfig() {
-  const requested = parseBooleanFlag(process.env.MESH_AZURE_OFFLOAD_ENABLED, false);
-  const baseUrl = trimTrailingSlashes(process.env.MESH_AZURE_BLOB_BASE_URL || "");
-  const container = sanitizeBlobContainerName(process.env.MESH_AZURE_BLOB_CONTAINER || "");
-  const uploadSasToken = normalizeSasToken(process.env.MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN || process.env.MESH_AZURE_BLOB_SAS_TOKEN || "");
-  const ingestSasToken = normalizeSasToken(process.env.MESH_AZURE_BLOB_INGEST_SAS_TOKEN || process.env.MESH_AZURE_BLOB_SAS_TOKEN || uploadSasToken);
-  const readSasToken = normalizeSasToken(process.env.MESH_AZURE_BLOB_READ_SAS_TOKEN || ingestSasToken || uploadSasToken);
-  const maxChunkFiles = parseIntegerInRange(process.env.MESH_AZURE_OFFLOAD_MAX_CHUNK_FILES, 900, 100, 5000);
-  const maxChunkBytes = parseIntegerInRange(process.env.MESH_AZURE_OFFLOAD_MAX_CHUNK_BYTES, 60_000_000, 5_000_000, 250_000_000);
-  const maxParallelReads = parseIntegerInRange(process.env.MESH_AZURE_OFFLOAD_MAX_PARALLEL_READS, 64, 8, 192);
-  const maxInflightChunks = parseIntegerInRange(process.env.MESH_AZURE_OFFLOAD_MAX_INFLIGHT_CHUNKS, 4, 1, 12);
+  const requested = config.MESH_AZURE_OFFLOAD_ENABLED;
+  const baseUrl = config.MESH_AZURE_BLOB_BASE_URL;
+  const container = config.MESH_AZURE_BLOB_CONTAINER;
+  const uploadSasToken = config.MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN;
+  const ingestSasToken = normalizeSasToken(config.MESH_AZURE_BLOB_INGEST_SAS_TOKEN || uploadSasToken);
+  const readSasToken = normalizeSasToken(config.MESH_AZURE_BLOB_READ_SAS_TOKEN || ingestSasToken || uploadSasToken);
+  const maxChunkFiles = config.MESH_AZURE_OFFLOAD_MAX_CHUNK_FILES;
+  const maxChunkBytes = config.MESH_AZURE_OFFLOAD_MAX_CHUNK_BYTES;
+  const maxParallelReads = config.MESH_AZURE_OFFLOAD_MAX_PARALLEL_READS;
+  const maxInflightChunks = config.MESH_AZURE_OFFLOAD_MAX_INFLIGHT_CHUNKS;
 
   let enabled = false;
   let reason = "disabled-by-env";
@@ -1227,7 +1195,7 @@ async function deleteWorkspaceBlob(storage = {}) {
   if (!normalized) {
     throw new Error("Azure blob storage reference missing.");
   }
-  const deleteToken = normalizeSasToken(process.env.MESH_AZURE_BLOB_DELETE_SAS_TOKEN || workspaceOffloadConfig.azureBlob.uploadSasToken || "");
+  const deleteToken = normalizeSasToken(config.MESH_AZURE_BLOB_DELETE_SAS_TOKEN || workspaceOffloadConfig.azureBlob.uploadSasToken || "");
   const deleteUrl = buildAzureBlobAbsoluteUrl(
     workspaceOffloadConfig.azureBlob.baseUrl,
     workspaceOffloadConfig.azureBlob.container,

@@ -7,16 +7,17 @@ const {
   synthesizeSpeech,
   runAzureVoiceToolLoop,
 } = require('../core/voice-azure-audio');
+const config = require('../config');
 const logger = require('../logger');
 
 const SAMPLE_RATE = 24000;
-const SPEECH_RMS_THRESHOLD = Number(process.env.MESH_VOICE_VAD_THRESHOLD || 0.012);
-const SPEECH_PREFIX_MS = Number(process.env.MESH_VOICE_VAD_PREFIX_MS || 240);
-const SPEECH_SILENCE_MS = Number(process.env.MESH_VOICE_VAD_SILENCE_MS || 720);
-const MIN_UTTERANCE_MS = Number(process.env.MESH_VOICE_MIN_UTTERANCE_MS || 280);
-const MAX_UTTERANCE_MS = Number(process.env.MESH_VOICE_MAX_UTTERANCE_MS || 14000);
-const AUDIO_DELTA_BYTES = Number(process.env.MESH_VOICE_AUDIO_DELTA_BYTES || 4096);
-const PERF_LOG = ['1', 'true', 'yes', 'on'].includes(String(process.env.MESH_WORKSPACE_PERF_LOG || '').trim().toLowerCase());
+const SPEECH_RMS_THRESHOLD = config.SPEECH_RMS_THRESHOLD;
+const SPEECH_PREFIX_MS = config.SPEECH_PREFIX_MS;
+const SPEECH_SILENCE_MS = config.SPEECH_SILENCE_MS;
+const MIN_UTTERANCE_MS = config.MIN_UTTERANCE_MS;
+const MAX_UTTERANCE_MS = config.MAX_UTTERANCE_MS;
+const AUDIO_DELTA_BYTES = config.AUDIO_DELTA_BYTES;
+const PERF_LOG = config.MESH_WORKSPACE_PERF_LOG;
 
 /**
  * @param {import('http').Server} server

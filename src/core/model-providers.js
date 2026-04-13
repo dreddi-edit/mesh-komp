@@ -8,6 +8,7 @@
  */
 
 const path = require('path');
+const config = require('../config');
 
 let Anthropic;
 try { Anthropic = require('@anthropic-ai/sdk').default || require('@anthropic-ai/sdk').Anthropic; } catch { Anthropic = null; }
@@ -33,7 +34,7 @@ const STATIC_MODELS = {
   google: ["gemini-3-flash"],
 };
 
-const MESH_DEFAULT_MODEL = process.env.MESH_DEFAULT_MODEL || "gpt-5.4-mini";
+const MESH_DEFAULT_MODEL = config.MESH_DEFAULT_MODEL;
 
 const MESH_SYSTEM_PROMPT = [
   "You are Mesh AI, an expert AI coding assistant integrated into the Mesh AI IDE.",
@@ -735,8 +736,8 @@ async function runModelChat({ model, messages, credentials = {} }) {
   }
 
   if (resolved.provider === "anthropic") {
-    let apiKey = String(credentials?.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY || "").trim();
-    const bedrockToken = String(process.env.AWS_BEARER_TOKEN_BEDROCK || "").trim();
+    let apiKey = String(credentials?.anthropic?.apiKey || config.ANTHROPIC_API_KEY || "").trim();
+    const bedrockToken = String(config.AWS_BEARER_TOKEN_BEDROCK || "").trim();
 
     // Use Bedrock fallback for designated models if no personal key
     const isBedrockTarget = resolved.model.includes("opus-4") || resolved.model.includes("sonnet-4-6") || resolved.model.includes("haiku-4-5");
@@ -779,9 +780,9 @@ async function runModelChat({ model, messages, credentials = {} }) {
   }
 
   if (resolved.provider === "openai") {
-    const userApiKey = String(credentials?.openai?.apiKey || process.env.OPENAI_API_KEY || "").trim();
-    const azureEndpoint = String(process.env.AZURE_OPENAI_ENDPOINT || "").trim().replace(/\/+$/, "");
-    const azureKey = String(process.env.AZURE_OPENAI_KEY || "").trim();
+    const userApiKey = String(credentials?.openai?.apiKey || config.OPENAI_API_KEY || "").trim();
+    const azureEndpoint = String(config.AZURE_OPENAI_ENDPOINT || "").trim().replace(/\/+$/, "");
+    const azureKey = String(config.AZURE_OPENAI_KEY || "").trim();
 
     // If user has their own key, use direct OpenAI
     if (userApiKey) {
@@ -865,7 +866,7 @@ async function runModelChat({ model, messages, credentials = {} }) {
   }
 
   if (resolved.provider === "google") {
-    const apiKey = String(credentials?.google?.apiKey || process.env.GOOGLE_API_KEY || "").trim();
+    const apiKey = String(credentials?.google?.apiKey || config.GOOGLE_API_KEY || "").trim();
     if (!apiKey) {
       if (byokExactProvider) return runByok(byokExactProvider);
       throw new Error("Missing Google API key. Configure it in Settings > AI & Models.");

@@ -9,47 +9,23 @@
 const path   = require('path');
 const crypto = require('crypto');
 const secureDb = require('../../secure-db');
-const logger = require('./logger');
-
-// ── Utility helpers (duplicated from index.js — keep in sync if changed) ──
-
-function parseBooleanFlag(rawValue, fallback = false) {
-  if (rawValue === undefined || rawValue === null || rawValue === '') return fallback;
-  const normalized = String(rawValue).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
-  return fallback;
-}
-
-function parseIntegerInRange(rawValue, fallback, min, max) {
-  const numeric = Number(rawValue);
-  const selected = Number.isFinite(numeric) ? Math.trunc(numeric) : fallback;
-  return Math.min(max, Math.max(min, selected));
-}
+const logger = require('../logger');
+const config = require('../config');
 
 // ── Auth constants ──
 
 const AUTH_STORE_FILE          = path.join(__dirname, '.mesh-auth-store.json');
 const AUTH_SESSION_TTL_MS      = 1000 * 60 * 60 * 24 * 14;
-const AUTH_SESSION_TOUCH_INTERVAL_MS = parseIntegerInRange(
-  process.env.MESH_AUTH_SESSION_TOUCH_INTERVAL_MS,
-  2 * 60 * 1000,
-  0,
-  AUTH_SESSION_TTL_MS,
-);
-const AUTH_COOKIE_NAME      = String(process.env.MESH_AUTH_COOKIE_NAME || 'mesh_auth').trim() || 'mesh_auth';
-const AUTH_COOKIE_PATH      = String(process.env.MESH_AUTH_COOKIE_PATH || '/').trim() || '/';
-const AUTH_COOKIE_SAME_SITE = String(process.env.MESH_AUTH_COOKIE_SAMESITE || 'Strict').trim() || 'Strict';
-const AUTH_COOKIE_SECURE    = parseBooleanFlag(process.env.MESH_AUTH_COOKIE_SECURE, process.env.NODE_ENV === 'production');
+const AUTH_SESSION_TOUCH_INTERVAL_MS = config.MESH_AUTH_SESSION_TOUCH_INTERVAL_MS;
+const AUTH_COOKIE_NAME      = config.AUTH_COOKIE_NAME;
+const AUTH_COOKIE_PATH      = config.AUTH_COOKIE_PATH;
+const AUTH_COOKIE_SAME_SITE = config.AUTH_COOKIE_SAME_SITE;
+const AUTH_COOKIE_SECURE    = config.AUTH_COOKIE_SECURE;
 
-const IS_PRODUCTION = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
-const DEMO_USER_ENABLED      = parseBooleanFlag(process.env.MESH_DEMO_USER_ENABLED, !IS_PRODUCTION);
-const DEMO_USER_EMAIL        = String(process.env.MESH_DEMO_USER_EMAIL || 'edgar@test.com').trim().toLowerCase();
-const DEMO_USER_EMAIL_ALIASES = String(process.env.MESH_DEMO_USER_EMAIL_ALIASES || '')
-  .split(',')
-  .map((entry) => String(entry || '').trim().toLowerCase())
-  .filter(Boolean);
-const DEMO_USER_PASSWORD = String(process.env.MESH_DEMO_USER_PASSWORD || '12345').trim();
+const DEMO_USER_ENABLED      = config.DEMO_USER_ENABLED;
+const DEMO_USER_EMAIL        = config.DEMO_USER_EMAIL;
+const DEMO_USER_EMAIL_ALIASES = config.DEMO_USER_EMAIL_ALIASES;
+const DEMO_USER_PASSWORD     = config.DEMO_USER_PASSWORD;
 
 const USER_STORE_ALLOWED_KEYS = new Set([
   'meshAiAnthropic',
@@ -75,16 +51,32 @@ let lastAuthStoreErrorLogAt = 0;
 
 // ── Auth functions ──
 
+/**
+ * @param {string} email
+ * @returns {string} Lowercased, trimmed email address.
+ */
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+/**
+ * Hash a password using scrypt with a random or provided salt.
+ * @param {string} password
+ * @param {string} [saltHex] - Hex-encoded salt; generated if omitted.
+ * @returns {string} Format: `<salt>:<hash>` (both hex-encoded).
+ */
 function hashPassword(password, saltHex) {
   const salt = saltHex || crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(String(password || ''), salt, 64).toString('hex');
   return `${salt}:${hash}`;
 }
 
+/**
+ * Verify a password against a stored `salt:hash` string using timing-safe comparison.
+ * @param {string} password
+ * @param {string} storedHash - Format: `<salt>:<hash>`.
+ * @returns {boolean}
+ */
 function verifyPassword(password, storedHash) {
   const raw = String(storedHash || '');
   const separator = raw.indexOf(':');
@@ -105,6 +97,11 @@ function verifyPassword(password, storedHash) {
   }
 }
 
+/**
+ * Extract and stringify safe user fields for client-facing responses.
+ * @param {object} user
+ * @returns {{ id: string, email: string, name: string, role: string, createdAt: string }}
+ */
 function sanitizeAuthUser(user) {
   return {
     id:        String(user?.id || ''),
@@ -149,11 +146,22 @@ async function loadAuthStore() {
   }
 }
 
+/**
+ * Create a new auth session and return its token.
+ * @param {string} userId
+ * @param {object} [metadata]
+ * @returns {Promise<string>} Session token.
+ */
 async function issueAuthSession(userId, metadata = {}) {
   const session = await secureDb.createSession(userId, AUTH_SESSION_TTL_MS, metadata);
   return session.token;
 }
 
+/**
+ * Parse a raw Cookie header string into a key-value map.
+ * @param {string} headerValue
+ * @returns {Record<string, string>}
+ */
 function parseCookiesFromHeader(headerValue) {
   const cookies = {};
   const raw = String(headerValue || '').trim();
@@ -195,6 +203,13 @@ function normalizeSameSiteValue(rawValue) {
   return 'Lax';
 }
 
+/**
+ * Build a Set-Cookie header string with the given options.
+ * @param {string} name
+ * @param {string} value
+ * @param {{ path?: string, maxAge?: number, sameSite?: string, httpOnly?: boolean, secure?: boolean }} [options]
+ * @returns {string}
+ */
 function createCookieHeader(name, value, options = {}) {
   const parts     = [`${name}=${encodeURIComponent(String(value || ''))}`];
   const pathValue = String(options.path || '/').trim() || '/';
@@ -276,6 +291,14 @@ async function resolveAuthUserFromRequest(req) {
   }
 }
 
+/**
+ * Express middleware that validates auth session from cookie.
+ * Sets req.authUser, req.authToken, req.authSession on success.
+ * Returns 401 on failure.
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
 async function requireAuth(req, res, next) {
   const resolved = await resolveAuthUserFromRequest(req);
   if (!resolved) {
@@ -340,6 +363,11 @@ function normalizeStoredByokProviders(byokConfig, registry) {
   ];
 }
 
+/**
+ * Load and normalize all AI provider credentials for a user.
+ * @param {string} userId
+ * @returns {Promise<{ anthropic: { apiKey: string, maxTokens: number }, openai: { apiKey: string, orgId: string }, google: { apiKey: string }, byok: { providers: Array } }>}
+ */
 async function getStoredCredentialsForUser(userId) {
   const values = await secureDb.getUserStoreValues(userId, [
     'meshAiAnthropic',

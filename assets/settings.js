@@ -173,7 +173,15 @@ function showToast(title, msg) {
   if (!stack) { stack = document.createElement("div"); stack.className = "toast-stack"; stack.dataset.toastStack = ""; document.body.appendChild(stack); }
   const t = document.createElement("div");
   t.className = "toast";
-  t.innerHTML = `<div><strong>${title}</strong><span>${msg}</span></div>`;
+  t.textContent = '';
+  const div = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = title;
+  const span = document.createElement('span');
+  span.textContent = msg;
+  div.appendChild(strong);
+  div.appendChild(span);
+  t.appendChild(div);
   stack.appendChild(t);
   setTimeout(() => { t.style.opacity = "0"; t.style.transform = "translateY(8px)"; }, 2600);
   setTimeout(() => t.remove(), 3000);

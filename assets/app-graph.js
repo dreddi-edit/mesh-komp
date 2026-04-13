@@ -553,7 +553,11 @@
             }
 
         } catch (err) {
-            container.innerHTML = `<div class="graph-error">Mesh Graph Error: ${err.message}</div>`;
+            container.textContent = '';
+            const errDiv = document.createElement('div');
+            errDiv.className = 'graph-error';
+            errDiv.textContent = 'Mesh Graph Error: ' + (err.message || 'Unknown error');
+            container.appendChild(errDiv);
         }
     };
 

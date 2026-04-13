@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
+const config = require('../config');
 const logger = require('../logger');
 
 // Only the offload/ingest endpoint accepts large bodies (workspace file chunks).
@@ -1294,8 +1295,8 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
     const resolved = resolveProviderForModel(model, resolvedCredentials);
 
     if (resolved.provider === "anthropic") {
-      let apiKey = String(resolvedCredentials?.anthropic?.apiKey || process.env.ANTHROPIC_API_KEY || "").trim();
-      const bedrockToken = String(process.env.AWS_BEARER_TOKEN_BEDROCK || "").trim();
+      let apiKey = String(resolvedCredentials?.anthropic?.apiKey || config.ANTHROPIC_API_KEY || "").trim();
+      const bedrockToken = String(config.AWS_BEARER_TOKEN_BEDROCK || "").trim();
       const isBedrockTarget = resolved.model.includes("opus-4") || resolved.model.includes("sonnet-4-6") || resolved.model.includes("haiku-4-5");
 
       if (!apiKey && bedrockToken && isBedrockTarget) {
@@ -1383,9 +1384,9 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
         sendSSE("error", { error: "Missing Anthropic API key" });
       }
     } else if (resolved.provider === "openai") {
-      const userApiKey = String(resolvedCredentials?.openai?.apiKey || process.env.OPENAI_API_KEY || "").trim();
-      const azureEndpoint = String(process.env.AZURE_OPENAI_ENDPOINT || "").trim().replace(/\/+$/, "");
-      const azureKey = String(process.env.AZURE_OPENAI_KEY || "").trim();
+      const userApiKey = String(resolvedCredentials?.openai?.apiKey || config.OPENAI_API_KEY || "").trim();
+      const azureEndpoint = config.AZURE_OPENAI_ENDPOINT;
+      const azureKey = config.AZURE_OPENAI_KEY;
 
       if (userApiKey) {
         await streamOpenAICompatible({

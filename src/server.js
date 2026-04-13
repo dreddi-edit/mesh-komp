@@ -6,11 +6,11 @@ const { randomUUID } = require('node:crypto');
 const logger = require('./logger');
 
 // ── Fail fast if critical env vars are missing ────────────────────────────────
-const { runStartupChecks } = require('./core/startup-checks');
-const startupResult = runStartupChecks();
-startupResult.warnings.forEach((w) => logger.warn(w, { phase: 'startup' }));
-if (!startupResult.ok) {
-  startupResult.errors.forEach((e) => logger.error(e, { phase: 'startup', fatal: true }));
+const config = require('./config');
+const { validation } = require('./config');
+validation.warnings.forEach((w) => logger.warn(w, { phase: 'startup' }));
+if (!validation.ok) {
+  validation.errors.forEach((e) => logger.error(e, { phase: 'startup', fatal: true }));
   process.exit(1);
 }
 
@@ -84,6 +84,11 @@ function csrfGuard(req, res, next) {
 // Tight default — only the offload/ingest route overrides this per-route.
 app.use(express.json({ limit: '1mb' }));
 app.use(csrfGuard);
+
+const { apiLimiter, uploadLimiter } = require('./middleware/rate-limiter');
+app.use('/api', apiLimiter);
+app.use('/api/workspace/offload', uploadLimiter);
+app.use('/api/workspace/ingest', uploadLimiter);
 
 // ── Pre-computed clean-URL route map ─────────────────────────────────────────
 // Built once at startup — eliminates fs.existsSync() on every request.
@@ -171,7 +176,7 @@ app.use('/', createAssistantRouter(core));
 const { setupTerminalRelay } = require('./routes/terminal.routes');
 setupTerminalRelay(server, { projectRoot: REPO_ROOT, core });
 
-const PORT = Number(process.env.PORT || 8080);
+const PORT = config.PORT;
 server.listen(PORT, () => {
   logger.info('Server started', { port: PORT });
 });

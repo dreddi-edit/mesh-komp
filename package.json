@@ -10,10 +10,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["mesh", "ide", "ai", "coding-assistant"],
+  "author": "Edgar Baumann",
   "license": "ISC",
-  "description": "",
+  "description": "Mesh AI — browser-based AI-powered IDE with integrated terminal, AI chat, voice, and workspace management",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
     "@azure/cosmos": "^4.9.2",

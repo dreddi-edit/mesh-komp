@@ -12,8 +12,10 @@
  *   logger.error('Unhandled exception', { err: error.message, requestId });
  */
 
+const config = require('./config');
+
 const LEVEL_VALUES = { debug: 0, info: 1, warn: 2, error: 3 };
-const MIN_LEVEL = LEVEL_VALUES[String(process.env.LOG_LEVEL || 'info').toLowerCase()] ?? LEVEL_VALUES.info;
+const MIN_LEVEL = LEVEL_VALUES[config.LOG_LEVEL] ?? LEVEL_VALUES.info;
 
 /**
  * @param {'debug'|'info'|'warn'|'error'} level
