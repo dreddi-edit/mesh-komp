@@ -15,7 +15,7 @@ class MeshClient {
             // Load Brotli WASM dynamically from unpkg
             const brotliWasm = await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module');
             this.brotli = await brotliWasm.default();
-            console.log("[MeshClient] WebAssembly Brotli Engine loaded successfully.");
+            // Brotli WASM loaded
         } catch (err) {
             console.error("[MeshClient] Failed to load WASM Brotli:", err);
         }
@@ -56,8 +56,6 @@ class MeshClient {
         const originalSize = textBuffer.length;
         const compressedSize = compressedBuffer.length;
         const ratio = (originalSize / compressedSize).toFixed(2);
-        
-        console.log(`[MeshClient] Payload compressed: ${originalSize}B -> ${compressedSize}B (Ratio: ${ratio})`);
         
         return compressedBuffer;
     }
