@@ -316,7 +316,7 @@ function buildVoiceConfigPayload() {
     selectedCodingModel: getSelectedCodingModel(),
     autonomyMode: voiceRuntime.autonomyMode,
     workspaceFolderName: window.MeshState?.dirName || '',
-    workspaceId: (window.MeshState?.dirName || '') + (window.MeshState?.user?.id ? '-' + window.MeshState.user.id : ''),
+    workspaceId: window.MeshState?.workspaceId || ((window.MeshState?.dirName || '') + (window.MeshState?.user?.id ? '-' + window.MeshState.user.id : '')),
     activeFilePath,
     selectedPaths,
   };

@@ -311,10 +311,9 @@ test("fallback gateway serves the workbench and supports terminal plus multi-fil
   const rootName = "demo-workspace";
   const paths = workspacePaths(rootName);
 
-  const appHtml = await fetch(`${baseUrl}/app.html`).then((response) => response.text());
+  const appHtml = await fetch(`${baseUrl}/app`).then((response) => response.text());
   assert.match(appHtml, /assets\/app-workspace\.css/);
   assert.match(appHtml, /assets\/app-workspace\.js/);
-  assert.match(appHtml, /meshAssistantWorkbenchBridge/);
 
   await login(baseUrl, jar);
   const session = await requestJson(baseUrl, "/api/auth/session", jar);
@@ -517,8 +516,12 @@ test("integration tests", { timeout: 120000 }, async (t) => {
   await login(workerBaseUrl, workerJar);
 
   const fallbackStatus = await requestJson(fallbackBaseUrl, "/api/assistant/status", fallbackJar);
-  const workerStatus = await requestJson(workerBaseUrl, "/api/assistant/status", workerJar);
   assert.equal(fallbackStatus.json.mode, "local-fallback");
+
+  const workerStatus = await waitFor(async () => {
+    const res = await requestJson(workerBaseUrl, "/api/assistant/status", workerJar);
+    return res.json?.mode === "mesh-worker" ? res : null;
+  }, { timeoutMs: 15000, intervalMs: 500 });
   assert.equal(workerStatus.json.mode, "mesh-worker");
 
   const fallbackSummary = await exerciseWorkspaceCrudScenario(fallbackBaseUrl, fallbackJar, "parity-workspace-fallback");

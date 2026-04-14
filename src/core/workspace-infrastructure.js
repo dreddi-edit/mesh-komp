@@ -909,8 +909,9 @@ function buildAzureBlobCanonicalUrl(baseUrl, container, blobPath) {
   return `${normalizedBase}/${encodeURIComponent(normalizedContainer)}/${normalizedBlobPath}`;
 }
 
-function normalizeWorkspaceBlobStorage(storage = {}, filePath = "") {
+function normalizeWorkspaceBlobStorage(storage, filePath = "") {
   if (!storage || typeof storage !== "object") return null;
+  if (!storage.provider && !storage.blobPath && !storage.azureBlobUrl) return null;
   const provider = String(storage.provider || "").trim().toLowerCase();
   if (provider && provider !== "azure-blob") return null;
   const blobPath = toSafePath(storage.blobPath || filePath);

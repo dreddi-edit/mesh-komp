@@ -8,7 +8,7 @@ const S={
   user:null,
   chat:[{role:'assistant',content:"Hi! I'm Mesh AI, your coding assistant. Open a folder to start editing, or ask me anything about code, architecture, or debugging."}],
   tree:[],totalFiles:0,
-  tabs:[],activeTab:null,dirHandle:null,dirName:'',
+  tabs:[],activeTab:null,dirHandle:null,dirName:'',workspaceId:'',
   editor:null,monacoReady:false,modified:new Set(),
   ops:{pending:[],history:[]},
   settings:{theme:'dark',fontSize:14,wordWrap:true,minimap:true,model:'gpt-5.4-mini'},
@@ -50,7 +50,7 @@ const SHELL_WIRES = [];
 
 async function purgeWorkspaceMetadata() {
   if (!S.dirName) { toast('Error', 'Open a folder first'); return; }
-  const workspaceId = S.dirName + (S.user?.id ? '-' + S.user.id : '');
+  const workspaceId = workspaceIdForCurrentFolder();
   if (!confirm('This will wipe all Mesh metadata for this workspace and re-index. Continue?')) return;
   
   try {
@@ -87,6 +87,7 @@ function fIcon(n,d){
 }
 
 function workspaceIdForCurrentFolder() {
+  if (S.workspaceId) return S.workspaceId;
   return S.dirName + (S.user?.id ? '-' + S.user.id : '');
 }
 
@@ -266,7 +267,7 @@ async function syncWorkspaceIndexDiff(diff, options = {}) {
       const content = await entry.file.text();
       batchFiles.push({ path: entry.path, content });
     }
-    await api('/api/assistant/workspace/sync', {
+    const syncResult = await api('/api/assistant/workspace/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -280,6 +281,7 @@ async function syncWorkspaceIndexDiff(diff, options = {}) {
         complete: Boolean(options.complete && i + batchSize >= changedEntries.length),
       }),
     });
+    if (syncResult?.workspaceId) S.workspaceId = syncResult.workspaceId;
     synced += slice.length;
     const ratio = totalChanged > 0 ? synced / totalChanged : 1;
     updateIndexProgressState(mode === 'initial' ? 'scanning' : 'background', {
@@ -298,7 +300,7 @@ async function syncWorkspaceIndexDiff(diff, options = {}) {
   }
 
   if (!changedEntries.length && totalDeleted > 0) {
-    await api('/api/assistant/workspace/sync', {
+    const delResult = await api('/api/assistant/workspace/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -312,6 +314,7 @@ async function syncWorkspaceIndexDiff(diff, options = {}) {
         complete: Boolean(options.complete),
       }),
     });
+    if (delResult?.workspaceId) S.workspaceId = delResult.workspaceId;
   }
 
   deletedPaths.forEach((path) => {
@@ -604,7 +607,7 @@ async function openFolder(){
   if(!('showDirectoryPicker' in window)){toast('Error','Requires Chromium browser');return;}
   try{
     const h=await window.showDirectoryPicker({mode:'readwrite'});
-    S.dirHandle=h;S.dirName=h.name;
+    S.dirHandle=h;S.dirName=h.name;S.workspaceId='';
     resetWorkspaceIndexState();
     const title=$('#tbTitle');if(title)title.textContent='Mesh AI — '+h.name;
     const prog=$('#scanProg');if(prog)prog.style.display='inline';
@@ -846,7 +849,7 @@ async function restoreFolder(options = {}) {
       if (options.interactive === false) return false;
       if ((await h.requestPermission(opt)) !== 'granted') return false;
     }
-    S.dirHandle = h; S.dirName = h.name;
+    S.dirHandle = h; S.dirName = h.name; S.workspaceId = '';
     resetWorkspaceIndexState();
     const title = $('#tbTitle'); if (title) title.textContent = 'Mesh AI — ' + h.name;
     const prog = $('#scanProg'); if (prog) prog.style.display = 'inline';

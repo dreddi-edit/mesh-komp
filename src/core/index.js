@@ -674,9 +674,18 @@ function clearLocalWorkspaceFiles() {
   localAssistantWorkspace.status = "cleared";
 }
 
-async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deletedPaths, mode, scanEpoch, complete }) {
+function canonicalWorkspaceId(folderName, userId) {
+  const folder = String(folderName || "workspace").trim() || "workspace";
+  const user = String(userId || "").trim();
+  return user ? `${folder}-${user}` : folder;
+}
+
+async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deletedPaths, mode, scanEpoch, complete, userId = "" }) {
   const normalizedFolderName = String(folderName || localAssistantWorkspace.folderName || "workspace").trim() || "workspace";
-  const normalizedWorkspaceId = String(workspaceId || localAssistantWorkspace.workspaceId || "").trim();
+  const clientWorkspaceId = String(workspaceId || "").trim();
+  const normalizedWorkspaceId = clientWorkspaceId
+    || String(localAssistantWorkspace.workspaceId || "").trim()
+    || canonicalWorkspaceId(normalizedFolderName, userId);
   const syncMode = String(mode || "background").trim().toLowerCase() || "background";
   const perf = createWorkspacePerfTracker("server-sync", {
     folderName: normalizedFolderName,
@@ -894,6 +903,7 @@ module.exports = {
   toWorkspacePath,
   toWorkspaceRelativePath,
   syncWorkspaceFiles,
+  canonicalWorkspaceId,
   clearLocalWorkspaceFiles,
   normalizeAbsoluteRootPath,
   resolveLocalWorkspaceAbsolutePath,
@@ -1138,16 +1148,9 @@ module.exports = {
   applyAssistantRunDecision
 };
 
-Object.assign(global, {
-  secureDb, DEMO_USER_EMAIL, DEMO_USER_PASSWORD, DEMO_USER_EMAIL_ALIASES,
-  AUTH_SESSION_TTL_MS, normalizeEmail, verifyPassword, ensureDemoUserRecord,
-  issueAuthSession, setAuthCookie, sanitizeAuthUser, reportAuthStoreError,
-  readAuthCookieToken, resolveAuthUserFromRequest, readAuthTokenFromRequest,
-  clearAuthCookie, pruneExpiredSessions, normalizeRequestedStoreKeys,
-  normalizeUserStoreKey, snapshotOperationsPayload, queueDeployment,
-  settleDeploymentAction, createPolicy, updatePolicy, appendOperationLog,
-  requireAuth, operationsStore, toIsoNow,
-  pty, Anthropic, brotliCompress, brotliDecompress, localAssistantWorkspace,
-  workspaceMetadataStore, operationsStore, assistantRuns, assistantTerminalSessions,
-  workspaceSelectJobs, workspaceSelectJobOrder, workspaceSelectChains
+Object.assign(global, module.exports, {
+  isWorkspaceIndexablePath, WORKSPACE_RECORD_VERSION,
+  mapWithConcurrency, createWorkspacePerfTracker,
+  buildWorkspaceFileRecord, ensureWorkspaceFileRecord,
+  decodeRawStorage, buildWorkspaceFileView,
 });

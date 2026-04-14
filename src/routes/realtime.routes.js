@@ -18,6 +18,10 @@ const MIN_UTTERANCE_MS = config.MIN_UTTERANCE_MS;
 const MAX_UTTERANCE_MS = config.MAX_UTTERANCE_MS;
 const AUDIO_DELTA_BYTES = config.AUDIO_DELTA_BYTES;
 const PERF_LOG = config.MESH_WORKSPACE_PERF_LOG;
+const HEARTBEAT_INTERVAL_MS = config.VOICE_HEARTBEAT_INTERVAL_MS;
+const HEARTBEAT_TIMEOUT_MS = config.VOICE_HEARTBEAT_TIMEOUT_MS;
+const SESSION_MAX_DURATION_MS = config.VOICE_SESSION_MAX_DURATION_MS;
+const PROCESSING_TIMEOUT_MS = config.VOICE_PROCESSING_TIMEOUT_MS;
 
 /**
  * @param {import('http').Server} server
@@ -235,6 +239,13 @@ async function handleSession(clientWs, options = {}) {
   let clientClosed = false;
   let conversationMessages = [];
   const speechState = createSpeechState();
+  const sessionStartedAt = Date.now();
+  const sessionAbort = new AbortController();
+  let heartbeatInterval = null;
+  let heartbeatTimeout = null;
+  let sessionMaxTimer = null;
+  let pongReceived = true;
+
   const voiceSession = createVoiceAgentSession({
     authUserId: String(options?.authUserId || ''),
     deps: buildVoiceDeps(core),
@@ -243,11 +254,47 @@ async function handleSession(clientWs, options = {}) {
   });
 
   function sendClientEvent(payload) {
-    if (clientWs.readyState !== WebSocket.OPEN) return;
+    if (clientClosed || clientWs.readyState !== WebSocket.OPEN) return;
     try {
       clientWs.send(JSON.stringify(payload));
     } catch {}
   }
+
+  function teardown(reason) {
+    if (clientClosed) return;
+    clientClosed = true;
+    sessionAbort.abort();
+    if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
+    if (heartbeatTimeout) { clearTimeout(heartbeatTimeout); heartbeatTimeout = null; }
+    if (sessionMaxTimer) { clearTimeout(sessionMaxTimer); sessionMaxTimer = null; }
+    resetSpeechCapture(speechState);
+    speechState.preRollChunks = [];
+    logVoicePerf('session_end', {
+      reason,
+      durationMs: Date.now() - sessionStartedAt,
+      turns: conversationMessages.filter((m) => m.role === 'user').length,
+    });
+    if (clientWs.readyState === WebSocket.OPEN || clientWs.readyState === WebSocket.CONNECTING) {
+      try { clientWs.close(1000, reason); } catch {}
+    }
+  }
+
+  heartbeatInterval = setInterval(() => {
+    if (clientClosed) return;
+    if (!pongReceived) {
+      teardown('heartbeat_timeout');
+      return;
+    }
+    pongReceived = false;
+    try { clientWs.ping(); } catch { teardown('ping_failed'); }
+  }, HEARTBEAT_INTERVAL_MS);
+
+  clientWs.on('pong', () => { pongReceived = true; });
+
+  sessionMaxTimer = setTimeout(() => {
+    sendClientEvent({ type: 'error', error: { message: 'Voice session reached maximum duration.' } });
+    teardown('session_max_duration');
+  }, SESSION_MAX_DURATION_MS);
 
   async function streamSpeechResponse(text) {
     const replyText = String(text || '').trim();
@@ -261,13 +308,18 @@ async function handleSession(clientWs, options = {}) {
       transcript: replyText,
     });
 
+    if (sessionAbort.signal.aborted) return;
+
     const spoken = await synthesizeSpeech(replyText, voiceConfig, {
       voice: voiceConfig.voice,
       responseFormat: 'pcm',
     });
 
+    if (sessionAbort.signal.aborted) return;
+
     const audio = Buffer.isBuffer(spoken.audio) ? spoken.audio : Buffer.alloc(0);
     for (let offset = 0; offset < audio.length; offset += AUDIO_DELTA_BYTES) {
+      if (sessionAbort.signal.aborted) return;
       const slice = audio.subarray(offset, Math.min(audio.length, offset + AUDIO_DELTA_BYTES));
       sendClientEvent({
         type: 'response.output_audio.delta',
@@ -294,7 +346,16 @@ async function handleSession(clientWs, options = {}) {
     resetSpeechCapture(speechState);
     sendClientEvent({ type: 'input_audio_buffer.speech_stopped', reason });
 
+    const turnTimeout = setTimeout(() => {
+      if (speechState.processing) {
+        sendClientEvent({ type: 'error', error: { message: 'Voice turn processing timed out.' } });
+        speechState.processing = false;
+      }
+    }, PROCESSING_TIMEOUT_MS * 3);
+
     try {
+      if (sessionAbort.signal.aborted) return;
+
       const transcribeStartedAt = Date.now();
       const transcription = await transcribePcm16Buffer(utteranceBuffer, voiceConfig, {
         sampleRate: SAMPLE_RATE,
@@ -305,6 +366,8 @@ async function handleSession(clientWs, options = {}) {
         elapsedMs: Date.now() - transcribeStartedAt,
         textChars: String(transcription.text || '').length,
       });
+
+      if (sessionAbort.signal.aborted) return;
 
       const transcript = String(transcription.text || '').trim();
       if (!transcript) {
@@ -326,6 +389,8 @@ async function handleSession(clientWs, options = {}) {
       try {
         capsuleContext = await buildVoiceCapsuleContext(voiceSession, core);
       } catch { /* proceed without context */ }
+
+      if (sessionAbort.signal.aborted) return;
 
       const messages = [
         { role: 'system', content: voiceSession.buildInstructions(capsuleContext) },
@@ -349,6 +414,8 @@ async function handleSession(clientWs, options = {}) {
         messageCount: Array.isArray(result.messages) ? result.messages.length : 0,
       });
 
+      if (sessionAbort.signal.aborted) return;
+
       conversationMessages = (Array.isArray(result.messages) ? result.messages : messages)
         .filter((entry) => String(entry?.role || '').toLowerCase() !== 'system')
         .slice(-24);
@@ -356,15 +423,17 @@ async function handleSession(clientWs, options = {}) {
       const replyText = buildAssistantResponseText(result);
       await streamSpeechResponse(replyText);
     } catch (error) {
+      if (sessionAbort.signal.aborted) return;
       const detail = String(error?.message || 'Voice processing failed');
       sendClientEvent({ type: 'error', error: { message: detail } });
     } finally {
+      clearTimeout(turnTimeout);
       speechState.processing = false;
     }
   }
 
   function handleAudioAppend(base64) {
-    if (speechState.processing) return;
+    if (speechState.processing || sessionAbort.signal.aborted) return;
     const pcmBuffer = decodeAudioChunk(base64);
     if (!pcmBuffer.length) return;
 
@@ -400,6 +469,8 @@ async function handleSession(clientWs, options = {}) {
   }
 
   async function forwardClientMessage(raw) {
+    if (sessionAbort.signal.aborted) return;
+
     let parsed = null;
     try {
       parsed = JSON.parse(raw.toString());
@@ -455,23 +526,19 @@ async function handleSession(clientWs, options = {}) {
       sendClientEvent({ type: 'error', error: { message: String(error?.message || 'Voice relay error') } });
     });
   });
-  clientWs.on('close', () => {
-    clientClosed = true;
-  });
-  clientWs.on('error', () => {
-    clientClosed = true;
-  });
+  clientWs.on('close', () => { teardown('client_close'); });
+  clientWs.on('error', () => { teardown('client_error'); });
 
   sendClientEvent({
     type: 'voice.session.configured',
     voiceSessionId: voiceSession.state.voiceSessionId,
-      selectedCodingModel: voiceSession.state.selectedCodingModel,
-      autonomyMode: voiceSession.state.autonomyMode,
-      workspaceFolderName: voiceSession.state.workspaceFolderName,
-      workspaceId: voiceSession.state.workspaceId,
-      sessionId: voiceSession.state.sessionId,
-      activeFilePath: voiceSession.state.activeFilePath,
-      selectedPaths: voiceSession.state.selectedPaths,
+    selectedCodingModel: voiceSession.state.selectedCodingModel,
+    autonomyMode: voiceSession.state.autonomyMode,
+    workspaceFolderName: voiceSession.state.workspaceFolderName,
+    workspaceId: voiceSession.state.workspaceId,
+    sessionId: voiceSession.state.sessionId,
+    activeFilePath: voiceSession.state.activeFilePath,
+    selectedPaths: voiceSession.state.selectedPaths,
   });
 }
 

@@ -335,6 +335,7 @@ router.post("/api/assistant/workspace/sync", requireAuth, async (req, res) => {
       mode,
       scanEpoch,
       complete,
+      userId: req.authUser?.id || "",
     });
     res.json(result);
   } catch (error) {

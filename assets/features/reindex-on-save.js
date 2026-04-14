@@ -114,7 +114,7 @@ async function reindexFile(path) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        workspaceId: (S?.dirName || '') + (S?.user?.id ? '-' + S.user.id : ''),
+        workspaceId: S?.workspaceId || ((S?.dirName || '') + (S?.user?.id ? '-' + S.user.id : '')),
         folderName: S?.dirName || 'workspace',
         files: path ? [{ path, content }] : [],
         deletedPaths: [],

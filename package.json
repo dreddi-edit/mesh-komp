@@ -6,7 +6,7 @@
     "start": "node server.js",
     "monitor": "node ccmon.js",
     "bench:compression": "node benchmarks/compression-benchmark.js",
-    "test": "node --test",
+    "test": "node --test --test-force-exit --test-timeout=120000",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

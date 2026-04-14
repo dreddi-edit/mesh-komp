@@ -406,15 +406,14 @@
         };
 
         try {
-            /* Prefer the indexed server graph so dependency data can update incrementally.
-               Do NOT send a synthetic workspaceId — the worker owns its workspace identity.
-               Passing a client-constructed ID (dirName+userId) causes the worker's store
-               lookup to win over RAM state and return an empty graph even when a folder
-               is open (the synthetic key never matches what's in the store). */
             let data;
             const S = window.MeshState;
+            const wsId = S?.workspaceId || '';
+            const graphUrl = wsId
+                ? `/api/assistant/workspace/graph?workspaceId=${encodeURIComponent(wsId)}`
+                : '/api/assistant/workspace/graph';
             try {
-                const resp = await fetch('/api/assistant/workspace/graph');
+                const resp = await fetch(graphUrl);
                 data = await resp.json();
                 if (!data.ok) throw new Error(data.error || 'No data');
             } catch {
