@@ -16,6 +16,8 @@ It is a **thin aggregator**: requires the submodules, destructures their exports
 src/core/index.js
   ├─ requires: src/core/auth.js
   ├─ requires: src/core/model-providers.js
+  ├─ requires: src/core/mesh-codec.js          ← extracted from model-providers
+  ├─ requires: src/core/operations-store.js     ← extracted from index.js
   ├─ requires: src/core/assistant-runs.js
   ├─ requires: src/core/workspace-infrastructure.js
   ├─ requires: src/core/workspace-context.js
@@ -26,7 +28,7 @@ src/core/index.js
   └─ requires: mesh-core/src/compression-core.cjs
                workspace-metadata-store.cjs
 
-src/core/startup-checks.js  ← called by src/server.js at boot, not by index.js
+src/config/index.js  ← centralized config; validates env vars at startup (called by src/server.js)
 ```
 
 ## Submodule Breakdown
@@ -85,6 +87,16 @@ Receives deps via the `core` object passed through from `src/server.js` — no d
 - Graph payload construction
 - Assistant reply handling
 
+### `src/core/mesh-codec.js`
+Extracted from `model-providers.js`:
+- `encodeModel()` / `decodeModel()` — Mesh model codec for serialization
+- `injectModelConfig()` — runtime model configuration injection
+
+### `src/core/operations-store.js`
+Extracted from `index.js`:
+- Operations record persistence
+- File-backed operations storage and retrieval
+
 ### `src/core/deployments.js`
 12 functions:
 - Risk normalization
@@ -92,12 +104,14 @@ Receives deps via the `core` object passed through from `src/server.js` — no d
 - Deployment record management
 - Policy enforcement
 
-### `src/core/startup-checks.js`
+### `src/config/index.js`
 Called once at server boot by `src/server.js` **before** routes or database connections.
-- Validates all required and recommended env vars
+- Centralized configuration module — single source of truth for all env vars
+- Validates all required and recommended env vars via `validateConfig()`
 - In production: missing critical vars are fatal (`process.exit(1)`)
 - In all environments: missing recommended vars produce logged warnings
 - Returns `{ ok: boolean, errors: string[], warnings: string[] }`
+- Helper utilities in `src/config/env-utils.js`: boolean/integer parsing, SAS normalization, etc.
 
 ## Shared External Modules
 
@@ -110,4 +124,4 @@ Called once at server boot by `src/server.js` **before** routes or database conn
 
 ## Known Issues
 
-- `src/core/index.js` is still very large — hard to reason about ownership boundaries; further split into focused submodules is the long-term goal
+- `src/core/index.js` is still large, though `operations-store.js` and `mesh-codec.js` have been extracted — further splits ongoing

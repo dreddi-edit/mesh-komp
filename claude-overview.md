@@ -1,6 +1,6 @@
 # Claude Overview: Mesh-Komp System Architecture
 
-Last updated: 2026-04-06
+Last updated: 2026-04-14
 Audience: engineers working on try-mesh.com (gateway, worker, frontend, compression, auth, deploy)
 
 ---
@@ -54,33 +54,62 @@ Reason for split:
 
 ## 3.1 Root
 
-- `server.js`: gateway API, auth, chat orchestration, workspace fallback, run engine, terminal sessions.
+- `server.js`: gateway API, auth, workspace fallback, terminal sessions.
+- `src/server.js`: express app setup, global exposure, route mounting.
+- `src/config/index.js`: centralized config validation (Zod-based, all env vars validated at startup).
 - `secure-db.js`: encrypted SQLite persistence for users/sessions/user_store.
 - `assistant-core.js`: shared scoring/ranking/path-safety/plan/action utilities.
-- `app.html`: main AI workbench UI and large client runtime script.
-- `llm-compress.js`: heuristic fallback compressor used by compression pipeline.
+- `llm-compress.js`: heuristic compressor (modes: smart/skeleton/llm80), `pseudo()` for symbol summaries.
 - `DEPLOY.md`: canonical deployment runbook.
 - `package.json`: dependencies/scripts.
 
-## 3.2 Worker
+## 3.2 Core Modules (extracted April 2026)
+
+- `src/core/index.js`: main backend aggregator.
+- `src/core/model-providers.js`: AI model constants, provider calls (Anthropic/OpenAI/Gemini/BYOK), system prompt, codec.
+- `src/core/mesh-codec.js`: ROT47 transforms, token dictionary encode/decode, codec session state.
+- `src/core/workspace-context.js`: capsule context loading, prompt assembly, prefix stability, codec injection.
+- `src/core/operations-store.js`: operations/deployments/policies state management.
+- `src/core/assistant-runs.js`: run planning and execution.
+- `src/core/auth.js`: authentication logic.
+- `src/core/voice-agent.js`: voice agent tool loop.
+- `src/core/voice-azure-audio.js`: Azure STT/TTS integration.
+
+## 3.3 Routes (refactored April 2026)
+
+- `src/routes/assistant.routes.js`: workspace CRUD, file ops, recovery, offload.
+- `src/routes/assistant-chat.routes.js`: chat/run flows (extracted from assistant.routes.js).
+- `src/routes/assistant-git.routes.js`: git operations (extracted from assistant.routes.js).
+- `src/routes/auth.routes.js`: auth endpoints.
+- `src/routes/app.routes.js`: app/settings page routes.
+- `src/routes/realtime.routes.js`: voice websocket.
+- `src/routes/terminal.routes.js`: terminal websocket.
+
+## 3.4 Worker
 
 - `mesh-core/src/server.js`: worker process, `/mesh/tunnel`, workspace CRUD/search/grep/chat mock.
-- `mesh-core/src/compression-core.cjs`: core compression, capsule generation, transport envelope, recovery.
+- `mesh-core/src/compression-core.cjs`: core compression, capsule generation, transport envelope, recovery, workspace budget allocation.
+- `mesh-core/src/workspace-operations.js`: workspace indexing, delta-rebuild, budget integration.
 - `mesh-core/src/MeshServer.js`: brotli transport helper + optional minification.
 
-## 3.3 Frontend assets
+## 3.5 Frontend assets
 
-- `assets/assistant-workbench.js`: VS Code-like shell integration over `app.html` bridge.
-- `assets/assistant-workbench.css`: integrated workbench visual/layout layer.
-- `assets/workspace.js`: additional workspace page interactions (quick actions/ranges/sidebar behaviors).
-- `assets/app.js`, `assets/settings.js`, etc.: page-specific scripts.
+- `views/app.html`: main workbench shell (renamed from root `app.html`).
+- `views/index.html`, `views/docs.html`, `views/how-it-works.html`: landing pages.
+- `assets/app-workspace.js`: main browser runtime for the app shell.
+- `assets/app-workspace.css`: app shell styling.
+- `assets/app-graph.js`: dependency graph renderer.
+- `assets/features/voice-chat.js`: voice surface browser runtime.
+- `assets/settings.js`, `assets/settings-combined.js`: settings page scripts.
 
-## 3.4 Tests
+## 3.6 Tests
 
 - `test/assistant-core.test.js`
 - `test/assistant-integration.test.js`
 - `test/compression-core.test.js`
 - `test/compression-benchmark.test.js`
+- `test/model-providers.test.js`
+- `test/realtime-routes.test.js`
 
 ---
 
@@ -266,10 +295,20 @@ Each workspace file record carries multiple representations:
 - language/file-type detection,
 - tree-sitter parsing for code families,
 - section/item extraction for symbols/signatures/structure,
+- `pseudo()` integration: symbols use LLM-readable pseudocode from `llm-compress.js` when available,
 - specialized capsules for config/sql/markup/docs/text fallback,
 - focused capsule generation based on user query scoring.
 
-## 7.4 Performance controls
+## 7.4 Compression optimizations (April 2026)
+
+- **Tiny-passthrough**: files ≤150 tokens bypass capsule pipeline entirely, raw text with minimal header.
+- **Compact header**: ultra-tier uses single-line `CAP` header (~12 tokens vs ~50 for 3-line CAPSULE header).
+- **Delta-rebuild**: SHA-256 digest comparison skips unchanged files during workspace re-indexing.
+- **Prefix stability**: capsule entries sorted alphabetically, stable/dynamic split for LLM KV-cache optimization.
+- **Workspace budget**: global token budget (default 8000, `MESH_WORKSPACE_TOKEN_BUDGET`) distributed proportionally by file importance.
+- **lean mode removed**: `llm-compress.js` modes are now `smart`, `skeleton`, `llm80`.
+
+## 7.5 Performance controls
 
 Important tunables include:
 
@@ -278,8 +317,9 @@ Important tunables include:
 - `MESH_CAPSULE_MAX_TREE_WALK_NODES`
 - `MESH_CAPSULE_MAX_SYMBOLS`
 - `MESH_CAPSULE_MAX_LLM_FALLBACK_BYTES`
+- `MESH_WORKSPACE_TOKEN_BUDGET` (default 8000)
 
-These control throughput and parser workload boundaries.
+These control throughput, parser workload boundaries, and context budget allocation.
 
 ---
 
@@ -440,6 +480,7 @@ Store:
 - `MESH_CAPSULE_MAX_TREE_WALK_NODES`
 - `MESH_CAPSULE_MAX_SYMBOLS`
 - `MESH_CAPSULE_MAX_LLM_FALLBACK_BYTES`
+- `MESH_WORKSPACE_TOKEN_BUDGET` (default 8000)
 
 ## 12.6 Secure DB
 

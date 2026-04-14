@@ -122,7 +122,7 @@ mesh-workspace/session-123/workspace-456/my-repo/files/src/index.js
 
 The Function derives `workspaceId`, `sessionId`, and `path` directly from the blob path — no Worker lookup needed.
 
-See `workspace-upload-utils.cjs` for builder and parser.
+The Function derives all context from the blob path — see `mesh-functions/src/shared/blob-capsule-processor.cjs` for the parser logic.
 
 ## Environment Variables
 

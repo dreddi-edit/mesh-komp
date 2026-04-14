@@ -40,8 +40,7 @@ mesh-workspace/session-abc123/workspace-xyz789/my-repo/files/src/utils/helpers.j
 - No Worker lookup needed to attribute a blob to a workspace
 - Supports multiple sessions per workspace (different `sessionId` prefix)
 
-Built in: `workspace-upload-utils.cjs` → `buildBlobPath()`
-Parsed in: `workspace-upload-utils.cjs` → `parseBlobPath()`
+Path parsing lives in `mesh-functions/src/shared/blob-capsule-processor.cjs` (the root-level `workspace-upload-utils.cjs` has been removed).
 
 ## SAS Token Types
 

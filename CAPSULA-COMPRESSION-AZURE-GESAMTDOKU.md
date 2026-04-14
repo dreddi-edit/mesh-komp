@@ -1,6 +1,6 @@
 # Mesh Capsula Compression + Azure Integration (Vollstaendige Analyse)
 
-Stand: 2026-04-07
+Stand: 2026-04-14
 
 Diese Datei fasst die komplette Capsula/Compression-Logik und die vollstaendige Azure-Anbindung in Mesh zusammen.
 Die Analyse basiert auf dem aktuellen Code in Gateway, Worker, Compression-Core, Function-Fanout, Frontend und Tests.
@@ -17,12 +17,13 @@ Gepruefte Kernquellen:
 - `mesh-core/src/tree-sitter-worker.cjs` (Code-Capsule Parsing Worker)
 - `mesh-core/src/MeshServer.js` (Mesh-Tunnel Compression)
 - `workspace-metadata-store.cjs` (Cosmos Persistenz)
-- `workspace-upload-utils.cjs` (Blob-Pfadschema)
+- `mesh-core/src/workspace-operations.js` (Workspace-Indexing, Delta-Rebuild, Budget-Allokation)
 - `mesh-functions/src/functions/blob-capsule-indexer.js` (Event Grid Trigger)
 - `mesh-functions/src/shared/blob-capsule-processor.cjs` (Blob -> Capsula -> Cosmos Pipeline)
 - `app.html` (Browser Upload/Offload/Open-File Pfade)
 - `assets/mesh-client.js` (Browser-seitige Brotli Compression)
-- `llm-compress.js` (Legacy/heuristische LLM-Kompression)
+- `llm-compress.js` (Legacy/heuristische LLM-Kompression, Modi: smart/skeleton/llm80)
+- `src/core/workspace-context.js` (Capsule Context Assembly, Prefix-Stabilitaet, Codec-Integration)
 - `test/compression-core.test.js`, `test/assistant-integration.test.js`, `test/compression-benchmark.test.js`, `benchmarks/compression-benchmark.js`
 - `AZURE-ARCHITECTURE.md` (Live-Ressourcen und Deploy-Architektur)
 
@@ -105,16 +106,28 @@ Pipeline in `compression-core`:
    - Code: Tree-Sitter Worker (`tree-sitter-worker.cjs`)
    - Config/SQL/Markup/Docs: spezialisierte Builder
    - Fallbacks: heuristisch, optional `llm-compress`
-3. Capsule auf Budget clampen (`buildClampedCapsule`)
+3. Tiny-Passthrough (NEU April 2026):
+   - Dateien mit ≤150 Token-Schaetzung umgehen die gesamte Capsule-Pipeline
+   - Stattdessen minimaler `CAP`-Header + unveraenderter Rohtext
+   - Eliminiert Overhead bei Dateien wo der Capsule-Header groesser waere als die Einsparung
+4. Capsule auf Budget clampen (`buildBudgetedCapsule`)
    - Modi: `verbose -> compact -> dense -> emergency`
-   - Tokenbudget ~20% von Raw-Token-Schaetzung
-4. Rendern in textuelle `mesh-capsule-v2` Darstellung
+   - Tokenbudget per Tier via `buildCapsuleTierBudget`
+   - `pseudo()` Integration: Symbole nutzen LLM-lesbare Pseudocode-Zusammenfassungen aus `llm-compress.js` wenn verfuegbar (z.B. `hashPassword → "${salt}:${scryptHash}"`)
+5. Rendern in textuelle Darstellung
+   - Ultra-Tier: Kompakt-Header `CAP filename.js lang bytesB tokensT mode` (1 Zeile statt 3)
+   - Medium/Loose-Tier: Standard-Header `CAPSULE v2 path=...` (3 Zeilen, unveraendert)
+6. Workspace-Level Budget-Allokation (NEU April 2026):
+   - `allocateWorkspaceBudget()` verteilt ein Gesamt-Token-Budget proportional nach Importance-Score
+   - Score basiert auf: Dependency-Count, Recency, Dateigroesse (log-skaliert)
+   - `selectTierForBudget()` waehlt den reichsten Tier der ins Budget passt
 
 Wichtige Eigenschaften:
 
 - SpanMap (`@sp_*`) referenziert genaue Rohbereiche
 - parserFamily + parseOk + fallbackReason werden mitgefuehrt
 - Recovery-Eligibility wird aus SpanMap abgeleitet
+- Delta-Rebuild: Beim Re-Indexing werden Dateien per SHA-256 Digest-Vergleich uebersprungen wenn unveraendert
 
 ## 3.3 Focused Capsule
 
@@ -179,7 +192,18 @@ Wenn `storage.provider === "azure-blob"`:
 
 Ziel: Cosmos bleibt leichtgewichtig, Blob bleibt Source of Truth fuer Originalinhalt.
 
-## 3.8 Modellbezogene Kompression im Gateway
+## 3.8 Prompt-Caching Prefix-Stabilitaet (NEU April 2026)
+
+`src/core/workspace-context.js` optimiert die Prompt-Assembly fuer LLM-KV-Cache-Hits:
+
+- Capsule-Entries werden alphabetisch nach Pfad sortiert (deterministische Reihenfolge)
+- Stabile Capsules (ungeaenderte Dateien, nicht fokussiert/truncated) kommen zuerst im Context-Block
+- Dynamische Capsules (fokussiert, truncated) werden danach angehaengt
+- Keine Timestamps, Session-IDs oder Zufallswerte im stabilen Praefix
+- Ziel: Der stabile Teil bleibt byte-identisch zwischen Anfragen → Provider-KV-Cache-Hit
+- Schwelle: ≥1.024 Tokens (Claude/OpenAI) bzw. explizites Caching (Gemini)
+
+## 3.9 Modellbezogene Kompression im Gateway
 
 Neben Workspace-Capsules existiert ein separater Model-Codec (`mc2`) in `server.js`:
 
@@ -199,7 +223,8 @@ Das ist getrennt von Datei-Capsules, aber baut auf denselben Capsule-Inhalten au
 - Browser `assets/mesh-client.js`
   - optionale WASM-Brotli Q11 fuer Client-Payloads
 - `llm-compress.js`
-  - eigenstaendiges CLI/Legacy-Heuristiktool (smart/skeleton/lean/llm80)
+  - eigenstaendiges CLI/Legacy-Heuristiktool (smart/skeleton/llm80; lean-Modus entfernt April 2026)
+  - `pseudo()` Funktion wird jetzt von `compression-core.cjs` fuer Symbol-Zusammenfassungen genutzt
 
 ---
 
@@ -217,7 +242,7 @@ Laut `AZURE-ARCHITECTURE.md` (aktuell live):
 
 ## 4.2 Blob-Pfadschema
 
-Gemeinsame Konvention in `workspace-upload-utils.cjs`:
+Gemeinsame Konvention (frueher `workspace-upload-utils.cjs`, jetzt in `mesh-core/src/mesh-state.js`):
 
 `mesh-workspace/<sessionId>/<workspaceId>/<folderSlug>/files/<relativePath>`
 
@@ -400,6 +425,7 @@ Delete:
 - `MESH_FUNCTION_INLINE_BUFFER_BYTES`
 - `MESH_FUNCTION_STREAM_CHUNK_BYTES`
 - `MESH_WORKSPACE_MAX_FILE_CHARS`
+- `MESH_WORKSPACE_TOKEN_BUDGET` (Default 8000, Gesamt-Token-Budget fuer Workspace-Level-Allokation)
 
 ---
 

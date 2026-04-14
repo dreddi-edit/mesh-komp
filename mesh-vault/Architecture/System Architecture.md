@@ -62,7 +62,7 @@ The browser communicates with the gateway over:
 
 `global.*` has been fully removed from the gateway. All route modules receive dependencies via explicit injection:
 
-- HTTP routes (`auth.routes.js`, `app.routes.js`, `assistant.routes.js`): factory functions — `createAuthRouter(core)`, `createAppRouter(core)`, `createAssistantRouter(core)`
+- HTTP routes (`auth.routes.js`, `app.routes.js`, `assistant.routes.js`, `assistant-chat.routes.js`, `assistant-git.routes.js`): factory functions — `createAuthRouter(core)`, `createAppRouter(core)`, `createAssistantRouter(core)`, etc.
 - WebSocket modules (`terminal.routes.js`, `realtime.routes.js`): setup functions — `setupTerminalRelay(server, { projectRoot, core })`, `setupRealtimeRelay(server, core)`
 
 `src/server.js` requires `src/core/index.js` once and passes it explicitly to all modules. No globals are written at startup.
@@ -92,7 +92,7 @@ status
 |------|-------|
 | Graph identity | Frontend may send wrong `workspaceId`; worker trusts it too much |
 | Multiple workspace truths | `S.dirName`, worker state, metadata store, upload IDs — not yet unified |
-| Backend core monolith | `src/core/index.js` is still large; further split into focused submodules is the long-term goal |
+| Backend core monolith | `src/core/index.js` is still large, though `operations-store.js` and `mesh-codec.js` have been extracted; further splits ongoing |
 | Dual terminal model | Bottom-panel terminal + dedicated terminal surface coexist |
 
 ## Key Files by Layer
@@ -100,8 +100,10 @@ status
 | Layer | Files |
 |-------|-------|
 | Entry points | `server.js`, `mesh-core/src/server.js` |
-| Gateway core | `src/core/index.js`, `src/core/auth.js`, `src/core/model-providers.js` |
-| Workspace ops | `src/core/workspace-ops.js`, `src/core/workspace-infrastructure.js` |
+| Config | `src/config/index.js`, `src/config/env-utils.js` |
+| Gateway core | `src/core/index.js`, `src/core/auth.js`, `src/core/model-providers.js`, `src/core/mesh-codec.js`, `src/core/operations-store.js` |
+| Workspace ops | `src/core/workspace-ops.js`, `src/core/workspace-infrastructure.js`, `src/core/workspace-context.js` |
+| Middleware | `src/middleware/rate-limiter.js` |
 | Worker core | `mesh-core/src/workspace-operations.js`, `mesh-core/src/workspace-helpers.js` |
 | Compression | `mesh-core/src/compression-core.cjs`, `mesh-core/src/tree-sitter-worker.cjs` |
 | Frontend shell | `views/app.html`, `assets/app-workspace.js`, `assets/app-workspace.css` |

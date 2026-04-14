@@ -59,6 +59,12 @@ All variables organized by component.
 | `AZURE_OPENAI_VOICE_CHAT_API_VERSION` | Yes | `2025-04-01-preview` |
 | `AZURE_OPENAI_VOICE_TTS_VOICE` | Yes | `alloy` |
 
+### Compression / Workspace Budget
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MESH_WORKSPACE_TOKEN_BUDGET` | No | `8000` | Global token budget distributed across files by importance score |
+
 ### Terminal
 
 | Variable | Required | Description |

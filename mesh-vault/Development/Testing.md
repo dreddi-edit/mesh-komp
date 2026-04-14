@@ -21,13 +21,27 @@ node --test <file> # run specific file
 |------|--------------|
 | `test/assistant-core.test.js` | Unit/integration coverage for `assistant-core.js` |
 | `test/assistant-integration.test.js` | Integration tests across server/assistant/runtime flows |
+| `test/auth.test.js` | Authentication, session lifecycle, BYOK |
+| `test/config.test.js` | Centralized config validation logic |
+| `test/logger.test.js` | Structured logger output |
 
 ### Compression
 
 | File | What It Tests |
 |------|--------------|
-| `test/compression-core.test.js` | 15 tests: capsule pipeline, raw storage encoding (Brotli-9 vs deflate-6), transport envelope integrity, focused query ranking, tiered token budget, legacy encoding backward compat |
+| `test/compression-core.test.js` | Capsule pipeline, passthrough, compact headers, raw storage encoding, transport envelope, focused query ranking, tiered token budget, legacy encoding backward compat |
 | `test/compression-benchmark.test.js` | Benchmark/compression assumptions |
+
+### Routes / Security
+
+| File | What It Tests |
+|------|--------------|
+| `test/model-providers.test.js` | Model registry, provider routing, BYOK calls |
+| `test/mesh-codec.test.js` | Mesh model codec encode/decode |
+| `test/rate-limiter.test.js` | Rate limiting middleware |
+| `test/realtime-routes.test.js` | Voice WebSocket session handling |
+| `test/terminal-routes.test.js` | Terminal WebSocket setup |
+| `test/security-integration.test.js` | CSRF, headers, XSS protection |
 
 ### ccmon
 

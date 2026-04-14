@@ -16,7 +16,7 @@ This is one of Mesh's core differentiators.
 mesh-core/src/compression-core.cjs       ← main capsule pipeline
 mesh-core/src/compression-utils.cjs      ← text/span utilities (sha256, token est, etc.)
 mesh-core/src/tree-sitter-worker.cjs     ← AST parsing
-llm-compress.js                          ← legacy/heuristic fallback + CLI
+llm-compress.js                          ← heuristic compressor + CLI; pseudo() used by capsule pipeline
 ```
 
 ## File Record Model
@@ -47,19 +47,44 @@ Each indexed file is stored not as raw text but as a rich record:
 
 The pipeline is: initial record → app usable → background enrichment → full record.
 
+## Tiny-Passthrough
+
+Files with a raw token estimate ≤ 150 tokens (`TINY_PASSTHROUGH_THRESHOLD`) bypass the entire capsule pipeline. They are emitted as-is with a minimal one-line header:
+
+```
+CAP filename.js javascript 412B passthrough
+<raw file text>
+```
+
+This avoids spending budget on files that are already small enough to include verbatim.
+
 ## Three Capsule Tiers
 
 Each file gets three fixed capsule tiers:
 
 | Tier | Description |
 |------|-------------|
-| `ultra` | Smallest useful capsule. Aggressively stripped. For large files, very compact. |
-| `medium` | Intermediate. More detail than ultra, still clearly compressed. |
-| `loose` | Richest. Preserves the most structure and context. |
+| `ultra` | Smallest useful capsule. Aggressively stripped. For large files, very compact. Uses compact `CAP` header (one line). |
+| `medium` | Intermediate. More detail than ultra, still clearly compressed. Uses full `CAPSULE v2` header. |
+| `loose` | Richest. Preserves the most structure and context. Uses full `CAPSULE v2` header. |
 
-Guarantee: `ultra < medium < loose` in both content amount and token count.
+Ordering: `ultra ≤ medium ≤ loose` in both content amount and token count. For very small files, tiers may converge to within ~10% of each other.
 
-Small files are treated more gently — the system doesn't destroy meaning for tiny inputs.
+### Compact Header (Ultra Tier)
+
+Ultra-tier capsules use a single-line header to save tokens:
+
+```
+CAP <basename> <language> <rawBytes>B <rawTokens>T <mode>
+```
+
+Medium and loose tiers use the full three-line `CAPSULE v2` header with path, type metadata, and raw metrics.
+
+## Pseudo-Compression (`pseudo()`)
+
+During symbol enumeration in `buildCodeCapsule()`, the pipeline calls `llmCompress.pseudo(name, bodyText, signature)` for each symbol. If `pseudo()` recognizes the code pattern, it returns a compact LLM-readable one-liner (e.g., `"${salt}:${scryptHash}"` for a known hashing pattern). This replaces the default multi-line symbol summary with a much shorter representation.
+
+`pseudo()` lives in `llm-compress.js` and is loaded via `safeRequire` in `compression-core.cjs`.
 
 Each tier has distinct:
 - Token budgets
@@ -162,6 +187,29 @@ The active encoding is stored in `transportEnvelope.contentEncoding` (`"zstd-chu
 Supported grammars: JavaScript, TypeScript, Python, CSS, HTML, JSON, Go.
 
 See `package.json` for the full list of `tree-sitter-*` dependencies.
+
+## Delta-Rebuild
+
+When re-indexing a workspace, `openLocalWorkspace()` in `workspace-operations.js` computes a SHA-256 digest of each file's content via `compressionCore.sha256Hex()`. If the digest matches the existing record's `rawStorage.digest` and capsule variants already exist, the file is skipped entirely. This avoids redundant recompression of unchanged files.
+
+## Workspace-Level Budget Allocation
+
+`allocateWorkspaceBudget(fileRecords, totalBudget)` in `compression-core.cjs` distributes a global token budget (default 8000, configurable via `MESH_WORKSPACE_TOKEN_BUDGET`) proportionally across files based on an importance score:
+
+```
+importance = depCount × 2 + (recentlyReferenced ? 5 : 0) + log₂(rawTokens)
+```
+
+Each file receives at least `MIN_FILE_TOKEN_BUDGET` (24 tokens). `selectTierForBudget(record)` then picks the most compact tier that fits the allocated budget.
+
+## Prefix Stability for KV-Cache
+
+`buildCapsuleContextBlock()` in `src/core/workspace-context.js` sorts capsule entries alphabetically by path and splits them into stable vs dynamic groups:
+
+- **Stable**: entries that are not truncated and not in focused mode
+- **Dynamic**: truncated or focused entries
+
+Stable entries are emitted first. This produces a deterministic prefix across assistant turns, enabling LLM provider prompt caching (KV-cache reuse).
 
 ## Context Budget
 

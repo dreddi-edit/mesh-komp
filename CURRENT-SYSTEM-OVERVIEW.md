@@ -278,11 +278,13 @@ The voice assistant is built as a speech-driven front-end over similar workspace
 
 ### 5.1 Typed Assistant
 
-Main backend surface:
+Main backend surfaces (refactored April 2026):
 
-- `src/routes/assistant.routes.js`
+- `src/routes/assistant.routes.js` (workspace CRUD, file ops, recovery, offload)
+- `src/routes/assistant-chat.routes.js` (chat/run flows, extracted from assistant.routes.js)
+- `src/routes/assistant-git.routes.js` (git status/diff/commit/push, extracted from assistant.routes.js)
 
-This route module provides browser-facing APIs for:
+These route modules provide browser-facing APIs for:
 
 - assistant status
 - workspace offload config
@@ -302,25 +304,24 @@ The assistant route layer generally:
 - prefers worker tunnel requests
 - falls back to local gateway-side logic if the worker is unavailable
 
-### 5.2 Assistant Runtime in `src/core/index.js`
+### 5.2 Assistant Runtime in `src/core/`
 
-`src/core/index.js` is the monolithic backend core aggregator.
+The core layer was refactored (April 2026) from a single monolithic `index.js` into focused modules:
 
-It brings together:
+- `src/core/index.js` — main aggregator and global exposure
+- `src/core/model-providers.js` — AI model constants, provider call functions (Anthropic/OpenAI/Gemini/BYOK), system prompt
+- `src/core/mesh-codec.js` — ROT47 transforms, token dictionary encode/decode, codec session state
+- `src/core/operations-store.js` — operations/deployments/policies state management
+- `src/core/workspace-context.js` — capsule context loading, prompt assembly, codec injection, prefix stability
+- `src/core/workspace-infrastructure.js` — workspace setup and provisioning
+- `src/core/workspace-ops.js` — workspace CRUD operations
+- `src/core/assistant-runs.js` — run planning and execution
+- `src/core/auth.js` — authentication logic
+- `src/core/deployments.js` — deployment management
+- `src/core/voice-agent.js` — voice agent tool loop
+- `src/core/voice-azure-audio.js` — Azure STT/TTS integration
 
-- auth
-- model providers
-- assistant run planning and execution
-- workspace infrastructure
-- workspace context loading
-- workspace operations
-- deployments
-- compression core
-- metadata store
-
-It is effectively the gateway’s main backend brain.
-
-This file exposes a large number of functions globally through `src/server.js`, which is not especially elegant, but is how the current runtime is wired.
+Functions are still exposed globally through `src/server.js`.
 
 ## 6. Workspace Model
 
@@ -465,32 +466,31 @@ The intended pipeline is:
 
 ### 8.3 Capsule Tiers
 
-Per file, the system is now intended to produce three fixed capsule tiers:
+Per file, the system produces three fixed capsule tiers:
 
 - `ultra`
 - `medium`
 - `loose`
 
-Current intended semantics:
+Current semantics:
 
 - `ultra`
   - smallest possible useful capsule
-  - strongly stripped
-  - for large files should be very aggressive
-  - for tiny files should still remain sane and not delete all meaning
+  - compact single-line `CAP` header (saves ~40 tokens vs verbose header)
+  - for large files: very aggressive compression
+  - for tiny files (≤150 tokens): passthrough mode — raw text with minimal header, no capsule overhead
 - `medium`
   - intermediate capsule
   - more detail than `ultra`
-  - still clearly compressed
+  - standard 3-line `CAPSULE v2` header
 - `loose`
   - richest capsule
-  - should preserve the most structure and context
+  - preserves the most structure and context
+  - standard 3-line `CAPSULE v2` header
 
 ### 8.4 Current Tier Logic Status
 
-This was recently improved because the previous implementation exposed three labels but often returned nearly identical output.
-
-The new intended logic now gives each tier:
+Each tier has:
 
 - different token budgets
 - different section/item selection profiles
@@ -498,12 +498,25 @@ The new intended logic now gives each tier:
 - different rendering compactness
 - different mode preference order
 
-The idea is that:
-
-- `ultra < medium < loose`
-  in both content amount and token size
+The ordering is: `ultra < medium < loose` in both content amount and token size.
 
 Small files are treated more gently so the system does not destroy useful context for tiny inputs.
+
+### 8.4a Workspace-Level Budget Allocation (April 2026)
+
+Instead of each file getting an isolated per-file budget, the workspace now distributes a global token budget (default 8000, configurable via `MESH_WORKSPACE_TOKEN_BUDGET`) proportionally by importance:
+
+- Importance = `(dependency count * 2) + (recently referenced ? 5 : 0) + log2(raw tokens)`
+- Each file gets at least 24 tokens
+- `selectTierForBudget()` picks the richest tier that fits the allocation
+
+### 8.4b Delta-Rebuild (April 2026)
+
+When re-indexing a local workspace, files are compared by SHA-256 digest. Unchanged files reuse their existing record, reducing rebuild time from ~1.2s to ~50ms for workspaces with 1-3 changed files.
+
+### 8.4c Symbol Pseudo-Code Integration (April 2026)
+
+The capsule pipeline now uses `llm-compress.pseudo()` for symbol summaries in code capsules. Instead of generic `function hashPassword lines=42 sig="function hashPassword(..."`, symbols render as `function declaration hashPassword → "${salt}:${scryptHash}"` when a pattern match is available.
 
 ### 8.5 Focused Capsules
 
@@ -935,15 +948,9 @@ The long-term ideal is:
 - one canonical active workspace identity
 - all views and APIs use it
 
-### 17.3 Monolithic Backend Core
+### 17.3 Backend Core Modularization (Improved)
 
-`src/core/index.js` is still extremely large and central.
-
-That means:
-
-- lots of power in one file
-- hard to reason about ownership boundaries
-- easy to create hidden coupling
+`src/core/index.js` has been significantly reduced by extracting focused modules (model-providers, mesh-codec, operations-store, workspace-context, etc.). It is still the main aggregator but no longer houses all logic directly. Route files have also been split (assistant-chat, assistant-git extracted from assistant.routes.js).
 
 ### 17.4 Dual Terminal Model
 
@@ -1004,14 +1011,16 @@ If someone wanted to understand the current product quickly, the most important 
 - `assets/features/voice-chat.js`
 - `src/server.js`
 - `src/routes/assistant.routes.js`
+- `src/routes/assistant-chat.routes.js`
 - `src/routes/realtime.routes.js`
 - `src/core/index.js`
+- `src/core/model-providers.js`
+- `src/core/workspace-context.js`
 - `src/core/voice-agent.js`
-- `src/core/voice-azure-audio.js`
 - `mesh-core/src/workspace-operations.js`
 - `mesh-core/src/compression-core.cjs`
+- `src/config/index.js`
 - `assets/settings.js`
-- `CODEBASE-MAP.md`
 
 ## 21. Why This File Exists
 

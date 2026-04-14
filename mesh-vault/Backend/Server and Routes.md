@@ -31,7 +31,9 @@ src/server.js       ← main Express/http server
 |------|--------|---------|
 | `src/routes/auth.routes.js` | `/api/auth` | Login, session, logout, revoke |
 | `src/routes/app.routes.js` | `/api/app`, `/api/user`, `/api/docs`, `/api/byok` | User store, billing, operations, logs, repo-docs, BYOK |
-| `src/routes/assistant.routes.js` | `/api/assistant` | Workspace, chat, git, context, graph, sync |
+| `src/routes/assistant.routes.js` | `/api/assistant` | Workspace, context, graph, sync, file ops |
+| `src/routes/assistant-chat.routes.js` | `/api/assistant` | Chat and run endpoints (extracted from assistant.routes.js) |
+| `src/routes/assistant-git.routes.js` | `/api/assistant` | Git endpoints: status, diff, commit, push, pull (extracted from assistant.routes.js) |
 | `src/routes/realtime.routes.js` | `/api/realtime` | Voice WebSocket session |
 
 ## Key API Endpoints
@@ -98,7 +100,11 @@ All security middleware runs before routes in `src/server.js`:
 | Request ID | UUID per request for log correlation (`req.requestId`) |
 | Security headers | CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` |
 | CSRF guard | Rejects cross-origin `POST/PUT/PATCH/DELETE` via Origin/Referer check |
+| Rate limiter | `src/middleware/rate-limiter.js` — applied to auth and public endpoints |
+| XSS sanitization | Input sanitization on user-facing endpoints |
 | JSON body limit | Global 1 MB default; `/api/assistant/workspace/offload/ingest` overrides to 200 MB |
+
+Configuration is centralized in `src/config/index.js` — validates all env vars at startup and exports typed values. No `process.env` reads in business logic.
 
 Structured logging via `src/logger.js` (newline-delimited JSON, `LOG_LEVEL` env var, stdout/stderr by level).
 
