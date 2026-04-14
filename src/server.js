@@ -90,6 +90,13 @@ app.use('/api', apiLimiter);
 app.use('/api/workspace/offload', uploadLimiter);
 app.use('/api/workspace/ingest', uploadLimiter);
 
+// ── HTTP Response Compression ─────────────────────────────────────────────────
+// Compresses all compressible responses (JSON, JS, CSS, HTML) using Brotli or
+// gzip. SSE streams are excluded — chunked streaming must not be buffered.
+// Must be registered before express.static and all route handlers.
+const { compressionMiddleware } = require('./middleware/compression');
+app.use(compressionMiddleware);
+
 // ── Pre-computed clean-URL route map ─────────────────────────────────────────
 // Built once at startup — eliminates fs.existsSync() on every request.
 const REPO_ROOT = path.join(__dirname, '..');
@@ -141,15 +148,21 @@ app.use((req, res, next) => {
 });
 
 // Point static files to the root directory, not the /src directory!
-// Keep the fast-changing workbench assets effectively uncached so UI/graph fixes
-// are visible immediately after deploy.
+// Two-tier cache strategy:
+//   Hot assets (workbench core + voice): never cached — must reflect every deploy immediately.
+//   All other static assets: 1-day cache — eliminates conditional GET roundtrips on repeat visits.
+//   No content-hash in filenames, so 1 day is the right balance between freshness and efficiency.
+const HOT_ASSETS = /(\/assets\/app-workspace\.js|\/assets\/app-graph\.js|\/assets\/app-workspace\.css|\/assets\/features\/voice-chat\.js)$/;
+
 app.use(express.static(path.join(__dirname, '..'), {
   setHeaders(res, filePath) {
     const normalized = String(filePath || '').replace(/\\/g, '/');
-    if (/(\/assets\/app-workspace\.js|\/assets\/app-graph\.js|\/assets\/app-workspace\.css|\/assets\/features\/voice-chat\.js)$/.test(normalized)) {
+    if (HOT_ASSETS.test(normalized)) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
     }
   },
 }));

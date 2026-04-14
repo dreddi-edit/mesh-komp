@@ -583,6 +583,17 @@ function persistLocalWorkspaceState() {
   safeWriteJsonFile(LOCAL_WORKSPACE_CACHE_FILE, serializeLocalWorkspaceState());
 }
 
+// Debounced variant — coalesces rapid consecutive syncs into a single disk write.
+// The in-memory state is always current; only the flush to disk is deferred.
+let _persistDebounceTimer = null;
+function debouncedPersistLocalWorkspaceState() {
+  if (_persistDebounceTimer) clearTimeout(_persistDebounceTimer);
+  _persistDebounceTimer = setTimeout(() => {
+    _persistDebounceTimer = null;
+    persistLocalWorkspaceState();
+  }, 200);
+}
+
 function restoreLocalWorkspaceState() {
   const persisted = safeReadJsonFile(LOCAL_WORKSPACE_CACHE_FILE, null);
   if (!persisted || typeof persisted !== "object") return;
@@ -721,7 +732,19 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
     ...Array.from(localAssistantWorkspace.files.keys()).filter((filePath) => isWorkspaceIndexablePath(filePath)),
     ...normalizedFiles.map((file) => file.path),
   ]));
-  const packedEntries = await mapWithConcurrency(normalizedFiles, MESH_WORKSPACE_BUILD_CONCURRENCY, async (file) => {
+  // Skip Gate: for single-file saves, skip re-encoding if the content is identical
+  // to what's already stored. SHA-256 is ~0.1ms vs Brotli compression at ~2-10ms.
+  // Only applies to single-file mode — initial syncs always rebuild all records.
+  const filesToBuild = syncMode === "single-file"
+    ? normalizedFiles.filter((file) => {
+        const existing = localAssistantWorkspace.files.get(file.path);
+        if (!existing?.rawStorage?.digest) return true;
+        const incomingDigest = crypto.createHash("sha256").update(file.content).digest("hex");
+        return incomingDigest !== existing.rawStorage.digest;
+      })
+    : normalizedFiles;
+
+  const packedEntries = await mapWithConcurrency(filesToBuild, MESH_WORKSPACE_BUILD_CONCURRENCY, async (file) => {
     const record = await buildWorkspaceFileRecord(file.path, file.content, {
       legacyBrotliQuality: WORKSPACE_BROTLI_QUALITY,
       initialBrotliQuality: WORKSPACE_INITIAL_BROTLI_QUALITY,
@@ -730,7 +753,7 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
     });
     return { path: file.path, record };
   });
-  perf.mark("records-built", { changed: packedEntries.length });
+  perf.mark("records-built", { changed: packedEntries.length, skipped: normalizedFiles.length - filesToBuild.length });
 
   for (const entry of packedEntries) {
     localAssistantWorkspace.files.set(entry.path, {
@@ -752,7 +775,7 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
     ? "background-complete"
     : (syncMode === "initial" ? "initial-ready" : "processing");
   localAssistantWorkspace.indexedAt = toIsoNow();
-  persistLocalWorkspaceState();
+  debouncedPersistLocalWorkspaceState();
 
   if (syncMode !== "single-file") {
     enqueueLocalWorkspaceEnrichment({
