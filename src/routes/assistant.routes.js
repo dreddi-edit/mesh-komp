@@ -85,6 +85,8 @@ function createAssistantRouter(core) {
     injectMeshSystemPrompt,
     runModelChat,
     resolveProviderForModel,
+    resolveBedrockModelId,
+    createBedrockClient,
     buildModelResponseTransport,
     encodeMeshModelCodec,
     decodeCompressedModelResponse,
@@ -1297,18 +1299,25 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
 
     if (resolved.provider === "anthropic") {
       let apiKey = String(resolvedCredentials?.anthropic?.apiKey || config.ANTHROPIC_API_KEY || "").trim();
-      const bedrockToken = String(config.AWS_BEARER_TOKEN_BEDROCK || "").trim();
-      const isBedrockTarget = resolved.model.includes("opus-4") || resolved.model.includes("sonnet-4-6") || resolved.model.includes("haiku-4-5");
+      const bedrockAccessKey = String(config.AWS_ACCESS_KEY_ID || "").trim();
+      // Prefer direct Bedrock SDK when IAM credentials are configured — covers all claude-* models.
+      const isBedrockTarget = resolved.model.startsWith("claude-");
 
-      if (!apiKey && bedrockToken && isBedrockTarget) {
-        /* Bedrock proxy — stream via OpenAI-compatible SSE */
-        await streamOpenAICompatible({
-          apiKey: bedrockToken,
+      if (bedrockAccessKey && isBedrockTarget) {
+        /* Bedrock SDK direct streaming — no proxy, native AWS SDK */
+        await streamBedrockDirect({
           model: resolved.model,
           messages: injectMeshSystemPrompt(modelMessages),
-          baseUrl: "https://api.mesh-ai.com/v1",
           res, sendSSE,
+          injectedCodecContext,
+          normalizedSessionId,
+          requiresCodecDictionary,
+          capsuleContextEntries,
+          recoveredSpanEntries,
+          adaptiveContextBudget,
+          referencedFiles: capsuleContextEntries.map(e => e.path),
         });
+        return;
       } else if (apiKey) {
         /* Anthropic native streaming */
         const anthropicSystem = modelMessages.filter(m => m.role === "system").map(m => m.content).join("\n");
@@ -1436,6 +1445,60 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
     } catch { /* response already ended */ }
   }
 });
+
+/**
+ * Stream an Anthropic model response via the AWS Bedrock SDK directly.
+ * Uses InvokeModelWithResponseStreamCommand — no HTTP proxy, native streaming.
+ *
+ * @param {{ model: string, messages: object[], res: object, sendSSE: Function,
+ *           injectedCodecContext: boolean, normalizedSessionId: string,
+ *           requiresCodecDictionary: boolean, capsuleContextEntries: object[],
+ *           recoveredSpanEntries: object[], adaptiveContextBudget: object,
+ *           referencedFiles: string[] }} params
+ */
+async function streamBedrockDirect({ model, messages, res, sendSSE, injectedCodecContext, normalizedSessionId, requiresCodecDictionary, capsuleContextEntries, recoveredSpanEntries, adaptiveContextBudget, referencedFiles }) {
+  const { InvokeModelWithResponseStreamCommand } = require('@aws-sdk/client-bedrock-runtime');
+  const client = createBedrockClient();
+  const bedrockModelId = resolveBedrockModelId(model);
+
+  const systemText = messages.filter(m => m.role === 'system').map(m => m.content).join('\n');
+  const conversation = messages
+    .filter(m => m.role !== 'system')
+    .map(m => ({ role: m.role, content: String(m.content || '') }));
+
+  const payload = { anthropic_version: 'bedrock-2023-05-31', max_tokens: 4096, messages: conversation };
+  if (systemText) payload.system = systemText;
+
+  const cmd = new InvokeModelWithResponseStreamCommand({
+    modelId: bedrockModelId,
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: JSON.stringify(payload),
+  });
+
+  const response = await client.send(cmd);
+  let fullContent = '';
+
+  for await (const chunk of response.body) {
+    if (!chunk.chunk?.bytes) continue;
+    let evt;
+    try { evt = JSON.parse(new TextDecoder().decode(chunk.chunk.bytes)); } catch { continue; }
+
+    if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta' && evt.delta.text) {
+      fullContent += evt.delta.text;
+      sendSSE('token', { text: evt.delta.text });
+    }
+  }
+
+  await finalizeStreamedResponse({
+    fullContent, injectedCodecContext, normalizedSessionId,
+    requiresCodecDictionary, capsuleContextEntries: capsuleContextEntries || [],
+    recoveredSpanEntries: recoveredSpanEntries || [],
+    adaptiveContextBudget: adaptiveContextBudget || {},
+    model, resolved: { model }, referencedFiles: referencedFiles || [],
+    sendSSE,
+  });
+}
 
 async function streamOpenAICompatible({ apiKey, model, messages, baseUrl, orgId, isAzure, res, sendSSE, injectedCodecContext, normalizedSessionId, requiresCodecDictionary, capsuleContextEntries, recoveredSpanEntries, adaptiveContextBudget, referencedFiles }) {
   const headers = { "Content-Type": "application/json" };

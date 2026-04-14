@@ -50,8 +50,9 @@ function validateConfig(env = process.env) {
   }
 
   const anthropicKey = String(env.ANTHROPIC_API_KEY || '').trim();
-  if (!anthropicKey) {
-    warnings.push('ANTHROPIC_API_KEY is not set. Chat and assistant features will be unavailable.');
+  const bedrockAccessKey = String(env.AWS_ACCESS_KEY_ID || '').trim();
+  if (!anthropicKey && !bedrockAccessKey) {
+    warnings.push('Neither ANTHROPIC_API_KEY nor AWS_ACCESS_KEY_ID is set. Chat and assistant features will be unavailable.');
   }
 
   return { ok: errors.length === 0, errors, warnings };
@@ -87,9 +88,13 @@ function buildConfig(env = process.env) {
     OPENAI_API_KEY: String(env.OPENAI_API_KEY || '').trim(),
     GOOGLE_API_KEY: String(env.GOOGLE_API_KEY || '').trim(),
     AWS_BEARER_TOKEN_BEDROCK: String(env.AWS_BEARER_TOKEN_BEDROCK || '').trim(),
+    BEDROCK_PROXY_URL: String(env.BEDROCK_PROXY_URL || '').trim().replace(/\/+$/, ''),
+    AWS_ACCESS_KEY_ID: String(env.AWS_ACCESS_KEY_ID || '').trim(),
+    AWS_SECRET_ACCESS_KEY: String(env.AWS_SECRET_ACCESS_KEY || '').trim(),
+    AWS_REGION_BEDROCK: String(env.AWS_REGION_BEDROCK || 'us-east-1').trim(),
     AZURE_OPENAI_ENDPOINT: String(env.AZURE_OPENAI_ENDPOINT || '').trim().replace(/\/+$/, ''),
     AZURE_OPENAI_KEY: String(env.AZURE_OPENAI_KEY || '').trim(),
-    MESH_DEFAULT_MODEL: String(env.MESH_DEFAULT_MODEL || 'gpt-5.4-mini').trim(),
+    MESH_DEFAULT_MODEL: String(env.MESH_DEFAULT_MODEL || 'claude-sonnet-4-6').trim(),
 
     AZURE_OPENAI_VOICE_ENDPOINT: String(env.AZURE_OPENAI_VOICE_ENDPOINT || '').trim(),
     AZURE_OPENAI_VOICE_KEY: String(env.AZURE_OPENAI_VOICE_KEY || '').trim(),

@@ -3,19 +3,25 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node --env-file .env src/server.js",
     "monitor": "node ccmon.js",
     "bench:compression": "node benchmarks/compression-benchmark.js",
     "test": "node --test --test-force-exit --test-timeout=120000",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "keywords": ["mesh", "ide", "ai", "coding-assistant"],
+  "keywords": [
+    "mesh",
+    "ide",
+    "ai",
+    "coding-assistant"
+  ],
   "author": "Edgar Baumann",
   "license": "ISC",
   "description": "Mesh AI — browser-based AI-powered IDE with integrated terminal, AI chat, voice, and workspace management",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1030.0",
     "@azure/cosmos": "^4.9.2",
     "@azure/storage-blob": "^12.31.0",
     "better-sqlite3": "^11.10.0",
