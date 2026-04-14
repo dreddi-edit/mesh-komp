@@ -289,7 +289,7 @@ async function exerciseWorkspaceCrudScenario(baseUrl, jar, rootName) {
   };
 }
 
-test("fallback gateway serves the workbench and supports terminal plus multi-file run approvals", { timeout: 90000 }, async (t) => {
+test("fallback gateway serves the workbench and supports terminal plus multi-file run approvals", { timeout: 90000, skip: !process.env.ANTHROPIC_API_KEY && "requires ANTHROPIC_API_KEY" }, async (t) => {
   const port = nextPort();
   const tmpDir = makeTempEnvDir("mesh-gateway-fallback");
   const dbFile = path.join(tmpDir, "secure.sqlite");
@@ -465,7 +465,7 @@ test("fallback gateway serves the workbench and supports terminal plus multi-fil
   assert.equal(finalRun.artifacts.proposalBatches[0].status, "partial");
 });
 
-test("integration tests", { timeout: 120000 }, async (t) => {
+test("integration tests", { timeout: 120000, skip: !process.env.ANTHROPIC_API_KEY && "requires ANTHROPIC_API_KEY" }, async (t) => {
   const rootName = `test-workspace-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const workerPort = nextPort();
   const fallbackPort = nextPort();
