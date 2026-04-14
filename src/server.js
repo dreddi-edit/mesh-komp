@@ -36,8 +36,8 @@ app.use((_req, res, next) => {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
       "img-src 'self' data: blob:",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' ws: wss:",
@@ -47,6 +47,12 @@ app.use((_req, res, next) => {
       "frame-ancestors 'none'",
     ].join('; ')
   );
+  // microphone=(self) required for voice chat; camera/geolocation/usb not used
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), usb=(), payment=()');
+  // HSTS: only in production — prevents browser from caching HTTPS-only policy locally
+  if (config.IS_PRODUCTION) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   next();
 });
 

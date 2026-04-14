@@ -19,9 +19,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
 <link rel="stylesheet" href="/assets/app-workspace.css?v=20260408b">
-<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
-<script src="/assets/app-graph.js?v=20260408b"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js" defer></script>
+<script src="/assets/app-graph.js?v=20260408b" defer></script>
 <style>
 /* ── Antigravity-style additions ── */
 .tb-text-btn{font-size:.75rem;color:var(--tx3);padding:3px 10px;border-radius:3px;white-space:nowrap;-webkit-app-region:no-drag}
@@ -442,8 +442,8 @@
 </div>
 <div class="toast-stack" id="toasts"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd/idb-keyval-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd/idb-keyval-min.js" defer></script>
 <script type="module">
   import { Terminal } from 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/+esm';
   import { FitAddon } from 'https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/+esm';
@@ -451,29 +451,29 @@
   window.FitAddon = FitAddon;
   window.dispatchEvent(new CustomEvent('xterm-ready'));
 </script>
-<script src="/assets/features/_bus.js"></script>
-<script src="/assets/app-workspace.js?v=20260408b"></script>
-<script src="/assets/features/streaming-chat.js"></script>
-<script src="/assets/features/at-mentions.js"></script>
-<script src="/assets/features/agentic-edits.js"></script>
-<script src="/assets/features/inline-edit.js"></script>
-<script src="/assets/features/command-palette.js"></script>
-<script src="/assets/features/split-editor.js"></script>
-<script src="/assets/features/diff-editor.js"></script>
-<script src="/assets/features/content-search.js"></script>
-<script src="/assets/features/problems-panel.js"></script>
-<script src="/assets/features/quick-open.js"></script>
-<script src="/assets/features/capsula-status.js"></script>
-<script src="/assets/features/capsule-viewer.js"></script>
-<script src="/assets/features/span-nav.js"></script>
-<script src="/assets/features/context-budget.js"></script>
-<script src="/assets/features/reindex-on-save.js"></script>
-<script src="/assets/features/checkpoints.js"></script>
-<script src="/assets/features/meshrules.js"></script>
-<script src="/assets/features/chat-threads.js"></script>
-<script src="/assets/features/background-agent.js"></script>
-<script src="/assets/features/ai-review.js"></script>
-<script src="/assets/features/voice-chat.js"></script>
+<script src="/assets/features/_bus.js" defer></script>
+<script src="/assets/app-workspace.js?v=20260408b" defer></script>
+<script src="/assets/features/streaming-chat.js" defer></script>
+<script src="/assets/features/at-mentions.js" defer></script>
+<script src="/assets/features/agentic-edits.js" defer></script>
+<script src="/assets/features/inline-edit.js" defer></script>
+<script src="/assets/features/command-palette.js" defer></script>
+<script src="/assets/features/split-editor.js" defer></script>
+<script src="/assets/features/diff-editor.js" defer></script>
+<script src="/assets/features/content-search.js" defer></script>
+<script src="/assets/features/problems-panel.js" defer></script>
+<script src="/assets/features/quick-open.js" defer></script>
+<script src="/assets/features/capsula-status.js" defer></script>
+<script src="/assets/features/capsule-viewer.js" defer></script>
+<script src="/assets/features/span-nav.js" defer></script>
+<script src="/assets/features/context-budget.js" defer></script>
+<script src="/assets/features/reindex-on-save.js" defer></script>
+<script src="/assets/features/checkpoints.js" defer></script>
+<script src="/assets/features/meshrules.js" defer></script>
+<script src="/assets/features/chat-threads.js" defer></script>
+<script src="/assets/features/background-agent.js" defer></script>
+<script src="/assets/features/ai-review.js" defer></script>
+<script src="/assets/features/voice-chat.js" defer></script>
 <script>
 /* Wire up new v2 buttons not handled by app-workspace.js */
 (function () {
