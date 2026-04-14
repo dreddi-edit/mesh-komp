@@ -147,6 +147,7 @@ function buildConfig(env = process.env) {
     ),
     MESH_WORKSPACE_PERF_LOG: parseBooleanFlag(env.MESH_WORKSPACE_PERF_LOG, false),
 
+    WORKSPACE_SELECT_ASYNC_MODE: String(env.MESH_WORKSPACE_SELECT_ASYNC_MODE || 'off').trim().toLowerCase(),
     WORKSPACE_SELECT_ASYNC_ENABLED: (() => {
       const asyncMode = String(env.MESH_WORKSPACE_SELECT_ASYNC_MODE || 'off').trim().toLowerCase();
       return parseBooleanFlag(
