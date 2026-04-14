@@ -862,6 +862,8 @@ async function loadCapsuleContextEntries(paths = [], options = {}) {
     }
   }
 
+  entries.sort((a, b) => a.path.localeCompare(b.path));
+
   return {
     entries,
     skippedOversizePaths,
@@ -899,9 +901,30 @@ async function loadRecoveredSpanEntries(paths = [], query = "", options = {}) {
   return recovered;
 }
 
+function renderCapsuleFileTag(entry) {
+  return [
+    `<capsule_file path="${escapeTagAttribute(entry.path)}" file_type="${escapeTagAttribute(entry.fileType)}" parser="${escapeTagAttribute(entry.parserFamily)}" capsule_mode="${escapeTagAttribute(entry.capsuleMode)}" model_encoding="${escapeTagAttribute(entry.modelEncoding)}" raw_bytes="${Number(entry.rawBytes || 0)}" capsule_bytes="${Number(entry.capsuleBytes || 0)}" recovery_eligible="${Boolean(entry.recoveryEligible)}" excerpt_truncated="${Boolean(entry.contentTruncated)}" is_skeleton="${Boolean(entry.isSkeleton)}">`,
+    String(entry.modelContent || ""),
+    "</capsule_file>",
+  ].join("\n");
+}
+
 function buildCapsuleContextBlock(entries = [], recoveredSpans = []) {
   if ((!Array.isArray(entries) || entries.length === 0) && (!Array.isArray(recoveredSpans) || recoveredSpans.length === 0)) {
     return "";
+  }
+
+  const stableEntries = [];
+  const dynamicEntries = [];
+
+  if (Array.isArray(entries)) {
+    for (const entry of entries) {
+      if (entry.contentTruncated || entry.capsuleMode === "focused") {
+        dynamicEntries.push(entry);
+      } else {
+        stableEntries.push(entry);
+      }
+    }
   }
 
   const lines = [
@@ -910,13 +933,13 @@ function buildCapsuleContextBlock(entries = [], recoveredSpans = []) {
     "Treat span ids as evidence handles. Cite them when making exact claims.",
   ];
 
-  if (Array.isArray(entries) && entries.length > 0) {
-    for (const entry of entries) {
-      lines.push(
-        `<capsule_file path="${escapeTagAttribute(entry.path)}" file_type="${escapeTagAttribute(entry.fileType)}" parser="${escapeTagAttribute(entry.parserFamily)}" capsule_mode="${escapeTagAttribute(entry.capsuleMode)}" model_encoding="${escapeTagAttribute(entry.modelEncoding)}" raw_bytes="${Number(entry.rawBytes || 0)}" capsule_bytes="${Number(entry.capsuleBytes || 0)}" recovery_eligible="${Boolean(entry.recoveryEligible)}" excerpt_truncated="${Boolean(entry.contentTruncated)}" is_skeleton="${Boolean(entry.isSkeleton)}">`,
-      );
-      lines.push(String(entry.modelContent || ""));
-      lines.push("</capsule_file>");
+  for (const entry of stableEntries) {
+    lines.push(renderCapsuleFileTag(entry));
+  }
+
+  if (dynamicEntries.length > 0) {
+    for (const entry of dynamicEntries) {
+      lines.push(renderCapsuleFileTag(entry));
     }
   }
 

@@ -5,11 +5,10 @@
  * MODES:
  *   --mode=smart    (default) semantisch: Pseudocode + komprimierter Code ~40-65%
  *   --mode=skeleton            Signaturen + Pseudocode only           ~80-90%
- *   --mode=lean                nur Comments/Blanks entfernen          ~15-40%
  *   --mode=llm80               Ziel >=80% bei hoher LLM-Lesbarkeit    ~80-95%
  *
  * Usage:
- *   node llm-compress.js file.js [--mode=smart|skeleton|lean]
+ *   node llm-compress.js file.js [--mode=smart|skeleton|llm80]
  *   node llm-compress.js src/   [--out=compressed/]
  *   node llm-compress.js file.js --stdout
  */
@@ -354,15 +353,6 @@ function compress(src, lg, filePath, mode = "smart") {
     };
   }
 
-  // lean mode: just stripped + collapsed code, no semantic analysis
-  if (mode === "lean") {
-    out.push(collapse(clean));
-    const output = out.join("\n");
-    const cb = Buffer.byteLength(output, "utf8");
-    return { output, stats: { origBytes, compBytes: cb, origLines, compLines: output.split("\n").length,
-      byteReduction: ((1-cb/origBytes)*100).toFixed(1), lineReduction: ((1-output.split("\n").length/origLines)*100).toFixed(1) } };
-  }
-
   // Extract and format blocks
   const blocks = extractBlocks(clean);
   const sorted = [...blocks].sort((a,b) => a.start - b.start);
@@ -443,13 +433,13 @@ function runCli(argv = process.argv.slice(2)) {
   const flags = argv.filter(a => a.startsWith("--"));
   const inputs = argv.filter(a => !a.startsWith("--"));
   const requestedMode = (flags.find(f => f.startsWith("--mode=")) || "--mode=smart").split("=")[1];
-  const VALID_MODES = new Set(["smart", "skeleton", "lean", "llm80"]);
+  const VALID_MODES = new Set(["smart", "skeleton", "llm80"]);
   const mode = VALID_MODES.has(requestedMode) ? requestedMode : "smart";
   const outDir = (flags.find(f => f.startsWith("--out=")) || "").split("=")[1] || "";
   const toStdout = flags.includes("--stdout");
 
   if (!inputs.length) {
-    console.error("Usage: node llm-compress.js <file|dir> [--mode=lean|smart|skeleton|llm80] [--out=dir] [--stdout]");
+    console.error("Usage: node llm-compress.js <file|dir> [--mode=smart|skeleton|llm80] [--out=dir] [--stdout]");
     process.exit(1);
   }
 

@@ -206,6 +206,18 @@ async function openLocalWorkspace(data = {}) {
     const workspaceFilePaths = files.map((entry) => entry.workspacePath);
     const packedEntries = await mapWithConcurrency(files, WORKSPACE_BUILD_CONCURRENCY, async (entry) => {
         const content = await readLocalWorkspaceFileText(entry.absolutePath);
+        const contentDigest = compressionCore.sha256Hex
+            ? compressionCore.sha256Hex(Buffer.from(content, 'utf8'))
+            : null;
+
+        const existing = workspaceState.files.get(entry.workspacePath);
+        if (existing
+            && existing.rawStorage?.digest
+            && contentDigest === existing.rawStorage.digest
+            && existing.capsuleVariants) {
+            return { ...entry, packed: existing };
+        }
+
         const packed = await packWorkspaceContentRecord(entry.workspacePath, content, {
             recordMode: 'initial',
             workspaceFilePaths,
@@ -214,11 +226,25 @@ async function openLocalWorkspace(data = {}) {
     });
     perf.mark('initial-records-ready');
 
-    for (const entry of packedEntries) {
+    const workspaceBudget = parseIntegerInRange(process.env.MESH_WORKSPACE_TOKEN_BUDGET, 2000, 64000, 8000);
+    const budgetAllocated = compressionCore.allocateWorkspaceBudget
+        ? compressionCore.allocateWorkspaceBudget(
+            packedEntries.map((e) => e.packed),
+            workspaceBudget,
+        )
+        : null;
+
+    for (const [index, entry] of packedEntries.entries()) {
+        const allocation = budgetAllocated ? budgetAllocated[index] : null;
+        const recommendedTier = allocation && compressionCore.selectTierForBudget
+            ? compressionCore.selectTierForBudget({ ...entry.packed, allocatedBudget: allocation.allocatedBudget })
+            : undefined;
         next.set(entry.workspacePath, {
             path: entry.workspacePath,
             ...entry.packed,
             kind: 'source',
+            ...(recommendedTier ? { recommendedTier } : {}),
+            ...(allocation ? { allocatedBudget: allocation.allocatedBudget } : {}),
         });
         originalBytes += Number(entry.packed.originalSize || 0);
         compressedBytes += Number(entry.packed.compressedSize || 0);

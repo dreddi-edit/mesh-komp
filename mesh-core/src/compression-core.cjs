@@ -567,8 +567,20 @@ function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
         label: `${type} ${name}`,
       });
       const lineCount = Math.max(1, (node.endPosition?.row || 0) - (node.startPosition?.row || 0) + 1);
+      let symbolText;
+      if (llmCompress && typeof llmCompress.pseudo === "function") {
+        const bodyText = nodeText(node, rawText);
+        const sig = signaturePreview(node, rawText);
+        const pseudoResult = llmCompress.pseudo(name, bodyText, sig);
+        if (pseudoResult) {
+          symbolText = `${type.replace(/_/g, " ")} ${name} \u2192 ${pseudoResult} @${spanId}`;
+        }
+      }
+      if (!symbolText) {
+        symbolText = `${type.replace(/_/g, " ")} ${name} lines=${lineCount} sig="${signaturePreview(node, rawText)}" @${spanId}`;
+      }
       pushSectionItem(symbolsSection, {
-        text: `${type.replace(/_/g, " ")} ${name} lines=${lineCount} sig="${signaturePreview(node, rawText)}" @${spanId}`,
+        text: symbolText,
         spanIds: [spanId],
         priority: "P0",
       });
@@ -1125,15 +1137,20 @@ function materializeCapsuleForMode(baseCapsule, fileInfo, mode, query = "", prof
 
 function renderCapsuleText(capsule) {
   const capsuleTier = normalizeCapsuleTier(capsule.capsuleTier, "ultra");
-  const lines = [
-    `CAPSULE v${capsule.version} path=${capsule.path}`,
-    `type=${capsule.fileType} capsule=${capsule.capsuleType} mode=${capsule.capsuleMode} tier=${capsuleTier} parser=${capsule.parserFamily} parse_ok=${Boolean(capsule.parseOk)}`,
-  ];
-  if (capsule.includeRawMetrics !== false && Number.isFinite(Number(capsule.rawTokenEstimate))) {
-    lines.push(`raw_bytes=${capsule.rawBytes} raw_tokens=${capsule.rawTokenEstimate}`);
-  } else if (capsuleTier !== "ultra") {
-    lines.push(`raw_bytes=${capsule.rawBytes}`);
+  const lines = [];
+
+  if (capsuleTier === "ultra") {
+    lines.push(`CAP ${basename(capsule.path)} ${capsule.language} ${capsule.rawBytes}B ${capsule.rawTokenEstimate}T ${capsule.capsuleMode}`);
+  } else {
+    lines.push(`CAPSULE v${capsule.version} path=${capsule.path}`);
+    lines.push(`type=${capsule.fileType} capsule=${capsule.capsuleType} mode=${capsule.capsuleMode} tier=${capsuleTier} parser=${capsule.parserFamily} parse_ok=${Boolean(capsule.parseOk)}`);
+    if (capsule.includeRawMetrics !== false && Number.isFinite(Number(capsule.rawTokenEstimate))) {
+      lines.push(`raw_bytes=${capsule.rawBytes} raw_tokens=${capsule.rawTokenEstimate}`);
+    } else {
+      lines.push(`raw_bytes=${capsule.rawBytes}`);
+    }
   }
+
   if (capsule.query) lines.push(`focus_query=${JSON.stringify(capsule.query)}`);
   if (capsule.fallbackReason) lines.push(`fallback_reason=${truncateText(capsule.fallbackReason, 180)}`);
   for (const section of capsule.sections) {
@@ -1274,6 +1291,49 @@ function buildBudgetedCapsule(pathValue, text, fileType, baseCapsule, query = ""
   const budgetTokens = Number.isFinite(Number(options.budgetTokens))
     ? Number(options.budgetTokens)
     : buildCapsuleTierBudget(rawTokenEstimate, capsuleTier);
+
+  const TINY_PASSTHROUGH_THRESHOLD = 150;
+  if (rawTokenEstimate <= TINY_PASSTHROUGH_THRESHOLD) {
+    const passthroughCapsule = {
+      version: WORKSPACE_RECORD_VERSION,
+      path: trimPath(pathValue),
+      fileType: `${fileType.family}/${fileType.language}`,
+      family: fileType.family,
+      language: fileType.language,
+      capsuleType: fileType.capsuleType,
+      parserFamily: baseCapsule.parserFamily || "passthrough",
+      parseOk: true,
+      capsuleMode: "passthrough",
+      capsuleTier,
+      rawBytes,
+      rawTokenEstimate,
+      includeRawMetrics: true,
+      sections: baseCapsule.sections || [],
+      spanMap: baseCapsule.spanMap || {},
+      totalItems: 0,
+      focused: false,
+      fallbackReason: "",
+    };
+    const rendered = `CAP ${basename(pathValue)} ${fileType.language} ${rawBytes}B passthrough\n${rawText}`;
+    const capsuleTokenEstimate = estimateTextTokens(rendered);
+    return {
+      capsule: {
+        ...passthroughCapsule,
+        capsuleTokenEstimate,
+        budgetTokens,
+        budgetMet: true,
+        recoveryEligible: Object.keys(baseCapsule.spanMap || {}).length > 0,
+        capsuleBytes: Buffer.byteLength(rendered, "utf8"),
+        compressionRatio: capsuleTokenEstimate > 0
+          ? Number((rawTokenEstimate / capsuleTokenEstimate).toFixed(2))
+          : null,
+      },
+      rendered,
+      budgetTokens,
+      budgetMet: true,
+    };
+  }
+
   const fileInfo = {
     path: trimPath(pathValue),
     family: fileType.family,
@@ -2238,6 +2298,59 @@ function serializeWorkspaceFileRecord(meta) {
   return cloned;
 }
 
+const DEFAULT_WORKSPACE_TOKEN_BUDGET = 8000;
+const MIN_FILE_TOKEN_BUDGET = 24;
+
+/**
+ * Allocates a total token budget across workspace file records proportional to importance.
+ * @param {Array<Object>} fileRecords - Array of workspace file records with rawTokenEstimate, dependencies, recentlyReferenced.
+ * @param {number} totalBudget - Total token budget for the workspace.
+ * @returns {Array<Object>} File records augmented with `allocatedBudget`.
+ */
+function allocateWorkspaceBudget(fileRecords, totalBudget = DEFAULT_WORKSPACE_TOKEN_BUDGET) {
+  if (!Array.isArray(fileRecords) || !fileRecords.length) return [];
+
+  const scored = fileRecords.map((record) => {
+    const rawTokens = record.rawTokenEstimate || estimateTextTokens(record.rawText || "");
+    const depCount = Array.isArray(record.dependencies) ? record.dependencies.length : 0;
+    const isReferenced = Boolean(record.recentlyReferenced);
+    const importance = depCount * 2
+      + (isReferenced ? 5 : 0)
+      + Math.log2(Math.max(1, rawTokens));
+
+    return { ...record, importance, rawTokens };
+  });
+
+  const totalImportance = scored.reduce((sum, r) => sum + r.importance, 0);
+  if (totalImportance <= 0) {
+    const equalShare = Math.max(MIN_FILE_TOKEN_BUDGET, Math.floor(totalBudget / scored.length));
+    return scored.map((record) => ({ ...record, allocatedBudget: equalShare }));
+  }
+
+  return scored.map((record) => ({
+    ...record,
+    allocatedBudget: Math.max(MIN_FILE_TOKEN_BUDGET, Math.floor(totalBudget * record.importance / totalImportance)),
+  }));
+}
+
+/**
+ * Selects the best capsule tier for a file based on its allocated budget.
+ * @param {Object} record - File record with capsuleVariants and allocatedBudget.
+ * @returns {string} The selected tier name ('loose', 'medium', or 'ultra').
+ */
+function selectTierForBudget(record) {
+  const budget = Number(record.allocatedBudget || 0);
+  if (!record.capsuleVariants) return "ultra";
+
+  for (const tier of ["loose", "medium", "ultra"]) {
+    const variant = record.capsuleVariants[tier];
+    if (variant && Number(variant.capsule?.capsuleTokenEstimate || 0) <= budget) {
+      return tier;
+    }
+  }
+  return "ultra";
+}
+
 module.exports = {
   DEFAULT_CHUNK_SIZE,
   LEGACY_WORKSPACE_ENCODING,
@@ -2259,8 +2372,11 @@ module.exports = {
   extractTransportEnvelope,
   getFocusedCacheKey,
   recoverWorkspaceFileRecord,
+  allocateWorkspaceBudget,
   resolveWorkspacePath,
+  selectTierForBudget,
   serializeWorkspaceFileRecord,
+  sha256Hex,
   suggestRecoverySpanIds,
   validateTransportSpanIndex,
 };
