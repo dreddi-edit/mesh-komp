@@ -1,6 +1,6 @@
 # Claude Overview: Mesh-Komp System Architecture
 
-Last updated: 2026-04-14
+Last updated: 2026-04-15
 Audience: engineers working on try-mesh.com (gateway, worker, frontend, compression, auth, deploy)
 
 ---
@@ -29,19 +29,17 @@ At runtime it is split into:
 
 ### 2.1 Apps
 
-- Gateway app service: `mesh-gateway-303137`
-- Worker app service: `mesh-worker-303137`
-- Public domain: `try-mesh.com`
+- Gateway: EC2 t2.micro at `35.175.88.93`, managed by PM2
+- Public domain: `try-mesh.com` (DNS via Cloudflare → EC2)
 
-### 2.2 Plans
+### 2.2 Infrastructure
 
-- Gateway plan: `mesh-plan` (P3v3, capacity 1)
-- Worker plan: `mesh-worker-plan` (P3v3, capacity 4)
-
-Reason for split:
-
-- gateway auth/session persistence currently uses SQLite-backed storage and is kept single-instance for reliability,
-- worker is scaled separately for indexing/compression throughput.
+- **Compute**: AWS EC2 t2.micro (us-east-1, free tier)
+- **Database**: AWS DynamoDB — `mesh-users`, `mesh-sessions`, `mesh-stores`
+- **AI**: AWS Bedrock (Claude Sonnet 4.6 via IAM user `mesh-bedrock-access`)
+- **Voice**: Amazon Transcribe (STT) + Amazon Polly (TTS)
+- **Storage**: S3 bucket `mesh-workspace-offload-960583973825` (offload optional)
+- **CI/CD**: GitHub Actions → rsync to EC2 → PM2 restart
 
 ### 2.3 Cross-service call
 
@@ -56,8 +54,8 @@ Reason for split:
 
 - `server.js`: gateway API, auth, workspace fallback, terminal sessions.
 - `src/server.js`: express app setup, global exposure, route mounting.
-- `src/config/index.js`: centralized config validation (Zod-based, all env vars validated at startup).
-- `secure-db.js`: encrypted SQLite persistence for users/sessions/user_store.
+- `src/config/index.js`: centralized config validation (all env vars validated at startup).
+- `secure-db.js`: DynamoDB-backed persistence for users/sessions/user_store (with in-memory fallback for dev).
 - `assistant-core.js`: shared scoring/ranking/path-safety/plan/action utilities.
 - `llm-compress.js`: heuristic compressor (modes: smart/skeleton/llm80), `pseudo()` for symbol summaries.
 - `DEPLOY.md`: canonical deployment runbook.
@@ -66,14 +64,14 @@ Reason for split:
 ## 3.2 Core Modules (extracted April 2026)
 
 - `src/core/index.js`: main backend aggregator.
-- `src/core/model-providers.js`: AI model constants, provider calls (Anthropic/OpenAI/Gemini/BYOK), system prompt, codec.
+- `src/core/model-providers.js`: AI model constants, provider calls (Anthropic/OpenAI/Gemini/BYOK/Azure BYOK), system prompt, codec.
 - `src/core/mesh-codec.js`: ROT47 transforms, token dictionary encode/decode, codec session state.
 - `src/core/workspace-context.js`: capsule context loading, prompt assembly, prefix stability, codec injection.
 - `src/core/operations-store.js`: operations/deployments/policies state management.
 - `src/core/assistant-runs.js`: run planning and execution.
 - `src/core/auth.js`: authentication logic.
 - `src/core/voice-agent.js`: voice agent tool loop.
-- `src/core/voice-azure-audio.js`: Azure STT/TTS integration.
+- `src/core/voice-aws-audio.js`: AWS STT/TTS integration (Amazon Transcribe + Polly).
 
 ## 3.3 Routes (refactored April 2026)
 
@@ -123,7 +121,7 @@ Key responsibilities in frontend runtime:
 
 - auth session bootstrap (`/api/auth/session`),
 - workspace upload/indexing with manifest + chunking,
-- optional Azure blob offload bootstrap and ingest path,
+- optional S3 offload bootstrap and ingest path,
 - file tree/explorer rendering,
 - editor/diff rendering (Monaco),
 - chat send/decode flows,
@@ -185,30 +183,27 @@ Cookie/session behavior:
 
 ## 5.2 secure-db schema
 
-`secure-db.js` creates and uses:
+`secure-db.js` persists to DynamoDB (or in-memory in dev):
 
-- `users`
-- `sessions`
-- `user_store`
+- `mesh-users` — users table with `email-index` GSI
+- `mesh-sessions` — sessions table with `userId-index` GSI
+- `mesh-stores` — per-user store with `userId-index` GSI
 
 Features:
 
 - AES-256-GCM encrypted `user_store` payloads,
 - email normalization,
 - upsert semantics,
-- legacy auth-store migration support,
-- configurable DB path and journal mode.
+- DynamoDB native TTL for session expiry,
+- in-memory fallback when `MESH_DYNAMO_ENABLED=false`.
 
-## 5.3 SQLite safety hardening
+## 5.3 DynamoDB configuration
 
-Key hardening knobs now present:
+Key env vars:
 
-- `MESH_SECURE_DB_FILE`
-- `MESH_SECURE_DB_JOURNAL_MODE`
-- `MESH_SECURE_DB_COPY_LEGACY`
-- `MESH_SECURE_DB_BUSY_TIMEOUT_MS`
-
-On Azure, journal default is designed to avoid unsafe WAL behavior under multi-instance contention.
+- `MESH_DYNAMO_ENABLED` — set to `true` to use DynamoDB
+- `MESH_DYNAMO_TABLE_PREFIX` — table name prefix (default: `mesh`)
+- `MESH_DATA_ENCRYPTION_KEY` — AES-256 key for user store payloads; never rotate
 
 ---
 
@@ -244,9 +239,9 @@ Routes:
 - `GET /api/assistant/workspace/offload-config`
 - `POST /api/assistant/workspace/offload/ingest`
 
-If Azure offload is configured:
+If S3 offload is configured (`MESH_S3_OFFLOAD_ENABLED=true`):
 
-- browser uploads chunk JSON to blob,
+- browser uploads chunk JSON to S3,
 - gateway downloads blob and forwards chunk into workspace.select path,
 - can also enqueue ingestion jobs through queue logic.
 
@@ -460,18 +455,15 @@ Store:
 - `MESH_WORKSPACE_SELECT_JOB_TTL_MS`
 - `MESH_WORKSPACE_SELECT_MAX_JOB_HISTORY`
 
-## 12.4 Offload
+## 12.4 S3 Offload (optional)
 
-- `MESH_AZURE_OFFLOAD_ENABLED`
-- `MESH_AZURE_BLOB_BASE_URL`
-- `MESH_AZURE_BLOB_CONTAINER`
-- `MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN`
-- `MESH_AZURE_BLOB_SAS_TOKEN`
-- `MESH_AZURE_BLOB_INGEST_SAS_TOKEN`
-- `MESH_AZURE_OFFLOAD_MAX_CHUNK_FILES`
-- `MESH_AZURE_OFFLOAD_MAX_CHUNK_BYTES`
-- `MESH_AZURE_OFFLOAD_MAX_PARALLEL_READS`
-- `MESH_AZURE_OFFLOAD_MAX_INFLIGHT_CHUNKS`
+- `MESH_S3_OFFLOAD_ENABLED`
+- `MESH_S3_BUCKET`
+- `MESH_S3_PREFIX`
+- `MESH_S3_OFFLOAD_MAX_CHUNK_FILES`
+- `MESH_S3_OFFLOAD_MAX_CHUNK_BYTES`
+- `MESH_S3_OFFLOAD_MAX_PARALLEL_READS`
+- `MESH_S3_OFFLOAD_MAX_INFLIGHT_CHUNKS`
 
 ## 12.5 Compression/capsules
 
@@ -482,16 +474,29 @@ Store:
 - `MESH_CAPSULE_MAX_LLM_FALLBACK_BYTES`
 - `MESH_WORKSPACE_TOKEN_BUDGET` (default 8000)
 
-## 12.6 Secure DB
+## 12.6 DynamoDB / secure DB
 
-- `MESH_SECURE_DB_FILE`
-- `MESH_SECURE_DB_JOURNAL_MODE`
-- `MESH_SECURE_DB_COPY_LEGACY`
-- `MESH_SECURE_DB_BUSY_TIMEOUT_MS`
+- `MESH_DYNAMO_ENABLED`
+- `MESH_DYNAMO_TABLE_PREFIX`
+- `MESH_DYNAMO_USERS_TABLE`
+- `MESH_DYNAMO_SESSIONS_TABLE`
+- `MESH_DYNAMO_STORES_TABLE`
 - `MESH_DATA_ENCRYPTION_KEY`
 - `AUTH_SECRET` (fallback source)
 
-## 12.7 Provider keys
+## 12.7 AWS credentials
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION_BEDROCK`
+
+## 12.8 Voice (AWS-native)
+
+- `MESH_VOICE_TRANSCRIBE_LANGUAGE` (default: `en-US`)
+- `MESH_VOICE_POLLY_VOICE` (default: `Joanna`)
+- `MESH_VOICE_POLLY_ENGINE` (default: `neural`)
+
+## 12.9 Provider keys
 
 - `ANTHROPIC_API_KEY`
 - `OPENAI_API_KEY`
@@ -505,18 +510,17 @@ Canonical source: `DEPLOY.md`
 
 Standard pattern:
 
-1. preflight checks (`node --check ...`),
-2. verify secure-db settings (`MESH_SECURE_DB_FILE`, encryption key),
-3. full zip deploy gateway (`--clean false`),
-4. deploy worker if worker/compression changed,
-5. smoke test auth/session/status/chat,
-6. verify persistence marker survives restart.
+1. push to `main` — GitHub Actions rsync to EC2 + PM2 restart,
+2. or manually: rsync + `pm2 restart mesh-gateway --update-env`,
+3. smoke test: `curl https://try-mesh.com/healthz` — expect `authStoreOk: true`.
 
-Current practical hardening from this project state:
+PM2 process manager:
 
-- gateway health check path `/healthz`,
-- always-on + 64-bit worker process,
-- gateway and worker split into separate plans for stability + throughput.
+- process name: `mesh-gateway`
+- entry: `/home/ec2-user/app/src/server.js`
+- node args: `--env-file /home/ec2-user/app/.env`
+- cwd: `/home/ec2-user/app`
+- data: `/home/ec2-user/data/mesh-secure-v2.db` (SQLite workspace fallback)
 
 ---
 
@@ -571,7 +575,6 @@ If you need to change shared ranking/path logic:
 
 ## 16) Known constraints and trade-offs
 
-- Gateway auth currently depends on SQLite persistence; multi-instance write contention is risky without moving to external session store.
 - Worker is where horizontal scale pays off most (indexing/compression/mesh operations).
 - The system intentionally has worker-unavailable fallbacks to keep UX operational.
 - Compression/capsule quality vs throughput is governed by explicit env tunables.
@@ -582,8 +585,8 @@ If you need to change shared ranking/path logic:
 
 For fully stateless horizontal gateway scale:
 
-- move sessions from SQLite to Redis (or similar),
-- keep user/profile store in managed SQL/Postgres,
+- move sessions from DynamoDB to Redis (or similar) for sub-millisecond reads,
+- keep user/profile store in DynamoDB,
 - preserve encrypted-at-rest semantics and server-side key management.
 
 This would remove single-instance gateway dependency while keeping current worker scale model.

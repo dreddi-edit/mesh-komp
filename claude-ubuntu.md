@@ -65,7 +65,7 @@ Mac (Edgar arbeitet hier)
   │
   └─► git push → main
             │
-            ├─► GitHub Actions → Azure Gateway (mesh-gateway-303137) → try-mesh.com
+            ├─► GitHub Actions → EC2 Gateway (35.175.88.93) → try-mesh.com
             │
             └─► Ubuntu (44.204.222.251) ~/mesh-komp
                   └─ Claude Code läuft hier (Handy-Zugriff)
@@ -76,18 +76,18 @@ Mac (Edgar arbeitet hier)
 
 ---
 
-## Produktionsumgebung (Azure)
+## Produktionsumgebung (AWS)
 
-Das Produktivsystem läuft **nicht** auf dieser Ubuntu-Maschine. Es läuft auf Azure:
+Das Produktivsystem läuft **nicht** auf dieser Ubuntu-Maschine. Es läuft auf AWS:
 
-| App | Azure Name |
-|-----|-----------|
-| Gateway | `mesh-gateway-303137` |
-| Worker | `mesh-worker-303137` |
-| Domain | `try-mesh.com` |
+| Resource | Details |
+|----------|---------|
+| Compute | EC2 t2.micro — `35.175.88.93` (us-east-1) |
+| Domain | `try-mesh.com` (Cloudflare → EC2) |
+| Datenbank | DynamoDB (`mesh-users`, `mesh-sessions`, `mesh-stores`) |
+| AI | AWS Bedrock (Claude Sonnet 4.6) |
 
-Deploy passiert automatisch via GitHub Actions bei jedem Push auf `main` (nur Gateway).
-Worker-Deploys müssen manuell per Azure CLI gemacht werden — siehe `DEPLOY.md`.
+Deploy passiert automatisch via GitHub Actions bei jedem Push auf `main` (rsync → PM2 restart) — siehe `DEPLOY.md`.
 
 ---
 

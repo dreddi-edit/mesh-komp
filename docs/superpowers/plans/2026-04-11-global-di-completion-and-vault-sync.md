@@ -26,7 +26,7 @@
 | Modify | `mesh-vault/Development/Scripts and Commands.md` | Add logger env var note |
 | Modify | `mesh-vault/Operations/Environment Variables.md` | Add missing vars |
 
-> **Note on vault path:** All vault notes are mirrored at `mesh-vault/` in the repo. Check `ls mesh-vault/` to confirm structure before editing. The originals are at `~/Documents/mesh/` — edit both in the same step.
+> **Note on vault path:** The canonical vault is `mesh-vault/` in the repo. Check `ls mesh-vault/` to confirm structure before editing.
 
 ---
 
@@ -898,15 +898,15 @@ git commit -m "docs(config): add MESH_SECURE_DB_FILE and MESH_AZURE_BLOB_INGEST_
 
 ## Task 4: Sync Obsidian Vault with Current Code State
 
-**Context:** The vault lives at `~/Documents/mesh/`. The repo also has a mirror at `mesh-vault/`. Update both locations for each file (they should be identical).
+**Context:** The canonical vault is `mesh-vault/` in the repo. Update the relevant notes there.
 
 **Scope:** Four notes need updates. The changes are targeted — only the stale sections, not full rewrites.
 
 **Files:**
-- Modify: `~/Documents/mesh/Architecture/System Architecture.md` + `mesh-vault/Architecture/System Architecture.md`
-- Modify: `~/Documents/mesh/Backend/Core Orchestrator.md` + `mesh-vault/Backend/Core Orchestrator.md`
-- Modify: `~/Documents/mesh/Backend/Server and Routes.md` + `mesh-vault/Backend/Server and Routes.md`
-- Modify: `~/Documents/mesh/Operations/Environment Variables.md` + `mesh-vault/Operations/Environment Variables.md`
+- Modify: `mesh-vault/Architecture/System Architecture.md`
+- Modify: `mesh-vault/Backend/Core Orchestrator.md`
+- Modify: `mesh-vault/Backend/Server and Routes.md`
+- Modify: `mesh-vault/Operations/Environment Variables.md`
 
 ---
 
@@ -945,7 +945,7 @@ Replace with:
 | Backend core monolith | `src/core/index.js` is still large; ownership boundaries are blurry — split into submodules is the long-term goal |
 ```
 
-Update both file locations (`~/Documents/mesh/` and `mesh-vault/`).
+Update `mesh-vault/`.
 
 - [ ] **Step 2: Update `Backend/Core Orchestrator.md` — description and Known Issues**
 

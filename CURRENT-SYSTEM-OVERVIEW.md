@@ -319,7 +319,7 @@ The core layer was refactored (April 2026) from a single monolithic `index.js` i
 - `src/core/auth.js` — authentication logic
 - `src/core/deployments.js` — deployment management
 - `src/core/voice-agent.js` — voice agent tool loop
-- `src/core/voice-azure-audio.js` — Azure STT/TTS integration
+- `src/core/voice-aws-audio.js` — AWS STT/TTS integration (Amazon Transcribe + Polly)
 
 Functions are still exposed globally through `src/server.js`.
 
@@ -706,17 +706,17 @@ to
 The previous Azure realtime websocket handshake path was too unstable.
 The current voice system is intentionally built as:
 
-- Azure speech-to-text
-- Azure text model tool loop
-- Azure text-to-speech
+- Amazon Transcribe Streaming (speech-to-text)
+- AWS Bedrock text model tool loop
+- Amazon Polly (text-to-speech)
 
-not as a single Azure realtime model contract.
+not as a single realtime model contract.
 
 ### 12.2 Main Files
 
 - `src/routes/realtime.routes.js`
 - `src/core/voice-agent.js`
-- `src/core/voice-azure-audio.js`
+- `src/core/voice-aws-audio.js`
 - `assets/features/voice-chat.js`
 - `assets/features/voice-audio-worklet.js`
 
@@ -897,9 +897,9 @@ The whole repo root is used as the static root for serving frontend assets.
 4. Browser opens `/api/realtime`
 5. Mic audio streams to gateway
 6. Gateway segments speech
-7. Gateway sends STT to Azure
+7. Gateway sends PCM to Amazon Transcribe Streaming
 8. Gateway builds message list and capsule context
-9. Gateway runs Azure text tool loop
+9. Gateway runs Bedrock text tool loop
 10. Voice agent executes tools / delegates tasks
 11. Reply text is synthesized to speech
 12. UI shows transcript + state + tool updates
@@ -998,7 +998,7 @@ Right now, the system is best understood as:
 - with functioning editor/chat/settings/terminal/voice surfaces
 - with a worker-backed workspace intelligence layer
 - with a meaningful compression architecture
-- with a voice system that now avoids fragile Azure realtime websocket contracts
+- with a voice system built on Amazon Transcribe + Polly (avoids fragile realtime websocket contracts)
 - with one still-important unresolved reliability zone around graph identity and graph empty-state semantics
 
 ## 20. Files Most Worth Knowing

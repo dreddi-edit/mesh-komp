@@ -180,7 +180,7 @@ test("security integration tests", { timeout: 90000 }, async (t) => {
       );
     });
 
-    // Login requires Cosmos DB. When unavailable, the login returns 503/401.
+    // Login requires DynamoDB. When unavailable, the login returns 503/401.
     // We attempt login and conditionally run cookie/auth-dependent tests.
     let loginAvailable = false;
     try {

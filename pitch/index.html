@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mesh — Pitch Materials</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d0d0f;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #111113;
+      border-bottom: 1px solid #1e1e24;
+      padding: 0 32px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 100;
+      overflow-x: auto;
+    }
+
+    nav .logo {
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+      margin-right: 16px;
+      letter-spacing: -0.3px;
+      flex-shrink: 0;
+    }
+
+    .nav-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 8px;
+      border-right: 1px solid #1e1e24;
+    }
+
+    .nav-group:last-of-type {
+      border-right: none;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      color: #4a5568;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    nav button {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      padding: 5px 11px;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    nav button:hover { background: #1e1e24; color: #e2e8f0; }
+    nav button.active { background: #1e1e24; border-color: #2d2d38; color: #fff; }
+
+    .tab-indicator { margin-left: auto; font-size: 11px; color: #4a5568; flex-shrink: 0; padding-left: 16px; }
+
+    .content {
+      max-width: 820px;
+      margin: 80px auto 80px;
+      padding: 0 32px;
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .loading {
+      color: #4a5568;
+      font-size: 14px;
+      padding: 40px 0;
+    }
+
+    h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 8px; letter-spacing: -0.5px; }
+    h2 { font-size: 20px; font-weight: 600; color: #fff; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 1px solid #1e1e24; }
+    h3 { font-size: 15px; font-weight: 600; color: #cbd5e1; margin: 24px 0 10px; }
+
+    p { font-size: 15px; line-height: 1.7; color: #94a3b8; margin-bottom: 14px; }
+
+    blockquote {
+      border-left: 3px solid #6366f1;
+      padding: 12px 20px;
+      margin: 20px 0;
+      background: #13131a;
+      border-radius: 0 8px 8px 0;
+    }
+    blockquote p { color: #c4b5fd; margin: 0; font-style: italic; }
+
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+    th { background: #13131a; color: #94a3b8; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid #1e1e24; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 10px 14px; border-bottom: 1px solid #1a1a22; color: #cbd5e1; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #13131a; }
+
+    ul, ol { padding-left: 20px; margin-bottom: 14px; }
+    li { font-size: 15px; line-height: 1.7; color: #94a3b8; margin-bottom: 4px; }
+
+    strong { color: #e2e8f0; font-weight: 600; }
+
+    code { background: #13131a; border: 1px solid #1e1e24; border-radius: 4px; padding: 2px 6px; font-family: 'SF Mono', monospace; font-size: 13px; color: #a5b4fc; }
+
+    hr { border: none; border-top: 1px solid #1e1e24; margin: 40px 0; }
+
+    pre {
+      background: #111113;
+      border: 1px solid #1e1e24;
+      border-radius: 8px;
+      padding: 28px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #94a3b8;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-x: auto;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .doc-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #13131a;
+      border: 1px solid #1e1e24;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: #4a5568;
+      margin-bottom: 32px;
+    }
+
+    .doc-meta span { color: #64748b; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">Mesh</span>
+
+  <div class="nav-group">
+    <span class="nav-label">EN</span>
+    <button class="active" data-file="pitch-deck.md" data-target="deck-en">Pitch Deck</button>
+    <button data-file="one-pager.md" data-target="onepager-en">One-Pager</button>
+    <button data-file="technical-brief-en.md" data-target="tech-en">Technical Brief</button>
+    <button data-file="capsule-whitepaper-en.md" data-target="whitepaper-en">Whitepaper</button>
+  </div>
+
+  <div class="nav-group">
+    <span class="nav-label">DE</span>
+    <button data-file="pitch-deck-de.md" data-target="deck-de">Pitch Deck</button>
+    <button data-file="one-pager-de.md" data-target="onepager-de">One-Pager</button>
+    <button data-file="technical-brief-de.md" data-target="tech-de">Technisches Briefing</button>
+    <button data-file="capsule-whitepaper-de.md" data-target="whitepaper-de">Whitepaper</button>
+  </div>
+
+  <span class="tab-indicator">pitch materials · 2026</span>
+</nav>
+
+<div class="content">
+  <div id="deck-en" class="panel active"><p class="loading">Loading…</p></div>
+  <div id="onepager-en" class="panel"><p class="loading">Loading…</p></div>
+  <div id="tech-en" class="panel"><p class="loading">Loading…</p></div>
+  <div id="whitepaper-en" class="panel"><p class="loading">Loading…</p></div>
+  <div id="deck-de" class="panel"><p class="loading">Wird geladen…</p></div>
+  <div id="onepager-de" class="panel"><p class="loading">Wird geladen…</p></div>
+  <div id="tech-de" class="panel"><p class="loading">Wird geladen…</p></div>
+  <div id="whitepaper-de" class="panel"><p class="loading">Wird geladen…</p></div>
+</div>
+
+<script>
+  const loaded = new Set();
+
+  async function loadMarkdown(file, targetId) {
+    if (loaded.has(targetId)) return;
+    try {
+      const res = await fetch(file);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const dirty = marked.parse(text);
+      document.getElementById(targetId).innerHTML = DOMPurify.sanitize(dirty);
+      loaded.add(targetId);
+    } catch (err) {
+      document.getElementById(targetId).innerHTML =
+        `<p style="color:#ef4444">Failed to load <code>${file}</code>: ${err.message}</p>`;
+    }
+  }
+
+  // Activate tab + lazy-load on click
+  document.querySelectorAll('nav button[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      const targetId = btn.dataset.target;
+      document.getElementById(targetId).classList.add('active');
+      btn.classList.add('active');
+      loadMarkdown(btn.dataset.file, targetId);
+    });
+  });
+
+  // Eagerly load the active tab on page load
+  const activeBtn = document.querySelector('nav button.active');
+  if (activeBtn) {
+    loadMarkdown(activeBtn.dataset.file, activeBtn.dataset.target);
+  }
+</script>
+</body>
+</html>

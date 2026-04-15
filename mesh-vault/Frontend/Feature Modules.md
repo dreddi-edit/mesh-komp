@@ -37,6 +37,12 @@ All feature modules live in `assets/features/`. They are loaded by `views/app.ht
 | `chat-threads.js` | Thread/session behavior for chat history |
 | `ai-review.js` | AI review flow over workspace or code selections |
 
+## Dependency Graph (`assets/app-graph.js`)
+
+Rendered via D3. Key behaviours added in recent phases:
+- **Staggered entrance animation** — nodes fade and translate in with a per-node delay on initial render and after re-layout
+- **Empty-explorer persistence** — `#emptyExp` element is preserved across `renderTree()` DOM wipes (does not disappear when tree is re-rendered)
+
 ## Communication Pattern
 
 Feature modules communicate with the shell via:

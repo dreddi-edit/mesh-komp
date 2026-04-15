@@ -11,12 +11,12 @@ tags: [architecture]
 - Worker opens and operates on the real path on disk
 - Terminal opens directly in the real root path
 - Git operations run against `rootPath`
-- No Azure Blob involved — files stay on server filesystem
+- No cloud storage involved — files stay on server filesystem
 
 ### `upload`
 - User selects files/folder in the browser
-- Files are uploaded directly to Azure Blob Storage
-- Metadata and capsule records stored in Cosmos DB
+- Files are ingested via gateway and stored in workspace metadata store
+- When S3 offload is enabled: browser uploads directly to S3
 - When terminal access is needed, the gateway **materializes** the workspace into a temp directory
 
 ## Upload Workspace Materialization for Terminal
@@ -24,12 +24,12 @@ tags: [architecture]
 When the user switches to Terminal with an upload workspace active:
 
 1. Gateway enumerates workspace files from metadata store
-2. Opens original content from Blob (via read URL)
+2. Opens original content from storage
 3. Writes each file to a temp directory under `MESH_TERMINAL_UPLOAD_ROOT`
 4. Caches a `.mesh-terminal-meta.json` marker for reuse
 5. Node-pty shell opens in that materialized directory
 
-This creates a bridge from Blob-backed records to a real shell-accessible directory tree.
+This creates a bridge from stored records to a real shell-accessible directory tree.
 
 ## Workspace Identity
 
@@ -43,7 +43,7 @@ The canonical workspace identity flows through everything:
 | `rootPath` | Server-side path (local-path workspaces) |
 | `sourceKind` | `"local-path"` or `"upload"` |
 
-Because Gateway and Worker scale horizontally, `workspaceId` must be passed explicitly in every API call. Never rely on implicit worker in-memory state.
+Because Gateway and Worker can scale horizontally, `workspaceId` must be passed explicitly in every API call. Never rely on implicit worker in-memory state.
 
 ## Current Multiple-Truth Problem
 
@@ -53,7 +53,7 @@ The workspace identity is currently tracked in several places:
 - `S.tree` — browser-side file tree
 - Local assistant workspace (gateway in-memory)
 - Worker `workspaceState` (in-memory)
-- Metadata store workspace summaries (Cosmos)
+- Metadata store workspace summaries
 - Upload workspace IDs
 
 Long-term goal: one canonical active workspace identity used by all views and APIs.

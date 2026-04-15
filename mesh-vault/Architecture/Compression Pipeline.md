@@ -188,6 +188,12 @@ Supported grammars: JavaScript, TypeScript, Python, CSS, HTML, JSON, Go.
 
 See `package.json` for the full list of `tree-sitter-*` dependencies.
 
+## Frontend Compression Map (`S.compressionMap`)
+
+`app-workspace.js` maintains `S.compressionMap` — a `Map<path, { rawBytes, capsuleBytes }>` populated from sync responses. This drives the Capsule Status indicator and compression ratio display.
+
+**Skip-gate path:** When all files match their SHA-256 digest on workspace open (background index skipped), `loadCompressionMap()` is called on the `mesh-indexing-initial-ready` event to ensure `S.compressionMap` is populated even though the full index cycle didn't run.
+
 ## Delta-Rebuild
 
 When re-indexing a workspace, `openLocalWorkspace()` in `workspace-operations.js` computes a SHA-256 digest of each file's content via `compressionCore.sha256Hex()`. If the digest matches the existing record's `rawStorage.digest` and capsule variants already exist, the file is skipped entirely. This avoids redundant recompression of unchanged files.

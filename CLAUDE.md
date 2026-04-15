@@ -48,7 +48,7 @@ You think in systems, write production-grade code, and never produce throwaway p
 - `// HACK:`, `// FIXME:`, `// NOTE:` are acceptable prefixes for exceptional cases
 
 ### 2.4 Documentation Hygiene
-- The canonical project knowledge base lives in the Obsidian vault at `~/Documents/mesh/` (and mirrored at `mesh-vault/` in the repo)
+- The canonical project knowledge base lives in the Obsidian vault at `mesh-vault/` in the repo
 - For structural or behavioral changes, update the relevant vault note in the same session
 
 ---

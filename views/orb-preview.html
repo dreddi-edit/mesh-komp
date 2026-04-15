@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Orb Preview — Mesh</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#060810;font-family:'Inter',system-ui,sans-serif;color:#ccc;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 24px 60px;gap:48px}
+h1{font-size:.72rem;font-weight:700;color:#fff;letter-spacing:.18em;text-transform:uppercase;opacity:.35}
+.row{display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+.card{display:flex;flex-direction:column;align-items:center;gap:16px}
+.label{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#0098ff}
+.sublabel{font-size:.65rem;color:#444;text-align:center;max-width:220px;line-height:1.6}
+.state-btns{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+.state-btn{padding:3px 10px;border-radius:999px;border:1px solid #222;background:#0e111a;color:#555;font-size:.62rem;cursor:pointer;transition:all .15s;font-family:inherit}
+.state-btn:hover,.state-btn.active{border-color:#0098ff;color:#0098ff;background:rgba(0,152,255,.1)}
+canvas{display:block}
+.mic-btn{display:flex;align-items:center;gap:8px;padding:7px 18px;border-radius:999px;border:1px solid #333;background:#0e111a;color:#888;font-size:.7rem;cursor:pointer;transition:all .2s;font-family:inherit}
+.mic-btn:hover{border-color:#0098ff;color:#0098ff}
+.mic-btn.active{border-color:#f14c4c;color:#f14c4c;background:rgba(241,76,76,.08);animation:mic-pulse 1.5s infinite}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(241,76,76,.3)}50%{box-shadow:0 0 0 6px rgba(241,76,76,0)}}
+</style>
+</head>
+<body>
+
+<h1>Orb Options — Mesh Voice Coding</h1>
+
+<div class="row">
+
+  <div class="card">
+    <div class="label">Option A — Dense Cloud</div>
+    <canvas id="cA" width="420" height="420"></canvas>
+    <div class="state-btns" data-orb="A">
+      <button class="state-btn active" data-state="listening">Listening</button>
+      <button class="state-btn" data-state="thinking">Thinking</button>
+      <button class="state-btn" data-state="speaking">Speaking</button>
+      <button class="state-btn" data-state="running">Running</button>
+      <button class="state-btn" data-state="idle">Idle</button>
+    </div>
+    <div class="sublabel">Closest to the photo. Dense particle shell, back-side visible through transparency, spiky audio bursts.</div>
+  </div>
+
+  <div class="card">
+    <div class="label">Option B — Flowing Tendrils</div>
+    <canvas id="cB" width="420" height="420"></canvas>
+    <div class="state-btns" data-orb="B">
+      <button class="state-btn active" data-state="listening">Listening</button>
+      <button class="state-btn" data-state="thinking">Thinking</button>
+      <button class="state-btn" data-state="speaking">Speaking</button>
+      <button class="state-btn" data-state="running">Running</button>
+      <button class="state-btn" data-state="idle">Idle</button>
+    </div>
+    <div class="sublabel">Particles cluster into tendril-like streams that flow across the surface. More organic movement.</div>
+  </div>
+
+  <div class="card">
+    <div class="label">Option C — Exploding Shell</div>
+    <canvas id="cC" width="420" height="420"></canvas>
+    <div class="state-btns" data-orb="C">
+      <button class="state-btn active" data-state="listening">Listening</button>
+      <button class="state-btn" data-state="thinking">Thinking</button>
+      <button class="state-btn" data-state="speaking">Speaking</button>
+      <button class="state-btn" data-state="running">Running</button>
+      <button class="state-btn" data-state="idle">Idle</button>
+    </div>
+    <button class="mic-btn" id="micBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="1" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      <span id="micLabel">Enable Mic</span>
+    </button>
+    <div class="sublabel">Particles erupt outward from the surface on loud audio — then collapse back. High-energy feel.</div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ── Mesh color palettes per state ──────────────────────────────────────────
+const PALETTES = {
+  idle:      { r:  40, g:  90, b: 160, r2:  60, g2: 130, b2: 220 },
+  listening: { r:   0, g: 152, b: 255, r2:  80, g2: 210, b2: 255 },
+  thinking:  { r: 130, g:  80, b: 255, r2: 200, g2: 140, b2: 255 },
+  speaking:  { r:   0, g: 210, b: 175, r2:  80, g2: 245, b2: 210 },
+  running:   { r:   0, g: 145, b: 255, r2: 100, g2: 200, b2: 255 },
+};
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// Fake audio amplitude — simulates mic/speaker reactivity
+function fakeAmp(state, t) {
+  switch (state) {
+    case 'listening': return 0.18 + 0.12 * Math.abs(Math.sin(t * 3.1) * Math.sin(t * 1.7));
+    case 'thinking':  return 0.06 + 0.04 * Math.sin(t * 5.0);
+    case 'speaking':  return 0.55 + 0.38 * Math.abs(Math.sin(t * 3.8) * Math.cos(t * 2.1));
+    case 'running':   return 0.22 + 0.14 * Math.abs(Math.sin(t * 7.0));
+    default:          return 0.03 + 0.02 * Math.sin(t * 1.2);
+  }
+}
+
+// Fibonacci sphere — even distribution, no pole clustering
+function buildFibSphere(n) {
+  const G = Math.PI * (3 - Math.sqrt(5));
+  const pts = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / (n - 1)) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const th = G * i;
+    pts[i*3]   = Math.cos(th) * r;
+    pts[i*3+1] = y;
+    pts[i*3+2] = Math.sin(th) * r;
+  }
+  return pts;
+}
+
+// Wire up state buttons
+document.querySelectorAll('.state-btns').forEach(group => {
+  group.addEventListener('click', e => {
+    const btn = e.target.closest('.state-btn');
+    if (!btn) return;
+    group.querySelectorAll('.state-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const orbId = group.dataset.orb;
+    window['orbState' + orbId] = btn.dataset.state;
+  });
+});
+window.orbStateA = 'listening';
+window.orbStateB = 'listening';
+window.orbStateC = 'listening';
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// OPTION A — Dense Cloud (closest to photo)
+// 10 000 particles on sphere surface, spiky on audio, back-side visible
+// ══════════════════════════════════════════════════════════════════════════
+(function() {
+  const N = 10000;
+  const pts = buildFibSphere(N);
+  // Random phase per particle for organic variation
+  const phase = new Float32Array(N);
+  for (let i = 0; i < N; i++) phase[i] = Math.random() * Math.PI * 2;
+
+  const canvas = document.getElementById('cA');
+  const ctx = canvas.getContext('2d');
+  const W = 420, H = 420, CX = W/2, CY = H/2;
+  const BASE_R = 148;
+  let curPal = {...PALETTES.listening};
+  let rotY = 0, rotX = 0.4;
+  let prevT = performance.now();
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - prevT) / 1000, 0.05);
+    prevT = now;
+    const t = now / 1000;
+
+    const state = window.orbStateA;
+    const pal = PALETTES[state] || PALETTES.idle;
+    // Smooth color transition
+    curPal.r  = lerp(curPal.r,  pal.r,  0.04);
+    curPal.g  = lerp(curPal.g,  pal.g,  0.04);
+    curPal.b  = lerp(curPal.b,  pal.b,  0.04);
+    curPal.r2 = lerp(curPal.r2, pal.r2, 0.04);
+    curPal.g2 = lerp(curPal.g2, pal.g2, 0.04);
+    curPal.b2 = lerp(curPal.b2, pal.b2, 0.04);
+
+    const amp = fakeAmp(state, t);
+
+    // Slow auto-rotation
+    rotY += dt * 0.28;
+    rotX += dt * 0.11;
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+
+    const sphereR = BASE_R + amp * 18;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Outer ambient glow — soft halo like in photo
+    const halo = ctx.createRadialGradient(CX, CY, sphereR * 0.3, CX, CY, sphereR * 1.65);
+    halo.addColorStop(0,   `rgba(${curPal.r|0},${curPal.g|0},${curPal.b|0},${0.12 + amp * 0.14})`);
+    halo.addColorStop(0.6, `rgba(${curPal.r|0},${curPal.g|0},${curPal.b|0},${0.04 + amp * 0.05})`);
+    halo.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(CX, CY, sphereR * 1.65, 0, Math.PI*2);
+    ctx.fillStyle = halo; ctx.fill();
+
+    // Project and render all particles
+    // Sort by Z for painter's algorithm (back-to-front) — group into back/front
+    // We skip sorting (too expensive at 10k) and instead use alpha for depth
+    for (let i = 0; i < N; i++) {
+      const bx = pts[i*3], by = pts[i*3+1], bz = pts[i*3+2];
+      const ph = phase[i];
+
+      // Per-particle radial spike driven by audio — high freq particles spike more
+      const spike = amp * (0.08 + 0.12 * Math.abs(Math.sin(ph * 2.3 + t * 4.1)));
+      // Slow surface wave
+      const wave  = 0.015 * Math.sin(ph + t * 1.8) + 0.01 * Math.sin(ph * 1.4 + t * 2.6);
+
+      const r = sphereR * (1 + wave + spike);
+
+      // 3D → rotated
+      let x = bx * r, y = by * r, z = bz * r;
+      const x1 =  x * cosY - z * sinY;
+      const z1 =  x * sinY + z * cosY;
+      const y2 =  y * cosX - z1 * sinX;
+      const z2 =  y * sinX + z1 * cosX;
+
+      // Depth 0=back, 1=front
+      const depth = (z2 + sphereR * 1.2) / (sphereR * 2.4);
+
+      // KEY: keep back particles visible (like photo shows back-side glow)
+      // Back particles dim but not hidden
+      const alphaBase = depth < 0.5
+        ? 0.08 + depth * 0.25           // back hemisphere: faint
+        : 0.18 + (depth - 0.5) * 0.9;  // front hemisphere: bright
+
+      const alpha = Math.min(0.95, alphaBase * (0.5 + amp * 0.8) + spike * 0.6);
+
+      // Dot size: front bigger, spiky particles bigger
+      const dotR = 0.5 + depth * 1.2 + spike * sphereR * 0.03;
+
+      // Color: back = primary, front = secondary (lighter)
+      const cr  = (curPal.r  + (curPal.r2  - curPal.r)  * depth) | 0;
+      const cg  = (curPal.g  + (curPal.g2  - curPal.g)  * depth) | 0;
+      const cb  = (curPal.b  + (curPal.b2  - curPal.b)  * depth) | 0;
+
+      ctx.beginPath();
+      ctx.arc(CX + x1, CY + y2, Math.max(0.3, dotR), 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(2)})`;
+      ctx.fill();
+    }
+
+    // Bright inner core (like the photo's inner glow)
+    const core = ctx.createRadialGradient(CX, CY, 0, CX, CY, sphereR * 0.45);
+    core.addColorStop(0, `rgba(${curPal.r2|0},${curPal.g2|0},${curPal.b2|0},${0.22 + amp * 0.2})`);
+    core.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(CX, CY, sphereR * 0.45, 0, Math.PI*2);
+    ctx.fillStyle = core; ctx.fill();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// OPTION B — Flowing Tendrils
+// Particles grouped into streams that flow across the surface
+// ══════════════════════════════════════════════════════════════════════════
+(function() {
+  const N = 10000;
+  const pts = buildFibSphere(N);
+  const phase = new Float32Array(N);
+  const stream = new Uint8Array(N); // which tendril stream (0-7)
+  for (let i = 0; i < N; i++) {
+    phase[i]  = Math.random() * Math.PI * 2;
+    stream[i] = i % 8;
+  }
+
+  const canvas = document.getElementById('cB');
+  const ctx = canvas.getContext('2d');
+  const W = 420, H = 420, CX = W/2, CY = H/2;
+  const BASE_R = 148;
+  let curPal = {...PALETTES.listening};
+  let rotY = 0.8, rotX = 0.3;
+  let prevT = performance.now();
+
+  // Stream angular offsets — gives each tendril its own "band"
+  const streamOffset = new Float32Array(8);
+  for (let i = 0; i < 8; i++) streamOffset[i] = (i / 8) * Math.PI * 2;
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - prevT) / 1000, 0.05);
+    prevT = now;
+    const t = now / 1000;
+
+    const state = window.orbStateB;
+    const pal = PALETTES[state] || PALETTES.idle;
+    curPal.r  = lerp(curPal.r,  pal.r,  0.04);
+    curPal.g  = lerp(curPal.g,  pal.g,  0.04);
+    curPal.b  = lerp(curPal.b,  pal.b,  0.04);
+    curPal.r2 = lerp(curPal.r2, pal.r2, 0.04);
+    curPal.g2 = lerp(curPal.g2, pal.g2, 0.04);
+    curPal.b2 = lerp(curPal.b2, pal.b2, 0.04);
+
+    const amp = fakeAmp(state, t);
+
+    rotY += dt * 0.20;
+    rotX += dt * 0.08;
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+
+    const sphereR = BASE_R + amp * 14;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Halo
+    const halo = ctx.createRadialGradient(CX, CY, sphereR * 0.25, CX, CY, sphereR * 1.6);
+    halo.addColorStop(0,   `rgba(${curPal.r|0},${curPal.g|0},${curPal.b|0},${0.1 + amp * 0.12})`);
+    halo.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(CX, CY, sphereR * 1.6, 0, Math.PI*2);
+    ctx.fillStyle = halo; ctx.fill();
+
+    for (let i = 0; i < N; i++) {
+      const bx = pts[i*3], by = pts[i*3+1], bz = pts[i*3+2];
+      const ph = phase[i];
+      const s  = stream[i];
+
+      // Tendril: each stream flows in a band — particles in the same stream
+      // cluster by adding a shared oscillation
+      const streamFlow = Math.sin(streamOffset[s] + t * (1.2 + s * 0.15) + ph * 0.3);
+      const tendrilPull = streamFlow * (0.025 + amp * 0.055);
+
+      // Outward spike for high energy
+      const spike = amp * 0.06 * Math.max(0, Math.sin(ph * 3.1 + t * 5.0));
+
+      const wave = 0.012 * Math.sin(ph + t * 1.5);
+      const r = sphereR * (1 + wave + tendrilPull + spike);
+
+      let x = bx * r, y = by * r, z = bz * r;
+      const x1 =  x * cosY - z * sinY;
+      const z1 =  x * sinY + z * cosY;
+      const y2 =  y * cosX - z1 * sinX;
+      const z2 =  y * sinX + z1 * cosX;
+
+      const depth = (z2 + sphereR * 1.2) / (sphereR * 2.4);
+
+      // Tendril brightness: particles in "peak" of streamFlow glow more
+      const tendrilBright = 0.5 + 0.5 * Math.abs(streamFlow);
+      const alphaBase = (depth < 0.5 ? 0.06 + depth * 0.22 : 0.15 + (depth - 0.5) * 0.85) * tendrilBright;
+      const alpha = Math.min(0.92, alphaBase * (0.55 + amp * 0.7));
+
+      const dotR = 0.45 + depth * 1.1 + Math.abs(tendrilPull) * sphereR * 0.06;
+
+      const cr  = (curPal.r  + (curPal.r2  - curPal.r)  * depth) | 0;
+      const cg  = (curPal.g  + (curPal.g2  - curPal.g)  * depth) | 0;
+      const cb  = (curPal.b  + (curPal.b2  - curPal.b)  * depth) | 0;
+
+      ctx.beginPath();
+      ctx.arc(CX + x1, CY + y2, Math.max(0.3, dotR), 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(2)})`;
+      ctx.fill();
+    }
+
+    const core = ctx.createRadialGradient(CX, CY, 0, CX, CY, sphereR * 0.4);
+    core.addColorStop(0, `rgba(${curPal.r2|0},${curPal.g2|0},${curPal.b2|0},${0.18 + amp * 0.18})`);
+    core.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(CX, CY, sphereR * 0.4, 0, Math.PI*2);
+    ctx.fillStyle = core; ctx.fill();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// OPTION C — Exploding Shell
+// Particles erupt outward with audio energy, collapse back to sphere at rest
+// ══════════════════════════════════════════════════════════════════════════
+(function() {
+  const N = 10000;
+  const pts = buildFibSphere(N);
+  const phase = new Float32Array(N);
+  // Each particle has a "sensitivity" — how aggressively it erupts
+  const sensitivity = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    phase[i]       = Math.random() * Math.PI * 2;
+    sensitivity[i] = 0.4 + Math.random() * 0.6; // 0.4–1.0
+  }
+
+  const canvas = document.getElementById('cC');
+  const ctx = canvas.getContext('2d');
+  const W = 420, H = 420, CX = W/2, CY = H/2;
+  const BASE_R = 138;
+  let curPal = {...PALETTES.listening};
+  let curAmp = 0; // smoothed amplitude for eruption effect
+  let rotY = 1.6, rotX = 0.5;
+  let prevT = performance.now();
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - prevT) / 1000, 0.05);
+    prevT = now;
+    const t = now / 1000;
+
+    const state = window.orbStateC;
+    const pal = PALETTES[state] || PALETTES.idle;
+    curPal.r  = lerp(curPal.r,  pal.r,  0.04);
+    curPal.g  = lerp(curPal.g,  pal.g,  0.04);
+    curPal.b  = lerp(curPal.b,  pal.b,  0.04);
+    curPal.r2 = lerp(curPal.r2, pal.r2, 0.04);
+    curPal.g2 = lerp(curPal.g2, pal.g2, 0.04);
+    curPal.b2 = lerp(curPal.b2, pal.b2, 0.04);
+
+    const rawAmp = fakeAmp(state, t);
+    // Smooth amplitude so eruptions feel snappy up, slow to collapse
+    const lerpSpeed = rawAmp > curAmp ? 0.18 : 0.04;
+    curAmp = lerp(curAmp, rawAmp, lerpSpeed);
+
+    rotY += dt * 0.32;
+    rotX += dt * 0.13;
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+
+    const sphereR = BASE_R + curAmp * 12;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Eruption halo — grows with amp
+    const haloR = sphereR * (1.5 + curAmp * 0.8);
+    const halo = ctx.createRadialGradient(CX, CY, sphereR * 0.4, CX, CY, haloR);
+    halo.addColorStop(0,   `rgba(${curPal.r|0},${curPal.g|0},${curPal.b|0},${0.14 + curAmp * 0.2})`);
+    halo.addColorStop(0.5, `rgba(${curPal.r|0},${curPal.g|0},${curPal.b|0},${0.03 + curAmp * 0.06})`);
+    halo.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(CX, CY, haloR, 0, Math.PI*2);
+    ctx.fillStyle = halo; ctx.fill();
+
+    for (let i = 0; i < N; i++) {
+      const bx = pts[i*3], by = pts[i*3+1], bz = pts[i*3+2];
+      const ph = phase[i];
+      const sens = sensitivity[i];
+
+      // Eruption: particles blast outward based on their sensitivity + current amp
+      // Use a sharp non-linear response so quiet = tight sphere, loud = explosive
+      const eruptionBase = curAmp * curAmp; // quadratic — barely moves at low amp
+      const eruption = eruptionBase * sens * (0.5 + 0.5 * Math.abs(Math.sin(ph * 1.7 + t * 3.5)));
+
+      // Gentle background wave at rest
+      const wave = 0.012 * Math.sin(ph + t * 1.6);
+
+      const r = sphereR * (1 + wave + eruption * 0.55);
+
+      let x = bx * r, y = by * r, z = bz * r;
+      const x1 =  x * cosY - z * sinY;
+      const z1 =  x * sinY + z * cosY;
+      const y2 =  y * cosX - z1 * sinX;
+      const z2 =  y * sinX + z1 * cosX;
+
+      const depth = (z2 + sphereR * 1.4) / (sphereR * 2.8);
+
+      // Erupted particles glow bright — show them regardless of depth
+      const eruptGlow = eruption * 0.8;
+      const alphaBase = depth < 0.5
+        ? 0.07 + depth * 0.18 + eruptGlow * 0.5
+        : 0.16 + (depth - 0.5) * 0.8 + eruptGlow * 0.3;
+      const alpha = Math.min(0.95, alphaBase * (0.5 + curAmp * 0.9));
+
+      // Erupted particles get larger dot
+      const dotR = 0.5 + depth * 1.0 + eruption * sphereR * 0.045;
+
+      // Erupted particles shift toward secondary (brighter) color
+      const colorShift = Math.min(1, depth + eruption * 0.8);
+      const cr  = (curPal.r  + (curPal.r2  - curPal.r)  * colorShift) | 0;
+      const cg  = (curPal.g  + (curPal.g2  - curPal.g)  * colorShift) | 0;
+      const cb  = (curPal.b  + (curPal.b2  - curPal.b)  * colorShift) | 0;
+
+      ctx.beginPath();
+      ctx.arc(CX + x1, CY + y2, Math.max(0.3, dotR), 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(2)})`;
+      ctx.fill();
+    }
+
+    // Core
+    const core = ctx.createRadialGradient(CX, CY, 0, CX, CY, sphereR * 0.42);
+    core.addColorStop(0, `rgba(${curPal.r2|0},${curPal.g2|0},${curPal.b2|0},${0.2 + curAmp * 0.22})`);
+    core.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath(); ctx.arc(CX, CY, sphereR * 0.42, 0, Math.PI*2);
+    ctx.fillStyle = core; ctx.fill();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -7,60 +7,42 @@ Two deployment methods are available:
 | Method | When to use |
 |--------|-------------|
 | **GitHub Actions (automatic)** | Every normal code push to `main` |
-| **Manual Azure CLI** | Worker-only deploys, emergency redeploys, rollback, or when Actions is unavailable |
+| **Manual rsync + SSH** | Emergency redeploys, rollback, or when Actions is unavailable |
 
 ---
 
 ## Critical Facts (Read First)
 
-1. User API keys are stored in encrypted SQLite (`secure-db.js`) and must survive deploys.
-2. The DB file must be on persistent storage:
-   - `MESH_SECURE_DB_FILE=/home/data/mesh-secure-v2.db`
-3. Encryption key must stay stable:
+1. User API keys are stored in encrypted DynamoDB (`secure-db.js`) — data survives deploys automatically.
+2. Encryption key must stay stable:
    - `MESH_DATA_ENCRYPTION_KEY` must exist and must **not** be rotated casually.
-4. Do not rely on shipping `.mesh-secure.db` inside zip artifacts.
-5. Manual deploys: prefer `--clean false`.
+3. Env file lives at `/home/ec2-user/app/.env` on the EC2 instance.
+4. PM2 loads the env file via `--env-file /home/ec2-user/app/.env`.
 
 ## Production Targets
 
-- Gateway app: `mesh-gateway-303137`
-- Worker app: `mesh-worker-303137`
-- Resource group: `mesh-rg`
+- Gateway: EC2 t2.micro, `35.175.88.93` (us-east-1)
+- PM2 process: `mesh-gateway`
+- Domain: `try-mesh.com` (Cloudflare → EC2)
 - GitHub repo: `dreddi-edit/mesh-komp`
+- SSH key: stored in GitHub secret `EC2_SSH_KEY`
 
 ---
 
-## Method 1 — GitHub Actions (Automatic, Gateway Only)
+## Method 1 — GitHub Actions (Automatic)
 
-Workflow file: `.github/workflows/azure-deploy.yml`
+Workflow file: `.github/workflows/deploy.yml`
 
-**Triggers automatically on every push to `main`.** No manual steps required after the initial setup below.
+**Triggers automatically on every push to `main`.** No manual steps required.
 
 ### What the workflow does
 
 1. Checks out the repo
-2. Creates a zip excluding `node_modules`, `.git`, `archive`, `output`, and log files
-3. Deploys the zip to `mesh-gateway-303137` via the publish profile
-
-### Prerequisites (one-time setup)
-
-The GitHub secret `AZURE_WEBAPP_PUBLISH_PROFILE` must exist in the repo:
-
-```bash
-# Fetch publish profile from Azure and set as GitHub secret in one step
-az webapp deployment list-publishing-profiles \
-  --name mesh-gateway-303137 \
-  --resource-group mesh-rg \
-  --xml | gh secret set AZURE_WEBAPP_PUBLISH_PROFILE \
-  --repo dreddi-edit/mesh-komp --body "$(cat)"
-```
-
-Verify:
-
-```bash
-gh secret list --repo dreddi-edit/mesh-komp
-# Expected: AZURE_WEBAPP_PUBLISH_PROFILE  <timestamp>
-```
+2. Installs dependencies (`npm ci --ignore-scripts`)
+3. Runs tests (`npm test`)
+4. Rsyncs code to EC2 (excludes `node_modules`, `.git`, `.env`, images)
+5. SSHs into EC2: `npm ci && pm2 restart mesh-gateway --update-env`
+6. Smoke-checks `/healthz` — must return `"service"` in the response
 
 ### Monitor a deployment
 
@@ -71,77 +53,15 @@ gh run watch --repo dreddi-edit/mesh-komp
 
 Or: `https://github.com/dreddi-edit/mesh-komp/actions`
 
-### Re-trigger without a code change
-
-```bash
-gh workflow run azure-deploy.yml --repo dreddi-edit/mesh-komp --ref main
-```
-
-### Limitations
-
-- **Gateway only** — the worker is not deployed by this workflow.
-- If worker code changed (`mesh-core/src/*`), use Method 2 to deploy the worker separately.
-
 ---
 
-## Method 2 — Manual Azure CLI
+## Method 2 — Manual Deploy
 
-Use this for:
-- Worker deploys (Actions does not cover the worker)
-- Emergency redeploys or rollbacks
-- Situations where GitHub Actions is unavailable
-
-### 0) One-Time App Settings Baseline
-
-Run once, then verify on every deploy.
-
-```bash
-az webapp config appsettings set -g mesh-rg -n mesh-gateway-303137 --settings \
-  MESH_SECURE_DB_FILE=/home/data/mesh-secure-v2.db
-```
-
-Verify required settings exist:
-
-```bash
-az webapp config appsettings list -g mesh-rg -n mesh-gateway-303137 \
-  --query "[?name=='MESH_SECURE_DB_FILE' || name=='MESH_DATA_ENCRYPTION_KEY' || name=='SCM_DO_BUILD_DURING_DEPLOYMENT' || name=='ENABLE_ORYX_BUILD'].name" -o tsv
-```
-
-Verify DB path value:
-
-```bash
-az webapp config appsettings list -g mesh-rg -n mesh-gateway-303137 \
-  --query "[?name=='MESH_SECURE_DB_FILE'].{name:name,value:value}" -o table
-```
-
-Expected DB path:
-
-- `MESH_SECURE_DB_FILE  /home/data/mesh-secure-v2.db`
-
-Voice settings for the rebuilt `transcribe -> text-agent -> tts` voice agent:
-
-```bash
-az webapp config appsettings set -g mesh-rg -n mesh-gateway-303137 --settings \
-  AZURE_OPENAI_VOICE_ENDPOINT=https://edgar-mnpv2n5b-eastus2.openai.azure.com/ \
-  AZURE_OPENAI_VOICE_KEY='<secret>' \
-  AZURE_OPENAI_VOICE_TRANSCRIBE_DEPLOYMENT=gpt-4o-mini-transcribe \
-  AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT=gpt-5.4-nano \
-  AZURE_OPENAI_VOICE_TTS_DEPLOYMENT=gpt-4o-mini-tts \
-  AZURE_OPENAI_VOICE_AUDIO_API_VERSION=2025-04-01-preview \
-  AZURE_OPENAI_VOICE_CHAT_API_VERSION=2025-04-01-preview \
-  AZURE_OPENAI_VOICE_TTS_VOICE=alloy
-```
-
-Recommended verification:
-
-```bash
-az webapp config appsettings list -g mesh-rg -n mesh-gateway-303137 \
-  --query "[?name=='AZURE_OPENAI_VOICE_ENDPOINT' || name=='AZURE_OPENAI_VOICE_TRANSCRIBE_DEPLOYMENT' || name=='AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT' || name=='AZURE_OPENAI_VOICE_TTS_DEPLOYMENT' || name=='AZURE_OPENAI_VOICE_AUDIO_API_VERSION' || name=='AZURE_OPENAI_VOICE_CHAT_API_VERSION' || name=='AZURE_OPENAI_VOICE_TTS_VOICE'].{name:name,value:value}" -o table
-```
+Use this for emergency redeploys or rollback.
 
 ### 1) Preflight
 
-From repo root (`mesh-komp`):
+From repo root:
 
 ```bash
 node --check server.js
@@ -149,64 +69,46 @@ node --check mesh-core/src/server.js
 node --check llm-compress.js
 ```
 
-### 2) Full Zip Deploy (Gateway)
+### 2) Rsync code to EC2
 
 ```bash
-cd /Users/edgarbaumann/Downloads/mesh-komp
-rm -f /tmp/mesh-gateway-deploy.zip
-zip -rq -0 /tmp/mesh-gateway-deploy.zip . \
-  -x "node_modules/*" "mesh-core/node_modules/*" ".mesh*" "*.DS_Store" \
-     "old/*" "xray-terminal-demo/*" "Animationen/*" "Logos/*" "*.log"
-
-az webapp deploy -g mesh-rg -n mesh-gateway-303137 \
-  --src-path /tmp/mesh-gateway-deploy.zip \
-  --type zip \
-  --clean false \
-  --restart true \
-  --track-status false
+rsync -az --delete \
+  --exclude='node_modules' \
+  --exclude='.git' \
+  --exclude='.env' \
+  --exclude='*.png' \
+  --exclude='*.jpg' \
+  --exclude='.playwright-mcp' \
+  --exclude='.superpowers' \
+  --exclude='docs/benchmark-results' \
+  -e "ssh -i /path/to/key.pem" \
+  /Users/edgarbaumann/Downloads/mesh-komp/ \
+  ec2-user@35.175.88.93:/home/ec2-user/app/
 ```
 
-### 3) Full Zip Deploy (Worker)
-
-Deploy worker when worker code changed (`mesh-core/src/server.js`, `mesh-core/src/compression-core.cjs`, etc.).
-
-Important: worker startup command is `node mesh-core/src/server.js`, so artifact layout must preserve repository root + `mesh-core/` path.
+### 3) Restart
 
 ```bash
-cd /Users/edgarbaumann/Downloads/mesh-komp
-rm -f /tmp/mesh-worker-deploy.zip
-zip -rq -0 /tmp/mesh-worker-deploy.zip . \
-  -x "node_modules/*" "mesh-core/node_modules/*" ".mesh*" "*.DS_Store" \
-     "old/*" "xray-terminal-demo/*" "Animationen/*" "Logos/*" "*.log"
-
-az webapp deploy -g mesh-rg -n mesh-worker-303137 \
-  --src-path /tmp/mesh-worker-deploy.zip \
-  --type zip \
-  --clean false \
-  --restart true \
-  --track-status false
-```
-
-Startup command reference check:
-
-```bash
-az webapp config show -g mesh-rg -n mesh-worker-303137 \
-  --query "appCommandLine" -o tsv
+ssh -i /path/to/key.pem ec2-user@35.175.88.93 "
+  cd /home/ec2-user/app
+  npm ci --ignore-scripts
+  pm2 restart mesh-gateway --update-env
+  pm2 save
+"
 ```
 
 ---
 
 ## Post-Deploy Smoke Checks
 
-Run after either deployment method.
-
-### Health + Auth + Assistant Status
+### Health check
 
 ```bash
-curl -I https://try-mesh.com/
+curl -sf https://try-mesh.com/healthz
+# Expected: {"ok":true,"service":"mesh-gateway","authStoreOk":true,...}
 ```
 
-Then run a scripted smoke check (login/session/status):
+### Auth + session check
 
 ```bash
 node - <<'NODE'
@@ -248,62 +150,42 @@ function req(method, path, payload, cookie='') {
 NODE
 ```
 
-If the site briefly returns `503` right after deploy, wait for App Service warmup to finish and retry before assuming startup failed.
+Expected: `loginStatus: 200`, `sessionStatus: 200`, `assistantStatus: 200`.
 
 ---
 
-## DB Persistence Verification (Mandatory After Manual Deploys)
-
-For GitHub Actions deploys this is less critical since no `--clean` flag is involved, but run it after any manual deploy or if user data concerns arise.
-
-### Write marker
+## PM2 Management
 
 ```bash
-node - <<'NODE'
-const https = require('https');
-function req(method,path,payload,cookie=''){const body=payload?JSON.stringify(payload):'';return new Promise((resolve,reject)=>{const r=https.request({hostname:'try-mesh.com',method,path,headers:{...(payload?{'content-type':'application/json','content-length':Buffer.byteLength(body)}:{}),...(cookie?{cookie}:{})}},res=>{let d='';res.on('data',c=>d+=c);res.on('end',()=>{let j=null;try{j=JSON.parse(d)}catch{}resolve({status:res.statusCode,json:j,headers:res.headers});});});r.on('error',reject);if(payload)r.write(body);r.end();});}
-(async()=>{
-  const marker=`persist-marker-${Date.now()}`;
-  const login=await req('POST','/api/auth/login',{email:'edgar@test.com',password:'12345'});
-  const cookie=String((login.headers['set-cookie']||[''])[0]).split(';')[0];
-  await req('PUT','/api/user/store/meshAppearance',{value:{deployPersistProbe:marker},merge:true},cookie);
-  const get=await req('GET','/api/user/store/meshAppearance',null,cookie);
-  console.log(JSON.stringify({marker,stored:get.json?.value?.deployPersistProbe||null},null,2));
-})();
-NODE
+# SSH into server
+ssh -i /path/to/key.pem ec2-user@35.175.88.93
+
+# View process status
+pm2 list
+
+# View logs
+pm2 logs mesh-gateway --lines 50
+
+# Restart
+pm2 restart mesh-gateway --update-env
+
+# Check env vars are loaded
+pm2 env 0 | grep MESH_DYNAMO
 ```
-
-### Restart app
-
-```bash
-az webapp restart -g mesh-rg -n mesh-gateway-303137
-```
-
-### Re-read marker
-
-Run same GET check and ensure value still matches marker.
-
-If marker disappears, stop and investigate settings immediately.
 
 ---
 
-## Why Keys Disappear (Known Failure Modes)
+## Why Keys Don't Disappear
 
-1. `MESH_SECURE_DB_FILE` missing/misconfigured and DB resolves to non-persistent location.
-2. `MESH_DATA_ENCRYPTION_KEY` changed (old encrypted rows become unreadable).
-3. Clean deploys plus runtime DB in app root (`/home/site/wwwroot`) cause loss.
-4. Deployment happened to wrong app/slot.
+DynamoDB is a managed service — user data is durable by default. Unlike the previous SQLite-on-disk approach, there is no risk of data loss from redeploys. The EC2 instance being replaced is the only scenario requiring a data migration (export DynamoDB tables first).
 
 ## Emergency Recovery Checklist
 
-1. Confirm app settings:
-   - `MESH_SECURE_DB_FILE=/home/data/mesh-secure-v2.db`
-   - `MESH_DATA_ENCRYPTION_KEY` present and unchanged
-2. Restart gateway.
-3. Run DB persistence marker test.
-4. If still failing, inspect runtime filesystem via App Service console/SSH:
-   - Check whether `/home/data/mesh-secure.db` exists.
-   - If legacy DB exists under app root and `/home/data` DB is missing, copy legacy DB to `/home/data` and restart.
+1. Check PM2 status: `pm2 list` — if `stopped`, restart with `pm2 start mesh-gateway`
+2. Check env file: `cat /home/ec2-user/app/.env` — verify `MESH_DYNAMO_ENABLED=true` and AWS credentials are present
+3. Check DynamoDB: `aws dynamodb list-tables` — verify `mesh-users`, `mesh-sessions`, `mesh-stores` exist
+4. Check healthz: `curl http://localhost:8080/healthz` — `authStoreOk` must be `true`
+5. Check PM2 logs: `pm2 logs mesh-gateway --err --lines 100`
 
 ---
 
@@ -312,16 +194,8 @@ If marker disappears, stop and investigate settings immediately.
 ### Normal code push
 Push to `main` — GitHub Actions handles it automatically. Monitor via `gh run watch`.
 
-### Worker-only change
-Use Method 2, Step 3 only. Gateway Actions deploy is not needed.
-
-### Full manual deploy
+### Emergency manual deploy
 1. Preflight syntax checks.
-2. Verify app settings (`MESH_SECURE_DB_FILE`, `MESH_DATA_ENCRYPTION_KEY`).
-   For voice deploys also verify all `AZURE_OPENAI_VOICE_*` settings.
-3. Full zip deploy gateway (`--clean false`).
-4. Deploy worker if changed.
-5. Smoke checks (auth + status).
-6. DB persistence marker test.
-
-If any step fails: stop, fix, redeploy.
+2. Rsync code.
+3. SSH restart PM2.
+4. Smoke check healthz.

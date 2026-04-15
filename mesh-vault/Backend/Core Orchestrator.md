@@ -34,7 +34,7 @@ src/config/index.js  ← centralized config; validates env vars at startup (call
 ## Submodule Breakdown
 
 ### `src/core/auth.js`
-- Password hashing (bcrypt)
+- Password hashing (scrypt)
 - Session lifecycle (create, validate, destroy)
 - `requireAuth` Express middleware
 - BYOK credential normalization
@@ -45,6 +45,8 @@ src/config/index.js  ← centralized config; validates env vars at startup (call
 - `runModelChat()` — unified call function for all providers
 - Mesh model codec: `encodeModel()` / `decodeModel()` / `injectModelConfig()`
 - BYOK call routing (Anthropic SDK, OpenAI SDK, Gemini SDK)
+- **Bedrock direct streaming** (`callBedrockChat`) — uses `@aws-sdk/client-bedrock-runtime` directly, no Lambda proxy. Activated when provider is `bedrock`. `BEDROCK_MODEL_MAP` maps mesh model IDs to cross-region inference profile IDs (`us.anthropic.*`). `createBedrockClient()` reads `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION_BEDROCK` from config, falls back to default AWS credential chain.
+- Azure OpenAI BYOK support (`isAzureProvider`, `callAzureOpenAIChat`) — for users supplying their own Azure key
 
 ### `src/core/assistant-runs.js`
 - Run record lifecycle (create, update, read, delete)
@@ -59,9 +61,8 @@ Receives deps via the `core` object passed through from `src/server.js` — no d
 ~50 functions:
 - Tunnel request handling (`meshTunnelRequest`)
 - Workspace provisioning
-- Azure Blob operations (upload/download/delete)
+- S3 blob operations (upload/download/delete) — when `MESH_S3_OFFLOAD_ENABLED=true`
 - Offload config generation
-- Azure Blob URL building
 - Workspace metadata helpers
 - Indexing perf tracking
 - Concurrency mapping
@@ -111,15 +112,15 @@ Called once at server boot by `src/server.js` **before** routes or database conn
 - In production: missing critical vars are fatal (`process.exit(1)`)
 - In all environments: missing recommended vars produce logged warnings
 - Returns `{ ok: boolean, errors: string[], warnings: string[] }`
-- Helper utilities in `src/config/env-utils.js`: boolean/integer parsing, SAS normalization, etc.
+- Helper utilities in `src/config/env-utils.js`: boolean/integer parsing, etc.
 
 ## Shared External Modules
 
 | Module | Purpose |
 |--------|---------|
 | `assistant-core.js` | Shared assistant logic (used by gateway and worker) |
-| `secure-db.js` | Encrypted SQLite for users/sessions/user-store |
-| `workspace-metadata-store.cjs` | Workspace metadata persistence (Cosmos-backed) |
+| `secure-db.js` | DynamoDB-backed persistence for users/sessions/user-store |
+| `workspace-metadata-store.cjs` | Workspace metadata persistence |
 | `mesh-core/src/compression-core.cjs` | Capsule pipeline |
 
 ## Known Issues

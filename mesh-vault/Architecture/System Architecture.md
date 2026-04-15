@@ -8,12 +8,25 @@ tags: [architecture]
 
 Mesh is not a monolith. It runs as two cooperating processes:
 
-| Process | Azure App | Entry Point | Role |
-|---------|-----------|-------------|------|
-| Gateway | `mesh-gateway-303137` | `server.js` → `src/server.js` | HTTP, Auth, UI, API surface |
-| Worker | `mesh-worker-303137` | `mesh-core/src/server.js` | Workspace ops, indexing, compression, git |
+| Process | Entry Point | Role |
+|---------|-------------|------|
+| Gateway | `server.js` → `src/server.js` | HTTP, Auth, UI, API surface |
+| Worker | `mesh-core/src/server.js` | Workspace ops, indexing, compression, git |
 
 The gateway proxies most workspace requests to the worker via `meshTunnelRequest(...)`. If the worker is unreachable, the gateway falls back to local logic.
+
+## Production Infrastructure (AWS)
+
+| Resource | Details |
+|----------|---------|
+| Compute | EC2 t2.micro — `35.175.88.93` (us-east-1), PM2 process manager |
+| Auth/Sessions | DynamoDB (`mesh-users`, `mesh-sessions`, `mesh-stores`) |
+| AI | Bedrock — Claude Sonnet 4.6 via IAM user `mesh-bedrock-access` |
+| Voice STT | Amazon Transcribe Streaming |
+| Voice TTS | Amazon Polly (neural) |
+| Workspace offload | S3 `mesh-workspace-offload-960583973825` (optional) |
+| DNS | Cloudflare → EC2 |
+| CI/CD | GitHub Actions → rsync → `pm2 restart mesh-gateway` |
 
 ## Two Domains
 
@@ -86,6 +99,10 @@ git.pull                  chat
 status
 ```
 
+## HTTP Compression Middleware
+
+`src/middleware/compression.js` — Brotli + gzip response compression applied at the Express layer. Skips streaming responses (SSE) and WebSocket upgrades. Registered globally in `src/server.js`.
+
 ## Known Weak Points
 
 | Area | Issue |
@@ -103,7 +120,7 @@ status
 | Config | `src/config/index.js`, `src/config/env-utils.js` |
 | Gateway core | `src/core/index.js`, `src/core/auth.js`, `src/core/model-providers.js`, `src/core/mesh-codec.js`, `src/core/operations-store.js` |
 | Workspace ops | `src/core/workspace-ops.js`, `src/core/workspace-infrastructure.js`, `src/core/workspace-context.js` |
-| Middleware | `src/middleware/rate-limiter.js` |
+| Middleware | `src/middleware/rate-limiter.js`, `src/middleware/compression.js` |
 | Worker core | `mesh-core/src/workspace-operations.js`, `mesh-core/src/workspace-helpers.js` |
 | Compression | `mesh-core/src/compression-core.cjs`, `mesh-core/src/tree-sitter-worker.cjs` |
 | Frontend shell | `views/app.html`, `assets/app-workspace.js`, `assets/app-workspace.css` |

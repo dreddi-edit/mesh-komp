@@ -1,0 +1,2058 @@
+{
+  "generatedAt": "2026-04-15T00:45:21.760Z",
+  "cases": [
+    {
+      "id": "code:xs",
+      "family": "code",
+      "size": "xs",
+      "path": "fixtures/code.xs.ts",
+      "query": "hash token workspace secure route",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "passthrough",
+      "raw": {
+        "bytes": 412,
+        "tokens": 103
+      },
+      "capsule": {
+        "bytes": 455,
+        "tokens": 114,
+        "ratio": 1.1044,
+        "tokenRatio": 1.1068,
+        "tokensSaved": -11,
+        "filesAt128k": 1122,
+        "filesRawAt128k": 1242,
+        "tiers": {
+          "ultra": {
+            "tokens": 114,
+            "ratio": 1.1068
+          },
+          "medium": {
+            "tokens": 114,
+            "ratio": 1.1068
+          },
+          "loose": {
+            "tokens": 114,
+            "ratio": 1.1068
+          }
+        }
+      },
+      "focused": {
+        "bytes": 43,
+        "tokens": 11,
+        "ratio": 0.1044,
+        "tokenRatio": 0.1068
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 445,
+        "tokens": 112,
+        "ratio": 1.0801
+      },
+      "transport": {
+        "bytes": 226,
+        "tokens": 0,
+        "ratio": 0.5485
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 225,
+          "ratio": 0.5461
+        },
+        "llm80": {
+          "bytes": 174,
+          "tokens": 44,
+          "ratio": 0.4223,
+          "tokenRatio": 0.4272
+        }
+      }
+    },
+    {
+      "id": "code:small",
+      "family": "code",
+      "size": "small",
+      "path": "fixtures/code.small.ts",
+      "query": "hash token workspace secure route",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 1170,
+        "tokens": 293
+      },
+      "capsule": {
+        "bytes": 221,
+        "tokens": 56,
+        "ratio": 0.1889,
+        "tokenRatio": 0.1911,
+        "tokensSaved": 237,
+        "filesAt128k": 2285,
+        "filesRawAt128k": 436,
+        "tiers": {
+          "ultra": {
+            "tokens": 56,
+            "ratio": 0.1911
+          },
+          "medium": {
+            "tokens": 114,
+            "ratio": 0.3891
+          },
+          "loose": {
+            "tokens": 113,
+            "ratio": 0.3857
+          }
+        }
+      },
+      "focused": {
+        "bytes": 273,
+        "tokens": 69,
+        "ratio": 0.2333,
+        "tokenRatio": 0.2355
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1075,
+        "tokens": 269,
+        "ratio": 0.9188
+      },
+      "transport": {
+        "bytes": 262,
+        "tokens": 0,
+        "ratio": 0.2239
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 430,
+          "ratio": 0.3675
+        },
+        "llm80": {
+          "bytes": 241,
+          "tokens": 61,
+          "ratio": 0.206,
+          "tokenRatio": 0.2082
+        }
+      }
+    },
+    {
+      "id": "code:medium",
+      "family": "code",
+      "size": "medium",
+      "path": "fixtures/code.medium.ts",
+      "query": "hash token workspace secure route",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 3823,
+        "tokens": 956
+      },
+      "capsule": {
+        "bytes": 222,
+        "tokens": 56,
+        "ratio": 0.0581,
+        "tokenRatio": 0.0586,
+        "tokensSaved": 900,
+        "filesAt128k": 2285,
+        "filesRawAt128k": 133,
+        "tiers": {
+          "ultra": {
+            "tokens": 56,
+            "ratio": 0.0586
+          },
+          "medium": {
+            "tokens": 198,
+            "ratio": 0.2071
+          },
+          "loose": {
+            "tokens": 354,
+            "ratio": 0.3703
+          }
+        }
+      },
+      "focused": {
+        "bytes": 274,
+        "tokens": 69,
+        "ratio": 0.0717,
+        "tokenRatio": 0.0722
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1319,
+        "tokens": 330,
+        "ratio": 0.345
+      },
+      "transport": {
+        "bytes": 341,
+        "tokens": 0,
+        "ratio": 0.0892
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 1139,
+          "ratio": 0.2979
+        },
+        "llm80": {
+          "bytes": 753,
+          "tokens": 189,
+          "ratio": 0.197,
+          "tokenRatio": 0.1977
+        }
+      }
+    },
+    {
+      "id": "code:large",
+      "family": "code",
+      "size": "large",
+      "path": "fixtures/code.large.ts",
+      "query": "hash token workspace secure route",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 11523,
+        "tokens": 2881
+      },
+      "capsule": {
+        "bytes": 223,
+        "tokens": 56,
+        "ratio": 0.0194,
+        "tokenRatio": 0.0194,
+        "tokensSaved": 2825,
+        "filesAt128k": 2285,
+        "filesRawAt128k": 44,
+        "tiers": {
+          "ultra": {
+            "tokens": 56,
+            "ratio": 0.0194
+          },
+          "medium": {
+            "tokens": 247,
+            "ratio": 0.0857
+          },
+          "loose": {
+            "tokens": 564,
+            "ratio": 0.1958
+          }
+        }
+      },
+      "focused": {
+        "bytes": 275,
+        "tokens": 69,
+        "ratio": 0.0239,
+        "tokenRatio": 0.024
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1319,
+        "tokens": 330,
+        "ratio": 0.1145
+      },
+      "transport": {
+        "bytes": 533,
+        "tokens": 0,
+        "ratio": 0.0463
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 3218,
+          "ratio": 0.2793
+        },
+        "llm80": {
+          "bytes": 2282,
+          "tokens": 571,
+          "ratio": 0.198,
+          "tokenRatio": 0.1982
+        }
+      }
+    },
+    {
+      "id": "code:xl",
+      "family": "code",
+      "size": "xl",
+      "path": "fixtures/code.xl.ts",
+      "query": "hash token workspace secure route",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 30773,
+        "tokens": 7694
+      },
+      "capsule": {
+        "bytes": 220,
+        "tokens": 55,
+        "ratio": 0.0071,
+        "tokenRatio": 0.0071,
+        "tokensSaved": 7639,
+        "filesAt128k": 2327,
+        "filesRawAt128k": 16,
+        "tiers": {
+          "ultra": {
+            "tokens": 55,
+            "ratio": 0.0071
+          },
+          "medium": {
+            "tokens": 246,
+            "ratio": 0.032
+          },
+          "loose": {
+            "tokens": 564,
+            "ratio": 0.0733
+          }
+        }
+      },
+      "focused": {
+        "bytes": 272,
+        "tokens": 68,
+        "ratio": 0.0088,
+        "tokenRatio": 0.0088
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1319,
+        "tokens": 330,
+        "ratio": 0.0429
+      },
+      "transport": {
+        "bytes": 935,
+        "tokens": 0,
+        "ratio": 0.0304
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 8415,
+          "ratio": 0.2735
+        },
+        "llm80": {
+          "bytes": 5497,
+          "tokens": 1375,
+          "ratio": 0.1786,
+          "tokenRatio": 0.1787
+        }
+      }
+    },
+    {
+      "id": "code:xxl",
+      "family": "code",
+      "size": "xxl",
+      "path": "fixtures/code.xxl.ts",
+      "query": "hash token workspace secure route",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 77573,
+        "tokens": 19394
+      },
+      "capsule": {
+        "bytes": 106,
+        "tokens": 27,
+        "ratio": 0.0014,
+        "tokenRatio": 0.0014,
+        "tokensSaved": 19367,
+        "filesAt128k": 4740,
+        "filesRawAt128k": 6,
+        "tiers": {
+          "ultra": {
+            "tokens": 27,
+            "ratio": 0.0014
+          },
+          "medium": {
+            "tokens": 84,
+            "ratio": 0.0043
+          },
+          "loose": {
+            "tokens": 142,
+            "ratio": 0.0073
+          }
+        }
+      },
+      "focused": {
+        "bytes": 154,
+        "tokens": 39,
+        "ratio": 0.002,
+        "tokenRatio": 0.002
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 59,
+        "tokens": 15,
+        "ratio": 0.0008
+      },
+      "transport": {
+        "bytes": 1857,
+        "tokens": 0,
+        "ratio": 0.0239
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 21197,
+          "ratio": 0.2733
+        },
+        "llm80": {
+          "bytes": 12919,
+          "tokens": 3230,
+          "ratio": 0.1665,
+          "tokenRatio": 0.1665
+        }
+      }
+    },
+    {
+      "id": "config:xs",
+      "family": "config",
+      "size": "xs",
+      "path": "fixtures/config.xs.yaml",
+      "query": "timeout retries capsule transport",
+      "parserFamily": "yaml",
+      "parseOk": true,
+      "capsuleMode": "passthrough",
+      "raw": {
+        "bytes": 185,
+        "tokens": 47
+      },
+      "capsule": {
+        "bytes": 226,
+        "tokens": 57,
+        "ratio": 1.2216,
+        "tokenRatio": 1.2128,
+        "tokensSaved": -10,
+        "filesAt128k": 2245,
+        "filesRawAt128k": 2723,
+        "tiers": {
+          "ultra": {
+            "tokens": 57,
+            "ratio": 1.2128
+          },
+          "medium": {
+            "tokens": 57,
+            "ratio": 1.2128
+          },
+          "loose": {
+            "tokens": 57,
+            "ratio": 1.2128
+          }
+        }
+      },
+      "focused": {
+        "bytes": 41,
+        "tokens": 11,
+        "ratio": 0.2216,
+        "tokenRatio": 0.234
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 80,
+        "tokens": 20,
+        "ratio": 0.4324
+      },
+      "transport": {
+        "bytes": 136,
+        "tokens": 0,
+        "ratio": 0.7351
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 217,
+          "ratio": 1.173
+        },
+        "llm80": {
+          "bytes": 168,
+          "tokens": 42,
+          "ratio": 0.9081,
+          "tokenRatio": 0.8936
+        }
+      }
+    },
+    {
+      "id": "config:small",
+      "family": "config",
+      "size": "small",
+      "path": "fixtures/config.small.yaml",
+      "query": "timeout retries capsule transport",
+      "parserFamily": "yaml",
+      "parseOk": true,
+      "capsuleMode": "passthrough",
+      "raw": {
+        "bytes": 573,
+        "tokens": 144
+      },
+      "capsule": {
+        "bytes": 617,
+        "tokens": 155,
+        "ratio": 1.0768,
+        "tokenRatio": 1.0764,
+        "tokensSaved": -11,
+        "filesAt128k": 825,
+        "filesRawAt128k": 888,
+        "tiers": {
+          "ultra": {
+            "tokens": 155,
+            "ratio": 1.0764
+          },
+          "medium": {
+            "tokens": 155,
+            "ratio": 1.0764
+          },
+          "loose": {
+            "tokens": 155,
+            "ratio": 1.0764
+          }
+        }
+      },
+      "focused": {
+        "bytes": 44,
+        "tokens": 11,
+        "ratio": 0.0768,
+        "tokenRatio": 0.0764
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 50,
+        "tokens": 13,
+        "ratio": 0.0873
+      },
+      "transport": {
+        "bytes": 183,
+        "tokens": 0,
+        "ratio": 0.3194
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 221,
+          "ratio": 0.3857
+        },
+        "llm80": {
+          "bytes": 171,
+          "tokens": 43,
+          "ratio": 0.2984,
+          "tokenRatio": 0.2986
+        }
+      }
+    },
+    {
+      "id": "config:medium",
+      "family": "config",
+      "size": "medium",
+      "path": "fixtures/config.medium.yaml",
+      "query": "timeout retries capsule transport",
+      "parserFamily": "yaml",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 1904,
+        "tokens": 476
+      },
+      "capsule": {
+        "bytes": 101,
+        "tokens": 26,
+        "ratio": 0.053,
+        "tokenRatio": 0.0546,
+        "tokensSaved": 450,
+        "filesAt128k": 4923,
+        "filesRawAt128k": 268,
+        "tiers": {
+          "ultra": {
+            "tokens": 26,
+            "ratio": 0.0546
+          },
+          "medium": {
+            "tokens": 107,
+            "ratio": 0.2248
+          },
+          "loose": {
+            "tokens": 180,
+            "ratio": 0.3782
+          }
+        }
+      },
+      "focused": {
+        "bytes": 149,
+        "tokens": 38,
+        "ratio": 0.0783,
+        "tokenRatio": 0.0798
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 47,
+        "tokens": 12,
+        "ratio": 0.0247
+      },
+      "transport": {
+        "bytes": 270,
+        "tokens": 0,
+        "ratio": 0.1418
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 223,
+          "ratio": 0.1171
+        },
+        "llm80": {
+          "bytes": 362,
+          "tokens": 91,
+          "ratio": 0.1901,
+          "tokenRatio": 0.1912
+        }
+      }
+    },
+    {
+      "id": "config:large",
+      "family": "config",
+      "size": "large",
+      "path": "fixtures/config.large.yaml",
+      "query": "timeout retries capsule transport",
+      "parserFamily": "yaml",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 5753,
+        "tokens": 1439
+      },
+      "capsule": {
+        "bytes": 101,
+        "tokens": 26,
+        "ratio": 0.0176,
+        "tokenRatio": 0.0181,
+        "tokensSaved": 1413,
+        "filesAt128k": 4923,
+        "filesRawAt128k": 88,
+        "tiers": {
+          "ultra": {
+            "tokens": 26,
+            "ratio": 0.0181
+          },
+          "medium": {
+            "tokens": 134,
+            "ratio": 0.0931
+          },
+          "loose": {
+            "tokens": 278,
+            "ratio": 0.1932
+          }
+        }
+      },
+      "focused": {
+        "bytes": 149,
+        "tokens": 38,
+        "ratio": 0.0259,
+        "tokenRatio": 0.0264
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 47,
+        "tokens": 12,
+        "ratio": 0.0082
+      },
+      "transport": {
+        "bytes": 463,
+        "tokens": 0,
+        "ratio": 0.0805
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 223,
+          "ratio": 0.0388
+        },
+        "llm80": {
+          "bytes": 610,
+          "tokens": 153,
+          "ratio": 0.106,
+          "tokenRatio": 0.1063
+        }
+      }
+    },
+    {
+      "id": "config:xl",
+      "family": "config",
+      "size": "xl",
+      "path": "fixtures/config.xl.yaml",
+      "query": "timeout retries capsule transport",
+      "parserFamily": "yaml",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 15366,
+        "tokens": 3842
+      },
+      "capsule": {
+        "bytes": 99,
+        "tokens": 25,
+        "ratio": 0.0064,
+        "tokenRatio": 0.0065,
+        "tokensSaved": 3817,
+        "filesAt128k": 5120,
+        "filesRawAt128k": 33,
+        "tiers": {
+          "ultra": {
+            "tokens": 25,
+            "ratio": 0.0065
+          },
+          "medium": {
+            "tokens": 134,
+            "ratio": 0.0349
+          },
+          "loose": {
+            "tokens": 278,
+            "ratio": 0.0724
+          }
+        }
+      },
+      "focused": {
+        "bytes": 147,
+        "tokens": 37,
+        "ratio": 0.0096,
+        "tokenRatio": 0.0096
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 47,
+        "tokens": 12,
+        "ratio": 0.0031
+      },
+      "transport": {
+        "bytes": 871,
+        "tokens": 0,
+        "ratio": 0.0567
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 220,
+          "ratio": 0.0143
+        },
+        "llm80": {
+          "bytes": 607,
+          "tokens": 152,
+          "ratio": 0.0395,
+          "tokenRatio": 0.0396
+        }
+      }
+    },
+    {
+      "id": "config:xxl",
+      "family": "config",
+      "size": "xxl",
+      "path": "fixtures/config.xxl.yaml",
+      "query": "timeout retries capsule transport",
+      "parserFamily": "yaml",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 38676,
+        "tokens": 9669
+      },
+      "capsule": {
+        "bytes": 100,
+        "tokens": 25,
+        "ratio": 0.0026,
+        "tokenRatio": 0.0026,
+        "tokensSaved": 9644,
+        "filesAt128k": 5120,
+        "filesRawAt128k": 13,
+        "tiers": {
+          "ultra": {
+            "tokens": 25,
+            "ratio": 0.0026
+          },
+          "medium": {
+            "tokens": 134,
+            "ratio": 0.0139
+          },
+          "loose": {
+            "tokens": 278,
+            "ratio": 0.0288
+          }
+        }
+      },
+      "focused": {
+        "bytes": 148,
+        "tokens": 37,
+        "ratio": 0.0038,
+        "tokenRatio": 0.0038
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 47,
+        "tokens": 12,
+        "ratio": 0.0012
+      },
+      "transport": {
+        "bytes": 1895,
+        "tokens": 0,
+        "ratio": 0.049
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 223,
+          "ratio": 0.0058
+        },
+        "llm80": {
+          "bytes": 609,
+          "tokens": 153,
+          "ratio": 0.0157,
+          "tokenRatio": 0.0158
+        }
+      }
+    },
+    {
+      "id": "sql:xs",
+      "family": "sql",
+      "size": "xs",
+      "path": "fixtures/sql.xs.sql",
+      "query": "failed_count region workspace deployment",
+      "parserFamily": "node-sql-parser",
+      "parseOk": true,
+      "capsuleMode": "passthrough",
+      "raw": {
+        "bytes": 329,
+        "tokens": 83
+      },
+      "capsule": {
+        "bytes": 365,
+        "tokens": 92,
+        "ratio": 1.1094,
+        "tokenRatio": 1.1084,
+        "tokensSaved": -9,
+        "filesAt128k": 1391,
+        "filesRawAt128k": 1542,
+        "tiers": {
+          "ultra": {
+            "tokens": 92,
+            "ratio": 1.1084
+          },
+          "medium": {
+            "tokens": 92,
+            "ratio": 1.1084
+          },
+          "loose": {
+            "tokens": 92,
+            "ratio": 1.1084
+          }
+        }
+      },
+      "focused": {
+        "bytes": 36,
+        "tokens": 9,
+        "ratio": 0.1094,
+        "tokenRatio": 0.1084
+      },
+      "recovery": {
+        "spans": 1,
+        "bytes": 329,
+        "tokens": 83,
+        "ratio": 1
+      },
+      "transport": {
+        "bytes": 221,
+        "tokens": 0,
+        "ratio": 0.6717
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 328,
+          "ratio": 0.997
+        },
+        "llm80": {
+          "bytes": 166,
+          "tokens": 42,
+          "ratio": 0.5046,
+          "tokenRatio": 0.506
+        }
+      }
+    },
+    {
+      "id": "sql:small",
+      "family": "sql",
+      "size": "small",
+      "path": "fixtures/sql.small.sql",
+      "query": "failed_count region workspace deployment",
+      "parserFamily": "node-sql-parser",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 991,
+        "tokens": 248
+      },
+      "capsule": {
+        "bytes": 167,
+        "tokens": 42,
+        "ratio": 0.1685,
+        "tokenRatio": 0.1694,
+        "tokensSaved": 206,
+        "filesAt128k": 3047,
+        "filesRawAt128k": 516,
+        "tiers": {
+          "ultra": {
+            "tokens": 42,
+            "ratio": 0.1694
+          },
+          "medium": {
+            "tokens": 111,
+            "ratio": 0.4476
+          },
+          "loose": {
+            "tokens": 111,
+            "ratio": 0.4476
+          }
+        }
+      },
+      "focused": {
+        "bytes": 222,
+        "tokens": 56,
+        "ratio": 0.224,
+        "tokenRatio": 0.2258
+      },
+      "recovery": {
+        "spans": 3,
+        "bytes": 993,
+        "tokens": 249,
+        "ratio": 1.002
+      },
+      "transport": {
+        "bytes": 234,
+        "tokens": 0,
+        "ratio": 0.2361
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 332,
+          "ratio": 0.335
+        },
+        "llm80": {
+          "bytes": 188,
+          "tokens": 47,
+          "ratio": 0.1897,
+          "tokenRatio": 0.1895
+        }
+      }
+    },
+    {
+      "id": "sql:medium",
+      "family": "sql",
+      "size": "medium",
+      "path": "fixtures/sql.medium.sql",
+      "query": "failed_count region workspace deployment",
+      "parserFamily": "node-sql-parser",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 3308,
+        "tokens": 827
+      },
+      "capsule": {
+        "bytes": 169,
+        "tokens": 43,
+        "ratio": 0.0511,
+        "tokenRatio": 0.052,
+        "tokensSaved": 784,
+        "filesAt128k": 2976,
+        "filesRawAt128k": 154,
+        "tiers": {
+          "ultra": {
+            "tokens": 43,
+            "ratio": 0.052
+          },
+          "medium": {
+            "tokens": 112,
+            "ratio": 0.1354
+          },
+          "loose": {
+            "tokens": 205,
+            "ratio": 0.2479
+          }
+        }
+      },
+      "focused": {
+        "bytes": 224,
+        "tokens": 56,
+        "ratio": 0.0677,
+        "tokenRatio": 0.0677
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1325,
+        "tokens": 332,
+        "ratio": 0.4005
+      },
+      "transport": {
+        "bytes": 254,
+        "tokens": 0,
+        "ratio": 0.0768
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 334,
+          "ratio": 0.101
+        },
+        "llm80": {
+          "bytes": 388,
+          "tokens": 97,
+          "ratio": 0.1173,
+          "tokenRatio": 0.1173
+        }
+      }
+    },
+    {
+      "id": "sql:large",
+      "family": "sql",
+      "size": "large",
+      "path": "fixtures/sql.large.sql",
+      "query": "failed_count region workspace deployment",
+      "parserFamily": "node-sql-parser",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 9948,
+        "tokens": 2487
+      },
+      "capsule": {
+        "bytes": 169,
+        "tokens": 43,
+        "ratio": 0.017,
+        "tokenRatio": 0.0173,
+        "tokensSaved": 2444,
+        "filesAt128k": 2976,
+        "filesRawAt128k": 51,
+        "tiers": {
+          "ultra": {
+            "tokens": 43,
+            "ratio": 0.0173
+          },
+          "medium": {
+            "tokens": 299,
+            "ratio": 0.1202
+          },
+          "loose": {
+            "tokens": 496,
+            "ratio": 0.1994
+          }
+        }
+      },
+      "focused": {
+        "bytes": 224,
+        "tokens": 56,
+        "ratio": 0.0225,
+        "tokenRatio": 0.0225
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1325,
+        "tokens": 332,
+        "ratio": 0.1332
+      },
+      "transport": {
+        "bytes": 304,
+        "tokens": 0,
+        "ratio": 0.0306
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 334,
+          "ratio": 0.0336
+        },
+        "llm80": {
+          "bytes": 387,
+          "tokens": 97,
+          "ratio": 0.0389,
+          "tokenRatio": 0.039
+        }
+      }
+    },
+    {
+      "id": "sql:xl",
+      "family": "sql",
+      "size": "xl",
+      "path": "fixtures/sql.xl.sql",
+      "query": "failed_count region workspace deployment",
+      "parserFamily": "node-sql-parser",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 26548,
+        "tokens": 6637
+      },
+      "capsule": {
+        "bytes": 167,
+        "tokens": 42,
+        "ratio": 0.0063,
+        "tokenRatio": 0.0063,
+        "tokensSaved": 6595,
+        "filesAt128k": 3047,
+        "filesRawAt128k": 19,
+        "tiers": {
+          "ultra": {
+            "tokens": 42,
+            "ratio": 0.0063
+          },
+          "medium": {
+            "tokens": 299,
+            "ratio": 0.0451
+          },
+          "loose": {
+            "tokens": 846,
+            "ratio": 0.1275
+          }
+        }
+      },
+      "focused": {
+        "bytes": 222,
+        "tokens": 56,
+        "ratio": 0.0084,
+        "tokenRatio": 0.0084
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1325,
+        "tokens": 332,
+        "ratio": 0.0499
+      },
+      "transport": {
+        "bytes": 400,
+        "tokens": 0,
+        "ratio": 0.0151
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 331,
+          "ratio": 0.0125
+        },
+        "llm80": {
+          "bytes": 384,
+          "tokens": 96,
+          "ratio": 0.0145,
+          "tokenRatio": 0.0145
+        }
+      }
+    },
+    {
+      "id": "sql:xxl",
+      "family": "sql",
+      "size": "xxl",
+      "path": "fixtures/sql.xxl.sql",
+      "query": "failed_count region workspace deployment",
+      "parserFamily": "node-sql-parser",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 66488,
+        "tokens": 16622
+      },
+      "capsule": {
+        "bytes": 169,
+        "tokens": 43,
+        "ratio": 0.0025,
+        "tokenRatio": 0.0026,
+        "tokensSaved": 16579,
+        "filesAt128k": 2976,
+        "filesRawAt128k": 7,
+        "tiers": {
+          "ultra": {
+            "tokens": 43,
+            "ratio": 0.0026
+          },
+          "medium": {
+            "tokens": 299,
+            "ratio": 0.018
+          },
+          "loose": {
+            "tokens": 847,
+            "ratio": 0.051
+          }
+        }
+      },
+      "focused": {
+        "bytes": 224,
+        "tokens": 56,
+        "ratio": 0.0034,
+        "tokenRatio": 0.0034
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 1325,
+        "tokens": 332,
+        "ratio": 0.0199
+      },
+      "transport": {
+        "bytes": 634,
+        "tokens": 0,
+        "ratio": 0.0095
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 334,
+          "ratio": 0.005
+        },
+        "llm80": {
+          "bytes": 386,
+          "tokens": 97,
+          "ratio": 0.0058,
+          "tokenRatio": 0.0058
+        }
+      }
+    },
+    {
+      "id": "markup:xs",
+      "family": "markup",
+      "size": "xs",
+      "path": "fixtures/markup.xs.html",
+      "query": "recover span deployment card button",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "passthrough",
+      "raw": {
+        "bytes": 308,
+        "tokens": 77
+      },
+      "capsule": {
+        "bytes": 349,
+        "tokens": 88,
+        "ratio": 1.1331,
+        "tokenRatio": 1.1429,
+        "tokensSaved": -11,
+        "filesAt128k": 1454,
+        "filesRawAt128k": 1662,
+        "tiers": {
+          "ultra": {
+            "tokens": 88,
+            "ratio": 1.1429
+          },
+          "medium": {
+            "tokens": 88,
+            "ratio": 1.1429
+          },
+          "loose": {
+            "tokens": 88,
+            "ratio": 1.1429
+          }
+        }
+      },
+      "focused": {
+        "bytes": 41,
+        "tokens": 11,
+        "ratio": 0.1331,
+        "tokenRatio": 0.1429
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 86,
+        "tokens": 22,
+        "ratio": 0.2792
+      },
+      "transport": {
+        "bytes": 164,
+        "tokens": 0,
+        "ratio": 0.5325
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 375,
+          "ratio": 1.2175
+        },
+        "llm80": {
+          "bytes": 168,
+          "tokens": 42,
+          "ratio": 0.5455,
+          "tokenRatio": 0.5455
+        }
+      }
+    },
+    {
+      "id": "markup:small",
+      "family": "markup",
+      "size": "small",
+      "path": "fixtures/markup.small.html",
+      "query": "recover span deployment card button",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 852,
+        "tokens": 213
+      },
+      "capsule": {
+        "bytes": 86,
+        "tokens": 22,
+        "ratio": 0.1009,
+        "tokenRatio": 0.1033,
+        "tokensSaved": 191,
+        "filesAt128k": 5818,
+        "filesRawAt128k": 600,
+        "tiers": {
+          "ultra": {
+            "tokens": 22,
+            "ratio": 0.1033
+          },
+          "medium": {
+            "tokens": 87,
+            "ratio": 0.4085
+          },
+          "loose": {
+            "tokens": 148,
+            "ratio": 0.6948
+          }
+        }
+      },
+      "focused": {
+        "bytes": 136,
+        "tokens": 34,
+        "ratio": 0.1596,
+        "tokenRatio": 0.1596
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 93,
+        "tokens": 24,
+        "ratio": 0.1092
+      },
+      "transport": {
+        "bytes": 183,
+        "tokens": 0,
+        "ratio": 0.2148
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 406,
+          "ratio": 0.4765
+        },
+        "llm80": {
+          "bytes": 164,
+          "tokens": 41,
+          "ratio": 0.1925,
+          "tokenRatio": 0.1925
+        }
+      }
+    },
+    {
+      "id": "markup:medium",
+      "family": "markup",
+      "size": "medium",
+      "path": "fixtures/markup.medium.html",
+      "query": "recover span deployment card button",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 2756,
+        "tokens": 689
+      },
+      "capsule": {
+        "bytes": 88,
+        "tokens": 22,
+        "ratio": 0.0319,
+        "tokenRatio": 0.0319,
+        "tokensSaved": 667,
+        "filesAt128k": 5818,
+        "filesRawAt128k": 185,
+        "tiers": {
+          "ultra": {
+            "tokens": 22,
+            "ratio": 0.0319
+          },
+          "medium": {
+            "tokens": 104,
+            "ratio": 0.1509
+          },
+          "loose": {
+            "tokens": 205,
+            "ratio": 0.2975
+          }
+        }
+      },
+      "focused": {
+        "bytes": 138,
+        "tokens": 35,
+        "ratio": 0.0501,
+        "tokenRatio": 0.0508
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 95,
+        "tokens": 24,
+        "ratio": 0.0345
+      },
+      "transport": {
+        "bytes": 217,
+        "tokens": 0,
+        "ratio": 0.0787
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 407,
+          "ratio": 0.1477
+        },
+        "llm80": {
+          "bytes": 533,
+          "tokens": 134,
+          "ratio": 0.1934,
+          "tokenRatio": 0.1945
+        }
+      }
+    },
+    {
+      "id": "markup:large",
+      "family": "markup",
+      "size": "large",
+      "path": "fixtures/markup.large.html",
+      "query": "recover span deployment card button",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 8236,
+        "tokens": 2059
+      },
+      "capsule": {
+        "bytes": 88,
+        "tokens": 22,
+        "ratio": 0.0107,
+        "tokenRatio": 0.0107,
+        "tokensSaved": 2037,
+        "filesAt128k": 5818,
+        "filesRawAt128k": 62,
+        "tiers": {
+          "ultra": {
+            "tokens": 22,
+            "ratio": 0.0107
+          },
+          "medium": {
+            "tokens": 112,
+            "ratio": 0.0544
+          },
+          "loose": {
+            "tokens": 211,
+            "ratio": 0.1025
+          }
+        }
+      },
+      "focused": {
+        "bytes": 138,
+        "tokens": 35,
+        "ratio": 0.0168,
+        "tokenRatio": 0.017
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 95,
+        "tokens": 24,
+        "ratio": 0.0115
+      },
+      "transport": {
+        "bytes": 292,
+        "tokens": 0,
+        "ratio": 0.0355
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 408,
+          "ratio": 0.0495
+        },
+        "llm80": {
+          "bytes": 614,
+          "tokens": 154,
+          "ratio": 0.0746,
+          "tokenRatio": 0.0748
+        }
+      }
+    },
+    {
+      "id": "markup:xl",
+      "family": "markup",
+      "size": "xl",
+      "path": "fixtures/markup.xl.html",
+      "query": "recover span deployment card button",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 21936,
+        "tokens": 5484
+      },
+      "capsule": {
+        "bytes": 86,
+        "tokens": 22,
+        "ratio": 0.0039,
+        "tokenRatio": 0.004,
+        "tokensSaved": 5462,
+        "filesAt128k": 5818,
+        "filesRawAt128k": 23,
+        "tiers": {
+          "ultra": {
+            "tokens": 22,
+            "ratio": 0.004
+          },
+          "medium": {
+            "tokens": 111,
+            "ratio": 0.0202
+          },
+          "loose": {
+            "tokens": 210,
+            "ratio": 0.0383
+          }
+        }
+      },
+      "focused": {
+        "bytes": 136,
+        "tokens": 34,
+        "ratio": 0.0062,
+        "tokenRatio": 0.0062
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 95,
+        "tokens": 24,
+        "ratio": 0.0043
+      },
+      "transport": {
+        "bytes": 440,
+        "tokens": 0,
+        "ratio": 0.0201
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 405,
+          "ratio": 0.0185
+        },
+        "llm80": {
+          "bytes": 611,
+          "tokens": 153,
+          "ratio": 0.0279,
+          "tokenRatio": 0.0279
+        }
+      }
+    },
+    {
+      "id": "markup:xxl",
+      "family": "markup",
+      "size": "xxl",
+      "path": "fixtures/markup.xxl.html",
+      "query": "recover span deployment card button",
+      "parserFamily": "tree-sitter",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 55016,
+        "tokens": 13754
+      },
+      "capsule": {
+        "bytes": 88,
+        "tokens": 22,
+        "ratio": 0.0016,
+        "tokenRatio": 0.0016,
+        "tokensSaved": 13732,
+        "filesAt128k": 5818,
+        "filesRawAt128k": 9,
+        "tiers": {
+          "ultra": {
+            "tokens": 22,
+            "ratio": 0.0016
+          },
+          "medium": {
+            "tokens": 112,
+            "ratio": 0.0081
+          },
+          "loose": {
+            "tokens": 211,
+            "ratio": 0.0153
+          }
+        }
+      },
+      "focused": {
+        "bytes": 138,
+        "tokens": 35,
+        "ratio": 0.0025,
+        "tokenRatio": 0.0025
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 95,
+        "tokens": 24,
+        "ratio": 0.0017
+      },
+      "transport": {
+        "bytes": 799,
+        "tokens": 0,
+        "ratio": 0.0145
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 408,
+          "ratio": 0.0074
+        },
+        "llm80": {
+          "bytes": 613,
+          "tokens": 154,
+          "ratio": 0.0111,
+          "tokenRatio": 0.0112
+        }
+      }
+    },
+    {
+      "id": "docs:xs",
+      "family": "docs",
+      "size": "xs",
+      "path": "fixtures/docs.xs.md",
+      "query": "recovery guardrail exact strings digest",
+      "parserFamily": "marked",
+      "parseOk": true,
+      "capsuleMode": "passthrough",
+      "raw": {
+        "bytes": 343,
+        "tokens": 86
+      },
+      "capsule": {
+        "bytes": 384,
+        "tokens": 96,
+        "ratio": 1.1195,
+        "tokenRatio": 1.1163,
+        "tokensSaved": -10,
+        "filesAt128k": 1333,
+        "filesRawAt128k": 1488,
+        "tiers": {
+          "ultra": {
+            "tokens": 96,
+            "ratio": 1.1163
+          },
+          "medium": {
+            "tokens": 96,
+            "ratio": 1.1163
+          },
+          "loose": {
+            "tokens": 96,
+            "ratio": 1.1163
+          }
+        }
+      },
+      "focused": {
+        "bytes": 41,
+        "tokens": 11,
+        "ratio": 0.1195,
+        "tokenRatio": 0.1279
+      },
+      "recovery": {
+        "spans": 1,
+        "bytes": 239,
+        "tokens": 60,
+        "ratio": 0.6968
+      },
+      "transport": {
+        "bytes": 210,
+        "tokens": 0,
+        "ratio": 0.6122
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 402,
+          "ratio": 1.172
+        },
+        "llm80": {
+          "bytes": 95,
+          "tokens": 24,
+          "ratio": 0.277,
+          "tokenRatio": 0.2791
+        }
+      }
+    },
+    {
+      "id": "docs:small",
+      "family": "docs",
+      "size": "small",
+      "path": "fixtures/docs.small.md",
+      "query": "recovery guardrail exact strings digest",
+      "parserFamily": "marked",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 1033,
+        "tokens": 259
+      },
+      "capsule": {
+        "bytes": 94,
+        "tokens": 24,
+        "ratio": 0.091,
+        "tokenRatio": 0.0927,
+        "tokensSaved": 235,
+        "filesAt128k": 5333,
+        "filesRawAt128k": 494,
+        "tiers": {
+          "ultra": {
+            "tokens": 24,
+            "ratio": 0.0927
+          },
+          "medium": {
+            "tokens": 92,
+            "ratio": 0.3552
+          },
+          "loose": {
+            "tokens": 92,
+            "ratio": 0.3552
+          }
+        }
+      },
+      "focused": {
+        "bytes": 148,
+        "tokens": 37,
+        "ratio": 0.1433,
+        "tokenRatio": 0.1429
+      },
+      "recovery": {
+        "spans": 3,
+        "bytes": 719,
+        "tokens": 180,
+        "ratio": 0.696
+      },
+      "transport": {
+        "bytes": 235,
+        "tokens": 0,
+        "ratio": 0.2275
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 672,
+          "ratio": 0.6505
+        },
+        "llm80": {
+          "bytes": 167,
+          "tokens": 42,
+          "ratio": 0.1617,
+          "tokenRatio": 0.1622
+        }
+      }
+    },
+    {
+      "id": "docs:medium",
+      "family": "docs",
+      "size": "medium",
+      "path": "fixtures/docs.medium.md",
+      "query": "recovery guardrail exact strings digest",
+      "parserFamily": "marked",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 3448,
+        "tokens": 862
+      },
+      "capsule": {
+        "bytes": 95,
+        "tokens": 24,
+        "ratio": 0.0276,
+        "tokenRatio": 0.0278,
+        "tokensSaved": 838,
+        "filesAt128k": 5333,
+        "filesRawAt128k": 148,
+        "tiers": {
+          "ultra": {
+            "tokens": 24,
+            "ratio": 0.0278
+          },
+          "medium": {
+            "tokens": 168,
+            "ratio": 0.1949
+          },
+          "loose": {
+            "tokens": 269,
+            "ratio": 0.3121
+          }
+        }
+      },
+      "focused": {
+        "bytes": 149,
+        "tokens": 38,
+        "ratio": 0.0432,
+        "tokenRatio": 0.0441
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 959,
+        "tokens": 240,
+        "ratio": 0.2781
+      },
+      "transport": {
+        "bytes": 290,
+        "tokens": 0,
+        "ratio": 0.0841
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 674,
+          "ratio": 0.1955
+        },
+        "llm80": {
+          "bytes": 406,
+          "tokens": 102,
+          "ratio": 0.1177,
+          "tokenRatio": 0.1183
+        }
+      }
+    },
+    {
+      "id": "docs:large",
+      "family": "docs",
+      "size": "large",
+      "path": "fixtures/docs.large.md",
+      "query": "recovery guardrail exact strings digest",
+      "parserFamily": "marked",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 10428,
+        "tokens": 2607
+      },
+      "capsule": {
+        "bytes": 96,
+        "tokens": 24,
+        "ratio": 0.0092,
+        "tokenRatio": 0.0092,
+        "tokensSaved": 2583,
+        "filesAt128k": 5333,
+        "filesRawAt128k": 49,
+        "tiers": {
+          "ultra": {
+            "tokens": 24,
+            "ratio": 0.0092
+          },
+          "medium": {
+            "tokens": 191,
+            "ratio": 0.0733
+          },
+          "loose": {
+            "tokens": 402,
+            "ratio": 0.1542
+          }
+        }
+      },
+      "focused": {
+        "bytes": 150,
+        "tokens": 38,
+        "ratio": 0.0144,
+        "tokenRatio": 0.0146
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 959,
+        "tokens": 240,
+        "ratio": 0.092
+      },
+      "transport": {
+        "bytes": 411,
+        "tokens": 0,
+        "ratio": 0.0394
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 678,
+          "ratio": 0.065
+        },
+        "llm80": {
+          "bytes": 896,
+          "tokens": 224,
+          "ratio": 0.0859,
+          "tokenRatio": 0.0859
+        }
+      }
+    },
+    {
+      "id": "docs:xl",
+      "family": "docs",
+      "size": "xl",
+      "path": "fixtures/docs.xl.md",
+      "query": "recovery guardrail exact strings digest",
+      "parserFamily": "marked",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 27878,
+        "tokens": 6970
+      },
+      "capsule": {
+        "bytes": 93,
+        "tokens": 24,
+        "ratio": 0.0033,
+        "tokenRatio": 0.0034,
+        "tokensSaved": 6946,
+        "filesAt128k": 5333,
+        "filesRawAt128k": 18,
+        "tiers": {
+          "ultra": {
+            "tokens": 24,
+            "ratio": 0.0034
+          },
+          "medium": {
+            "tokens": 190,
+            "ratio": 0.0273
+          },
+          "loose": {
+            "tokens": 401,
+            "ratio": 0.0575
+          }
+        }
+      },
+      "focused": {
+        "bytes": 147,
+        "tokens": 37,
+        "ratio": 0.0053,
+        "tokenRatio": 0.0053
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 959,
+        "tokens": 240,
+        "ratio": 0.0344
+      },
+      "transport": {
+        "bytes": 693,
+        "tokens": 0,
+        "ratio": 0.0249
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 675,
+          "ratio": 0.0242
+        },
+        "llm80": {
+          "bytes": 893,
+          "tokens": 224,
+          "ratio": 0.032,
+          "tokenRatio": 0.0321
+        }
+      }
+    },
+    {
+      "id": "docs:xxl",
+      "family": "docs",
+      "size": "xxl",
+      "path": "fixtures/docs.xxl.md",
+      "query": "recovery guardrail exact strings digest",
+      "parserFamily": "marked",
+      "parseOk": true,
+      "capsuleMode": "dense",
+      "raw": {
+        "bytes": 70158,
+        "tokens": 17540
+      },
+      "capsule": {
+        "bytes": 95,
+        "tokens": 24,
+        "ratio": 0.0014,
+        "tokenRatio": 0.0014,
+        "tokensSaved": 17516,
+        "filesAt128k": 5333,
+        "filesRawAt128k": 7,
+        "tiers": {
+          "ultra": {
+            "tokens": 24,
+            "ratio": 0.0014
+          },
+          "medium": {
+            "tokens": 190,
+            "ratio": 0.0108
+          },
+          "loose": {
+            "tokens": 401,
+            "ratio": 0.0229
+          }
+        }
+      },
+      "focused": {
+        "bytes": 149,
+        "tokens": 38,
+        "ratio": 0.0021,
+        "tokenRatio": 0.0022
+      },
+      "recovery": {
+        "spans": 4,
+        "bytes": 959,
+        "tokens": 240,
+        "ratio": 0.0137
+      },
+      "transport": {
+        "bytes": 1255,
+        "tokens": 0,
+        "ratio": 0.0179
+      },
+      "legacy": {
+        "smart": {
+          "bytes": 680,
+          "ratio": 0.0097
+        },
+        "llm80": {
+          "bytes": 895,
+          "tokens": 224,
+          "ratio": 0.0128,
+          "tokenRatio": 0.0128
+        }
+      }
+    }
+  ],
+  "summary": {
+    "caseCount": 30,
+    "byFamily": [
+      {
+        "family": "code",
+        "avgCapsuleRatio": 0.2299,
+        "avgCapsuleTokenRatio": 0.2307,
+        "avgFocusedRatio": 0.074,
+        "avgFocusedTokenRatio": 0.0749,
+        "avgTransportRatio": 0.1604,
+        "avgLegacyLlm80Ratio": 0.2281,
+        "avgLegacyTokenRatio": 0.2294,
+        "avgRecoverySpans": 4,
+        "avgTokensSaved": 5159.5
+      },
+      {
+        "family": "config",
+        "avgCapsuleRatio": 0.3963,
+        "avgCapsuleTokenRatio": 0.3952,
+        "avgFocusedRatio": 0.0693,
+        "avgFocusedTokenRatio": 0.0717,
+        "avgTransportRatio": 0.2304,
+        "avgLegacyLlm80Ratio": 0.2596,
+        "avgLegacyTokenRatio": 0.2575,
+        "avgRecoverySpans": 4,
+        "avgTokensSaved": 2550.5
+      },
+      {
+        "family": "sql",
+        "avgCapsuleRatio": 0.2258,
+        "avgCapsuleTokenRatio": 0.226,
+        "avgFocusedRatio": 0.0726,
+        "avgFocusedTokenRatio": 0.0727,
+        "avgTransportRatio": 0.1733,
+        "avgLegacyLlm80Ratio": 0.1451,
+        "avgLegacyTokenRatio": 0.1454,
+        "avgRecoverySpans": 3.3333,
+        "avgTokensSaved": 4433.1667
+      },
+      {
+        "family": "markup",
+        "avgCapsuleRatio": 0.2137,
+        "avgCapsuleTokenRatio": 0.2157,
+        "avgFocusedRatio": 0.0614,
+        "avgFocusedTokenRatio": 0.0632,
+        "avgTransportRatio": 0.1493,
+        "avgLegacyLlm80Ratio": 0.1742,
+        "avgLegacyTokenRatio": 0.1744,
+        "avgRecoverySpans": 4,
+        "avgTokensSaved": 3679.6667
+      },
+      {
+        "family": "docs",
+        "avgCapsuleRatio": 0.2087,
+        "avgCapsuleTokenRatio": 0.2085,
+        "avgFocusedRatio": 0.0546,
+        "avgFocusedTokenRatio": 0.0562,
+        "avgTransportRatio": 0.1677,
+        "avgLegacyLlm80Ratio": 0.1145,
+        "avgLegacyTokenRatio": 0.1151,
+        "avgRecoverySpans": 3.3333,
+        "avgTokensSaved": 4684.6667
+      }
+    ],
+    "crossoverByFamily": {
+      "code": "small",
+      "config": "medium",
+      "sql": "small",
+      "markup": "small",
+      "docs": "small"
+    },
+    "avgOverallCapsuleTokenRatio": 0.2552
+  }
+}

@@ -4,66 +4,106 @@ tags: [operations]
 
 # Environment Variables
 
-All variables organized by component.
+All variables organized by component. Production env file: `/home/ec2-user/app/.env`.
 
-## Gateway (`mesh-gateway-303137`)
+## Gateway (EC2 — `mesh-gateway` PM2 process)
 
-### Core / Database
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MESH_SECURE_DB_FILE` | **Yes** | Path to encrypted SQLite. Must be `/home/data/mesh-secure-v2.db` |
-| `MESH_DATA_ENCRYPTION_KEY` | **Yes** | Encryption key for secure-db. Never rotate casually. |
-
-### Build / Deployment
+### Core / Runtime
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `SCM_DO_BUILD_DURING_DEPLOYMENT` | Yes | Azure build config |
-| `ENABLE_ORYX_BUILD` | Yes | Azure Oryx build flag |
+| `NODE_ENV` | **Yes** | `production` in production |
+| `PORT` | No | HTTP port. Default: `8080` |
+| `MESH_CORE_URL` | No | Worker tunnel URL. Default: `http://localhost:8080/mesh/tunnel` |
 
-### Azure Blob / Offload
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MESH_AZURE_OFFLOAD_ENABLED` | Yes | Enable blob offload for uploads |
-| `MESH_AZURE_BLOB_BASE_URL` | Yes | Blob storage endpoint URL |
-| `MESH_AZURE_BLOB_CONTAINER` | Yes | Container name |
-| `MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN` | Yes | SAS for browser direct uploads |
-| `MESH_AZURE_BLOB_INGEST_SAS_TOKEN` | Yes | SAS for server-side ingest |
-| `MESH_AZURE_BLOB_READ_SAS_TOKEN` | Yes | SAS for reading files |
-| `MESH_AZURE_BLOB_DELETE_SAS_TOKEN` | Yes | SAS for deleting files |
-| `MESH_AZURE_BLOB_SAS_TOKEN` | Yes | General SAS (fallback) |
-
-### Cosmos DB
+### Auth / Encryption
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `MESH_COSMOS_ENDPOINT` | Yes | `https://meshcosmosne303137.documents.azure.com:443/` |
-| `MESH_COSMOS_KEY` | Yes | Cosmos auth key |
-| `MESH_COSMOS_DATABASE` | Yes | Database name |
-| `MESH_COSMOS_WORKSPACE_FILES_CONTAINER` | Yes | Container for file records |
-| `MESH_COSMOS_WORKSPACES_CONTAINER` | Yes | Container for workspace summaries |
-| `MESH_COSMOS_CREATE_CONTAINERS` | No | Auto-create containers on startup |
+| `MESH_DATA_ENCRYPTION_KEY` | **Yes** | AES-256 key for user store encryption. Never rotate — rotating breaks all existing encrypted rows. |
+| `MESH_SECURE_DB_FILE` | No | Path to encrypted SQLite for local workspace cache. In production: `/home/ec2-user/data/mesh-secure-v2.db` |
 
-### Voice / Azure OpenAI
+### DynamoDB
 
-| Variable | Required | Value / Description |
-|----------|----------|-------------------|
-| `AZURE_OPENAI_VOICE_ENDPOINT` | Yes | `https://edgar-mnpv2n5b-eastus2.openai.azure.com/` |
-| `AZURE_OPENAI_VOICE_KEY` | Yes | Azure OpenAI key (secret) |
-| `AZURE_OPENAI_VOICE_TRANSCRIBE_DEPLOYMENT` | Yes | `gpt-4o-mini-transcribe` |
-| `AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT` | Yes | `gpt-5.4-nano` |
-| `AZURE_OPENAI_VOICE_TTS_DEPLOYMENT` | Yes | `gpt-4o-mini-tts` |
-| `AZURE_OPENAI_VOICE_AUDIO_API_VERSION` | Yes | `2025-04-01-preview` |
-| `AZURE_OPENAI_VOICE_CHAT_API_VERSION` | Yes | `2025-04-01-preview` |
-| `AZURE_OPENAI_VOICE_TTS_VOICE` | Yes | `alloy` |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MESH_DYNAMO_ENABLED` | **Yes** | `true` in production |
+| `MESH_DYNAMO_TABLE_PREFIX` | No | Table name prefix. Default: `mesh` → creates `mesh-users`, `mesh-sessions`, `mesh-stores` |
+| `MESH_DYNAMO_USERS_TABLE` | No | Override users table name |
+| `MESH_DYNAMO_SESSIONS_TABLE` | No | Override sessions table name |
+| `MESH_DYNAMO_STORES_TABLE` | No | Override stores table name |
+
+### AWS Credentials
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AWS_ACCESS_KEY_ID` | **Yes** | IAM user `mesh-bedrock-access` key ID |
+| `AWS_SECRET_ACCESS_KEY` | **Yes** | IAM user `mesh-bedrock-access` secret |
+| `AWS_REGION_BEDROCK` | No | Bedrock region. Default: `us-east-1` |
+
+### AI / Model
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MESH_DEFAULT_MODEL` | No | Default model. Default: `claude-sonnet-4-6` |
+| `ANTHROPIC_API_KEY` | No | Direct Anthropic API key (alternative to Bedrock) |
+| `OPENAI_API_KEY` | No | OpenAI API key (BYOK) |
+| `GOOGLE_API_KEY` | No | Google Gemini API key (BYOK) |
+
+### Voice (Amazon Transcribe + Polly)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MESH_VOICE_TRANSCRIBE_LANGUAGE` | No | `en-US` | Transcribe language code |
+| `MESH_VOICE_POLLY_VOICE` | No | `Joanna` | Polly voice ID |
+| `MESH_VOICE_POLLY_ENGINE` | No | `neural` | Polly engine: `neural` or `standard` |
+| `MESH_VOICE_VAD_THRESHOLD` | No | `0.012` | Energy threshold for speech detection |
+| `MESH_VOICE_VAD_PREFIX_MS` | No | `240` | Pre-speech buffer (ms) |
+| `MESH_VOICE_VAD_SILENCE_MS` | No | `720` | Silence to end utterance (ms) |
+| `MESH_VOICE_MIN_UTTERANCE_MS` | No | `280` | Minimum utterance length (ms) |
+| `MESH_VOICE_MAX_UTTERANCE_MS` | No | `14000` | Maximum utterance length (ms) |
+
+### S3 Workspace Offload (Optional)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MESH_S3_OFFLOAD_ENABLED` | No | `true` to enable S3 offload. Default: `false` |
+| `MESH_S3_BUCKET` | No | S3 bucket name (`mesh-workspace-offload-960583973825`) |
+| `MESH_S3_PREFIX` | No | Key prefix within bucket |
+| `MESH_S3_OFFLOAD_MAX_CHUNK_FILES` | No | Max files per chunk. Default: `900` |
+| `MESH_S3_OFFLOAD_MAX_CHUNK_BYTES` | No | Max bytes per chunk. Default: `60000000` |
+| `MESH_S3_OFFLOAD_MAX_PARALLEL_READS` | No | Parallel reads. Default: `64` |
+| `MESH_S3_OFFLOAD_MAX_INFLIGHT_CHUNKS` | No | In-flight chunks. Default: `4` |
+
+### Auth Cookies
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MESH_AUTH_COOKIE_NAME` | No | `mesh_auth` | Cookie name |
+| `MESH_AUTH_COOKIE_SECURE` | No | `true` in prod | Set `false` for local HTTP dev |
+| `MESH_AUTH_COOKIE_SAMESITE` | No | `Strict` | SameSite policy |
+
+### Demo User
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MESH_DEMO_USER_EMAIL` | No | `edgar@test.com` | Demo user email |
+| `MESH_DEMO_USER_PASSWORD` | No | `12345` | Demo user password |
+| `MESH_DEMO_USER_EMAIL_ALIASES` | No | — | Comma-separated additional emails |
 
 ### Compression / Workspace Budget
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MESH_WORKSPACE_TOKEN_BUDGET` | No | `8000` | Global token budget distributed across files by importance score |
+| `MESH_WORKSPACE_TOKEN_BUDGET` | No | `8000` | Global token budget distributed across files |
+| `MESH_WORKSPACE_INDEX_PARALLELISM` | No | `16` | Parallel indexing workers |
+| `MESH_WORKSPACE_SELECT_ASYNC_MODE` | No | `queue` | Async workspace select mode |
+
+### Observability
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LOG_LEVEL` | No | Structured logger verbosity: `debug | info | warn | error`. Default: `info`. JSON to stdout/stderr. |
 
 ### Terminal
 
@@ -71,50 +111,18 @@ All variables organized by component.
 |----------|----------|-------------|
 | `MESH_TERMINAL_UPLOAD_ROOT` | No | Root dir for materializing upload workspaces for terminal |
 
-### Observability
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `LOG_LEVEL` | No | Structured logger verbosity: `debug \| info \| warn \| error`. Default: `info`. Output is newline-delimited JSON to stdout (info/debug) or stderr (warn/error). |
-
-## Worker (`mesh-worker-303137`)
-
-### Blob Config
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `MESH_AZURE_OFFLOAD_ENABLED` | Yes | Enable blob backing for upload workspaces |
-| `MESH_AZURE_BLOB_BASE_URL` | Yes | Same as gateway |
-| `MESH_AZURE_BLOB_CONTAINER` | Yes | Same as gateway |
-| `MESH_AZURE_BLOB_READ_SAS_TOKEN` | Yes | For reading workspace files |
-| (other blob SAS tokens) | Yes | For write/delete operations |
-
-### Cosmos DB
-
-Same variables as gateway.
-
-## Azure Functions (`mesh-capsule-fanout-303137`)
-
-| Variable | Source | Description |
-|----------|--------|-------------|
-| `MESH_FUNCTION_AZURE_STORAGE_CONNECTION_STRING` | Option 1 | Full connection string for blob access |
-| `AzureWebJobsStorage` | Option 2 | Azure Functions default storage connection |
-| `MESH_AZURE_STORAGE_ACCOUNT` + `MESH_AZURE_STORAGE_KEY` | Option 3 | Account + key auth |
-| (Blob Base URL + Read SAS) | Option 4 | URL-based access fallback |
-| `MESH_COSMOS_ENDPOINT` | Yes | Cosmos endpoint for writing results |
-| `MESH_COSMOS_KEY` | Yes | Cosmos key |
-| `MESH_COSMOS_DATABASE` | Yes | Database name |
-| `MESH_WORKSPACE_MAX_FILE_CHARS` | No | Default `25_000_000`. Max chars to process per file. |
-| `MESH_FUNCTION_INLINE_BUFFER_BYTES` | No | Default `8 MiB`. Max inline RAM before disk spool. |
-
-## Verify Commands
+## Verify Commands (from EC2)
 
 ```bash
-# Verify critical gateway settings
-az webapp config appsettings list -g mesh-rg -n mesh-gateway-303137 \
-  --query "[?name=='MESH_SECURE_DB_FILE' || name=='MESH_DATA_ENCRYPTION_KEY'].{name:name,value:value}" -o table
+# SSH in
+ssh -i /path/to/key.pem ec2-user@35.175.88.93
 
-# Verify voice settings
-az webapp config appsettings list -g mesh-rg -n mesh-gateway-303137 \
-  --query "[?name=='AZURE_OPENAI_VOICE_ENDPOINT' || name=='AZURE_OPENAI_VOICE_TEXT_DEPLOYMENT' || name=='AZURE_OPENAI_VOICE_TTS_VOICE'].{name:name,value:value}" -o table
+# Check env vars are loaded in PM2
+pm2 env 0 | grep -E 'MESH_DYNAMO|NODE_ENV|MESH_DEFAULT'
+
+# Check DynamoDB connectivity
+aws dynamodb list-tables --region us-east-1
+
+# Check healthz
+curl http://localhost:8080/healthz
 ```

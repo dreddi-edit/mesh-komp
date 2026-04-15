@@ -19,11 +19,11 @@ The product has three top-level surfaces:
 
 ### Architecture
 - [[Architecture/System Architecture]] — split gateway/worker model, data flow
-- [[Architecture/Azure Architecture]] — Blob, Cosmos, Functions, Web Apps
+- [[Architecture/AWS Architecture]] — EC2, DynamoDB, S3, Bedrock, Transcribe, Polly
 - [[Architecture/Compression Pipeline]] — tree-sitter, capsule tiers, focused capsules
 - [[Architecture/Workspace Model]] — local-path vs upload, indexing phases
-- [[Architecture/Voice System]] — Azure STT/TTS pipeline, voice agent tools
-- [[Architecture/Authentication]] — sessions, secure-db, BYOK
+- [[Architecture/Voice System]] — AWS Transcribe/Polly pipeline, voice agent tools
+- [[Architecture/Authentication]] — sessions, secure-db (DynamoDB), BYOK
 
 ### Frontend
 - [[Frontend/App Shell]] — app.html, app-workspace.js, surface switcher
@@ -35,7 +35,6 @@ The product has three top-level surfaces:
 - [[Backend/Server and Routes]] — Express setup, route modules
 - [[Backend/Core Orchestrator]] — src/core/index.js and extracted submodules
 - [[Backend/Worker (mesh-core)]] — mesh-core internals, tunnel actions
-- [[Backend/Azure Functions]] — blob-triggered fan-out indexer
 
 ### Operations
 - [[Operations/Deploy Runbook]] — step-by-step production deploy procedure
@@ -48,25 +47,28 @@ The product has three top-level surfaces:
 - [[Development/Testing]] — test files and structure
 
 ### Data
-- [[Data/Cosmos Data Model]] — workspace_files, workspace_workspaces containers
-- [[Data/Blob Storage]] — naming schema, SAS token types
+- [[Data/DynamoDB Data Model]] — mesh-users, mesh-sessions, mesh-stores tables
+- [[Data/S3 Storage]] — workspace offload, naming schema
 
 ## Stack at a Glance
 
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Vanilla HTML/CSS/JS, Monaco, xterm.js, D3, Lottie |
-| Backend | Node.js, Express 5, SQLite (secure-db) |
-| Cloud | Azure Web Apps, Blob Storage, Cosmos DB, Functions |
-| AI | Anthropic Claude, OpenAI GPT, Google Gemini, Azure OpenAI (voice) |
+| Backend | Node.js, Express 5, DynamoDB (secure-db) |
+| Cloud | AWS EC2 (t2.micro), DynamoDB, S3, Bedrock, Transcribe, Polly |
+| AI | Anthropic Claude (via Bedrock), OpenAI GPT, Google Gemini, BYOK |
 | Compression | Tree-sitter AST, capsule serialization, tiered tiers |
 
-## Production Targets
+## Production Infrastructure
 
-| App | Azure Name |
-|-----|-----------|
-| Gateway | `mesh-gateway-303137` |
-| Worker | `mesh-worker-303137` |
-| Functions | `mesh-capsule-fanout-303137` |
-| Resource Group | `mesh-rg` |
-
+| Resource | AWS |
+|----------|-----|
+| Compute | EC2 t2.micro — `35.175.88.93` (us-east-1) |
+| Users/Sessions | DynamoDB `mesh-users`, `mesh-sessions`, `mesh-stores` |
+| AI | Bedrock — Claude Sonnet 4.6 via `mesh-bedrock-access` IAM user |
+| Voice STT | Amazon Transcribe Streaming |
+| Voice TTS | Amazon Polly (neural, voice: Joanna) |
+| Workspace offload | S3 `mesh-workspace-offload-960583973825` (optional) |
+| DNS | Cloudflare → EC2 |
+| CI/CD | GitHub Actions → rsync → PM2 |

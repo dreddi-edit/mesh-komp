@@ -80,6 +80,16 @@
 - Strip inline JS (replaced by external scripts)
 - Copy app-v2.html → app.html, delete app-v2.html
 
+### Phase 8: Fix compression analytics showing real data + improve dependency graph animations and live updates when code changes
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 7
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 8 to break down)
+
 ---
 
 **Success Criteria:**

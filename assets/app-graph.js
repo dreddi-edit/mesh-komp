@@ -277,6 +277,86 @@
         return String(path || '').replace(/\\/g, '/').replace(/\/+/g, '/').replace(/^\.\//, '');
     }
 
+    /**
+     * Compute a short integer hash over sorted node ids and edge pairs.
+     * Used as a sessionStorage cache key — identical topology → same hash.
+     * @param {object[]} nodes
+     * @param {object[]} edges
+     * @param {number} width
+     * @param {number} height
+     * @returns {string}
+     */
+    function graphLayoutHash(nodes, edges, width, height) {
+        const nodeStr = (nodes || []).map(n => String(n.id || '')).sort().join('|');
+        const edgeStr = (edges || []).map(e => `${e.from || e.source}:${e.to || e.target}`).sort().join('|');
+        const input = `${nodeStr}~~${edgeStr}~~${width}x${height}`;
+        let h = 0x811c9dc5;
+        for (let i = 0; i < input.length; i++) {
+            h ^= input.charCodeAt(i);
+            h = (Math.imul(h, 0x01000193) >>> 0);
+        }
+        return h.toString(16);
+    }
+
+    /**
+     * Persist stable node positions to sessionStorage after a successful warmup.
+     * @param {string} cacheKey
+     * @param {object[]} nodes
+     */
+    function saveGraphLayoutCache(cacheKey, nodes) {
+        try {
+            const positions = {};
+            for (const node of nodes) {
+                if (node.id && node.x != null && node.y != null) {
+                    positions[String(node.id)] = { x: node.x, y: node.y };
+                }
+            }
+            sessionStorage.setItem(cacheKey, JSON.stringify(positions));
+        } catch { /* sessionStorage may be full or unavailable — ignore */ }
+    }
+
+    /**
+     * Load persisted node positions from sessionStorage.
+     * @param {string} cacheKey
+     * @returns {Object.<string, {x: number, y: number}>|null}
+     */
+    function loadGraphLayoutCache(cacheKey) {
+        try {
+            const raw = sessionStorage.getItem(cacheKey);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (typeof parsed !== 'object' || parsed === null) return null;
+            return parsed;
+        } catch { return null; }
+    }
+
+    /**
+     * Apply cached positions to nodes, bypassing force-simulation warmup.
+     * Nodes not found in cache fall back to seedNodeLayout coordinates.
+     * @param {object[]} nodes
+     * @param {Object.<string, {x: number, y: number}>} cache
+     */
+    function restoreGraphLayoutFromCache(nodes, cache) {
+        const uncached = [];
+        for (const node of nodes) {
+            const pos = cache[String(node.id || '')];
+            if (pos && pos.x != null && pos.y != null) {
+                node.x = pos.x;
+                node.y = pos.y;
+                node.fx = pos.x;
+                node.fy = pos.y;
+            } else {
+                uncached.push(node);
+            }
+        }
+        // Seed any new nodes that weren't in the cache using the existing layout helper
+        if (uncached.length > 0) {
+            const all = nodes;
+            const width = (uncached[0].clusterX != null ? null : null) || 800;
+            seedNodeLayout(uncached, width, 600);
+        }
+    }
+
     function dirname(path) {
         const normalized = normalizePath(path);
         const idx = normalized.lastIndexOf('/');
@@ -475,7 +555,16 @@
             let showLabels = true;
             let showDirs = true;
             const visibleNodes = () => data.nodes.filter(d => showDirs || !d.isDirectory);
-            seedNodeLayout(data.nodes, width, height);
+
+            // Layout cache key: hash of sorted node ids + edge topology + viewport size.
+            // Lets us skip the force-simulation warmup on repeat visits to the graph view.
+            const layoutCacheKey = 'mesh-graph-layout:' + graphLayoutHash(data.nodes, data.edges, width, height);
+            const cachedLayout = loadGraphLayoutCache(layoutCacheKey);
+            if (cachedLayout) {
+                restoreGraphLayoutFromCache(data.nodes, cachedLayout);
+            } else {
+                seedNodeLayout(data.nodes, width, height);
+            }
 
             const FILE_COLORS = {
                 directory: '#e8a838',
@@ -543,9 +632,13 @@
                 .velocityDecay(0.42)
                 .stop();
 
-            const warmupTicks = Math.min(500, Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())));
-            for (let i = 0; i < warmupTicks; i++) simulation.tick();
-            data.nodes.forEach(d => { d.fx = d.x; d.fy = d.y; });
+            if (!cachedLayout) {
+                const warmupTicks = Math.min(500, Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())));
+                for (let i = 0; i < warmupTicks; i++) simulation.tick();
+                data.nodes.forEach(d => { d.fx = d.x; d.fy = d.y; });
+                // Persist positions so the next visit skips simulation entirely
+                saveGraphLayoutCache(layoutCacheKey, data.nodes);
+            }
 
             const link = g.append('g').attr('class', 'links')
                 .selectAll('path').data(edges).enter().append('path')

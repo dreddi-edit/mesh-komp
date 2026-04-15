@@ -6,7 +6,7 @@ tags: [backend]
 
 ## Overview
 
-The worker is the main execution engine for workspace operations. It lives entirely under `mesh-core/` and runs as a separate Azure Web App (`mesh-worker-303137`).
+The worker is the main execution engine for workspace operations. It lives entirely under `mesh-core/` and runs as a separate process on the same EC2 instance, reachable via `MESH_CORE_URL`.
 
 **Entry point:** `node mesh-core/src/server.js`
 
@@ -54,8 +54,8 @@ chat
 
 ```javascript
 workspaceState           // current active workspace (in-memory)
-workspaceBlobConfig      // Azure Blob config for upload workspaces
-workspaceMetadataStore   // Cosmos metadata store reference
+workspaceBlobConfig      // S3 offload config for upload workspaces (optional)
+workspaceMetadataStore   // Workspace metadata store reference
 ```
 
 Also exports:
@@ -118,9 +118,7 @@ Provides:
 | Mode | What the worker does |
 |------|---------------------|
 | `local-path` | Reads from server filesystem directly. Git ops on real `rootPath`. |
-| `upload` | Acts as coordinator. Files in Blob. Metadata in Cosmos. Worker seeds manifest and reads from Cosmos. |
-
-For upload workspaces, actual capsule computation runs in the Azure Function fan-out — not in the worker.
+| `upload` | Acts as coordinator. Files in S3 (when offload enabled) or in-memory. Worker seeds manifest and processes capsules inline. |
 
 ## Worker Package
 
