@@ -378,6 +378,14 @@
         const container = $('#' + containerId);
         if (!container) return;
 
+        // Cross-fade existing SVG out via CSS before replacing
+        const prevSvg = container.querySelector('svg');
+        if (prevSvg) {
+            prevSvg.style.transition = 'opacity 0.18s ease';
+            prevSvg.style.opacity = '0';
+            await new Promise(r => setTimeout(r, 190));
+        }
+
         if (lottieAnim) { lottieAnim.destroy(); lottieAnim = null; }
         container.innerHTML = `
             <div class="graph-loading">
@@ -408,26 +416,43 @@
         try {
             let data;
             const S = window.MeshState;
-            const wsId = S?.workspaceId || '';
-            const graphUrl = wsId
-                ? `/api/assistant/workspace/graph?workspaceId=${encodeURIComponent(wsId)}`
-                : '/api/assistant/workspace/graph';
-            try {
-                const resp = await fetch(graphUrl);
-                data = await resp.json();
-                if (!data.ok) throw new Error(data.error || 'No data');
-            } catch {
-                data = await buildLocalGraph();
-            }
 
+            // When the client has a live tree scan, build locally — the server
+            // may still hold a stale workspace from a different folder session.
             if (S?.tree?.length) {
+                data = await buildLocalGraph();
+            } else if (S?.dirName) {
+                // Folder is open but tree not yet scanned (e.g. still restoring).
+                // Only use server data if its folderName matches what we know is open.
+                const wsId = S.workspaceId || '';
+                const folderName = S.dirName;
+                let graphUrl = '/api/assistant/workspace/graph';
+                const params = new URLSearchParams();
+                if (wsId) params.set('workspaceId', wsId);
+                params.set('folderName', folderName);
+                graphUrl += '?' + params.toString();
                 try {
-                    const localData = await buildLocalGraph();
-                    if (Array.isArray(localData?.nodes) && localData.nodes.length > 0) {
-                        data = mergeGraphData(data, localData);
+                    const resp = await fetch(graphUrl);
+                    const remote = await resp.json();
+                    if (!remote.ok) throw new Error(remote.error || 'No data');
+                    // Reject if server returned data for a different folder
+                    if (remote.folderName && remote.folderName !== folderName) {
+                        data = { ok: true, nodes: [], edges: [], hasWorkspace: true };
+                    } else {
+                        data = remote;
                     }
                 } catch {
-                    // Keep current graph data when local merge cannot improve it.
+                    data = await buildLocalGraph();
+                }
+            } else {
+                // No folder open at all — check server for any active workspace
+                try {
+                    const resp = await fetch('/api/assistant/workspace/graph');
+                    const remote = await resp.json();
+                    // Only use if the client has no folder context (avoids stale cross-session data)
+                    data = (remote.ok && !S?.dirName) ? remote : { ok: true, nodes: [], edges: [] };
+                } catch {
+                    data = { ok: true, nodes: [], edges: [] };
                 }
             }
 
@@ -449,107 +474,268 @@
                 return;
             }
 
-            container.innerHTML = '';
+            container.textContent = '';
             const width = container.clientWidth || 800;
             const height = container.clientHeight || 600;
+            let showLabels = true;
+            let showDirs = true;
+            const visibleNodes = () => data.nodes.filter(d => showDirs || !d.isDirectory);
             seedNodeLayout(data.nodes, width, height);
+
+            const FILE_COLORS = {
+                directory: '#e8a838',
+                javascript: '#f7df1e',
+                typescript: '#4fc3f7',
+                html: '#ff7043',
+                css: '#40c4ff',
+                json: '#69f0ae',
+                python: '#80cbc4',
+                markdown: '#ce93d8',
+                _default: '#b0bec5',
+            };
+
+            function getFileTypeColor(type) {
+                const t = String(type || '').toLowerCase();
+                for (const [key, color] of Object.entries(FILE_COLORS)) {
+                    if (key !== '_default' && t.includes(key)) return color;
+                }
+                return FILE_COLORS._default;
+            }
+
+            function nodeRadius(d) { return d.isDirectory ? 10 : 7; }
 
             const svg = d3.select(container)
                 .append('svg')
                 .attr('width', '100%')
                 .attr('height', '100%')
-                .attr('viewBox', `0 0 ${width} ${height}`);
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .style('background', 'var(--bg)');
+
+            const defs = svg.append('defs');
+
+            defs.append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-0 -4 8 8')
+                .attr('refX', 22).attr('refY', 0)
+                .attr('orient', 'auto')
+                .attr('markerWidth', 5).attr('markerHeight', 5)
+                .append('path')
+                .attr('d', 'M 0,-4 L 8,0 L 0,4')
+                .attr('fill', 'var(--tx3)')
+                .style('stroke', 'none');
+
+            const glowFilter = defs.append('filter').attr('id', 'glow').attr('x', '-60%').attr('y', '-60%').attr('width', '220%').attr('height', '220%');
+            glowFilter.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', '1.8').attr('result', 'blur');
+            const feMerge = glowFilter.append('feMerge');
+            feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+            feMerge.append('feMergeNode').attr('in', 'blur');
 
             const g = svg.append('g');
-            svg.call(d3.zoom().scaleExtent([0.1, 4]).on('zoom', (event) => { g.attr('transform', event.transform); }));
+            const zoomBehavior = d3.zoom().scaleExtent([0.1, 5]).on('zoom', (event) => { g.attr('transform', event.transform); });
+            svg.call(zoomBehavior);
 
-            /* Build simulation but do NOT start the live animation yet.
-               Pre-run synchronously so nodes begin at stable positions. */
             const simulation = d3.forceSimulation(data.nodes)
                 .force('link', d3.forceLink(edges).id(d => d.id).distance((d) => {
                     const sameCluster = d.source?.clusterDir && d.source.clusterDir === d.target?.clusterDir;
-                    return sameCluster ? 110 : 165;
-                }).strength((d) => d.source?.clusterDir === d.target?.clusterDir ? 0.55 : 0.28))
-                .force('charge', d3.forceManyBody().strength(-720).distanceMax(620))
+                    return sameCluster ? 90 : 180;
+                }).strength((d) => d.source?.clusterDir === d.target?.clusterDir ? 0.6 : 0.2))
+                .force('charge', d3.forceManyBody().strength(-850).distanceMax(700))
                 .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius((d) => d.labelRadius || 34).iterations(2))
-                .force('x', d3.forceX((d) => d.clusterX || (width / 2)).strength(0.12))
-                .force('y', d3.forceY((d) => d.clusterY || (height / 2)).strength(0.12))
-                .alphaDecay(0.08)
-                .velocityDecay(0.45)
-                .stop(); // stop before ticking so we control it
+                .force('collision', d3.forceCollide().radius((d) => (d.labelRadius || 40) + 8).iterations(3))
+                .force('x', d3.forceX((d) => d.clusterX || (width / 2)).strength(0.14))
+                .force('y', d3.forceY((d) => d.clusterY || (height / 2)).strength(0.14))
+                .alphaDecay(0.06)
+                .velocityDecay(0.42)
+                .stop();
 
-            /* Warm-up: run synchronously until stable (max 300 ticks) */
-            const warmupTicks = Math.min(420, Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())));
+            const warmupTicks = Math.min(500, Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())));
             for (let i = 0; i < warmupTicks; i++) simulation.tick();
-
-            /* Pin every node at its settled position so the graph is static by default */
             data.nodes.forEach(d => { d.fx = d.x; d.fy = d.y; });
 
-            svg.append('defs').append('marker')
-                .attr('id', 'arrowhead')
-                .attr('viewBox', '-0 -5 10 10')
-                .attr('refX', 20).attr('refY', 0)
-                .attr('orient', 'auto')
-                .attr('markerWidth', 6).attr('markerHeight', 6)
-                .attr('xoverflow', 'visible')
-                .append('svg:path')
-                .attr('d', 'M 0,-5 L 10,0 L 0,5')
-                .attr('fill', 'var(--ac)')
-                .style('stroke', 'none');
-
             const link = g.append('g').attr('class', 'links')
-                .selectAll('line').data(edges).enter().append('line')
-                .attr('stroke', 'var(--bd)').attr('stroke-width', 1)
+                .selectAll('path').data(edges).enter().append('path')
+                .attr('fill', 'none')
+                .attr('stroke', 'var(--tx3)')
+                .attr('stroke-width', 0.9)
+                .attr('stroke-opacity', 0.55)
                 .attr('marker-end', 'url(#arrowhead)')
-                /* Render immediately at stable positions */
-                .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+                .attr('d', d => {
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    const dr = Math.sqrt(dx * dx + dy * dy) * 1.2;
+                    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+                });
 
             const node = g.append('g').attr('class', 'nodes')
                 .selectAll('g').data(data.nodes).enter().append('g')
-                /* Render immediately at stable positions */
                 .attr('transform', d => `translate(${d.x},${d.y})`)
                 .call(d3.drag()
                     .on('start', (event, d) => {
-                        /* Unpin only the dragged node so it moves freely */
                         d.fx = null; d.fy = null;
                         if (!event.active) simulation.alphaTarget(0.1).restart();
                     })
                     .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
                     .on('end', (event, d) => {
                         if (!event.active) simulation.alphaTarget(0);
-                        /* Re-pin at dropped position so it stays put */
                         d.fx = d.x; d.fy = d.y;
                     }));
 
-            node.append('circle').attr('r', 8)
-                .attr('fill', d => getFileTypeColor(d.fileType))
-                .attr('stroke', 'var(--bg)').attr('stroke-width', 2);
+            node.each(function(d) {
+                const el = d3.select(this);
+                const color = getFileTypeColor(d.fileType);
+                if (d.isDirectory) {
+                    el.append('rect')
+                        .attr('x', -11).attr('y', -11)
+                        .attr('width', 22).attr('height', 22)
+                        .attr('rx', 5).attr('ry', 5)
+                        .attr('fill', color)
+                        .attr('fill-opacity', 0.18)
+                        .attr('stroke', color)
+                        .attr('stroke-width', 2);
+                } else {
+                    el.append('circle')
+                        .attr('r', nodeRadius(d))
+                        .attr('fill', color)
+                        .attr('fill-opacity', 0.9)
+                        .attr('stroke', color)
+                        .attr('stroke-width', 1)
+                        .style('filter', 'url(#glow)');
+                }
+            });
 
-            node.append('text').attr('dx', 12).attr('dy', '.35em')
-                .text(d => d.name)
-                .attr('fill', 'var(--tx1)').style('font-size', '10px').style('pointer-events', 'none');
+            const labels = node.append('text')
+                .attr('dx', d => d.isDirectory ? 14 : 11)
+                .attr('dy', '.35em')
+                .text(d => {
+                    const n = d.name || '';
+                    return n.length > 22 ? n.slice(0, 20) + '…' : n;
+                })
+                .attr('fill', 'var(--tx2)')
+                .style('font-size', d => d.isDirectory ? '11px' : '9.5px')
+                .style('font-weight', d => d.isDirectory ? '600' : '400')
+                .style('font-family', 'var(--f)')
+                .style('pointer-events', 'none');
 
             node.append('title').text(d => d.path);
-            node.on('click', (event, d) => { if (window.openFileByPath) window.openFileByPath(d.path); });
 
-            /* Live tick only updates the small subset of unpinned nodes during drag */
+            node.on('click', (event, d) => { if (window.openFileByPath) window.openFileByPath(d.path); })
+                .on('mouseover', function(event, d) {
+                    d3.select(this).raise();
+                    d3.select(this).select('circle, rect').transition().duration(150)
+                        .attr('r', d.isDirectory ? undefined : nodeRadius(d) + 3)
+                        .attr('stroke', 'var(--ac)').attr('stroke-width', 2.5);
+                    link.attr('stroke-opacity', e =>
+                        (e.source === d || e.target === d) ? 0.9 : 0.1
+                    ).attr('stroke', e =>
+                        (e.source === d || e.target === d) ? 'var(--ac)' : 'var(--tx3)'
+                    ).attr('stroke-width', e =>
+                        (e.source === d || e.target === d) ? 1.5 : 0.6
+                    );
+                })
+                .on('mouseout', function(event, d) {
+                    const c = getFileTypeColor(d.fileType);
+                    d3.select(this).select('circle').transition().duration(200)
+                        .attr('r', nodeRadius(d)).attr('stroke', c).attr('stroke-width', 1);
+                    d3.select(this).select('rect').transition().duration(200)
+                        .attr('stroke', c).attr('stroke-width', 2);
+                    link.attr('stroke-opacity', 0.55).attr('stroke', 'var(--tx3)').attr('stroke-width', 0.9);
+                });
+
+            // Entrance animation: fade with per-node stagger — avoids anime.js v4 API incompatibilities
+            node.style('opacity', '0').style('transition', 'opacity 0.4s ease');
+            link.style('opacity', '0').style('transition', 'opacity 0.3s ease');
+
+            // Apply stagger delays: groups of 8 nodes share a delay tier, 20ms between tiers
+            node.nodes().forEach((el, i) => {
+                el.style.transitionDelay = (Math.floor(i / 8) * 20) + 'ms';
+            });
+
+            requestAnimationFrame(() => {
+                node.style('opacity', '1');
+                setTimeout(() => {
+                    link.style('opacity', '0.4');
+                    // Remove stagger delays after animation so hover/drag transitions are instant
+                    setTimeout(() => node.nodes().forEach(el => { el.style.transitionDelay = '0ms'; }), 700);
+                }, 80);
+            });
+
             simulation.on('tick', () => {
-                link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-                    .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+                link.attr('d', d => {
+                    const dx = d.target.x - d.source.x;
+                    const dy = d.target.y - d.source.y;
+                    const dr = Math.sqrt(dx * dx + dy * dy) * 1.2;
+                    return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+                });
                 node.attr('transform', d => `translate(${d.x},${d.y})`);
             });
 
-            function getFileTypeColor(type) {
-                if (String(type || '').includes('directory')) return '#8b8f9b';
-                if (type.includes('javascript') || type.includes('typescript')) return 'var(--ac)';
-                if (type.includes('html')) return '#e44d26';
-                if (type.includes('css')) return '#264de4';
-                if (type.includes('json')) return '#a5a500';
-                if (type.includes('python')) return '#3572a5';
-                return '#858585';
+            /* ── Toolbar ── */
+            const toolbar = document.createElement('div');
+            toolbar.className = 'graph-toolbar';
+            const makeBtn = (text, title, handler) => {
+                const btn = document.createElement('button');
+                btn.className = 'graph-tb-btn';
+                btn.textContent = text;
+                btn.title = title;
+                btn.addEventListener('click', handler);
+                return btn;
+            };
+            toolbar.appendChild(makeBtn('+', 'Zoom in', () => svg.transition().duration(300).call(zoomBehavior.scaleBy, 1.4)));
+            toolbar.appendChild(makeBtn('−', 'Zoom out', () => svg.transition().duration(300).call(zoomBehavior.scaleBy, 0.7)));
+            toolbar.appendChild(makeBtn('⟳', 'Reset view', () => svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity)));
+            toolbar.appendChild(makeBtn('Aa', 'Toggle labels', () => {
+                showLabels = !showLabels;
+                labels.style('display', showLabels ? null : 'none');
+            }));
+            toolbar.appendChild(makeBtn('▣', 'Toggle directories', () => {
+                showDirs = !showDirs;
+                node.style('display', d => (!showDirs && d.isDirectory) ? 'none' : null);
+                link.style('display', d => {
+                    if (!showDirs) {
+                        const sId = typeof d.source === 'object' ? d.source.id : d.source;
+                        const tId = typeof d.target === 'object' ? d.target.id : d.target;
+                        if (String(sId).startsWith('dir:') || String(tId).startsWith('dir:')) return 'none';
+                    }
+                    return null;
+                });
+            }));
+            container.appendChild(toolbar);
+
+            /* ── Legend ── */
+            const legend = document.createElement('div');
+            legend.className = 'graph-legend';
+            const legendTitle = document.createElement('div');
+            legendTitle.className = 'graph-legend-title';
+            legendTitle.textContent = 'Node Types';
+            legend.appendChild(legendTitle);
+            const legendItems = [
+                ['Directory', FILE_COLORS.directory],
+                ['JavaScript', FILE_COLORS.javascript],
+                ['TypeScript', FILE_COLORS.typescript],
+                ['HTML', FILE_COLORS.html],
+                ['CSS', FILE_COLORS.css],
+                ['JSON', FILE_COLORS.json],
+                ['Python', FILE_COLORS.python],
+                ['Other', FILE_COLORS._default],
+            ];
+            for (const [label, color] of legendItems) {
+                const item = document.createElement('div');
+                item.className = 'graph-legend-item';
+                const chip = document.createElement('span');
+                chip.className = 'graph-legend-chip';
+                chip.style.cssText = `background:${color};box-shadow:0 0 5px ${color}88`;
+                const text = document.createElement('span');
+                text.textContent = label;
+                item.append(chip, text);
+                legend.appendChild(item);
             }
+            container.appendChild(legend);
+
+            /* ── Stats badge ── */
+            const statsBadge = document.createElement('div');
+            statsBadge.className = 'graph-stats';
+            statsBadge.textContent = data.nodes.length + ' nodes · ' + edges.length + ' edges';
+            container.appendChild(statsBadge);
 
         } catch (err) {
             container.textContent = '';
@@ -568,4 +754,10 @@
 
     window.addEventListener('mesh-indexing-initial-ready', refreshVisibleGraph);
     window.addEventListener('mesh-indexing-complete', refreshVisibleGraph);
+
+    let _graphDebounceTimer = null;
+    window.addEventListener('mesh-indexing-background-progress', () => {
+        clearTimeout(_graphDebounceTimer);
+        _graphDebounceTimer = setTimeout(refreshVisibleGraph, 1500);
+    });
 })();
