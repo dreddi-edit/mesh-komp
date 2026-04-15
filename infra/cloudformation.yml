@@ -1,0 +1,517 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Mesh Gateway — Production Infrastructure
+  CloudFront + ALB + Auto Scaling Group + EC2 Launch Template
+  Region: us-east-1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Parameters
+# ─────────────────────────────────────────────────────────────────────────────
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC to deploy the ALB and ASG into.
+
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: At least 2 public subnets in different AZs (for ALB).
+
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >
+      Private subnets for EC2 instances. Use public subnets if you don't
+      have a NAT gateway — instances need outbound internet for npm/AWS APIs.
+
+  Ec2KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 key pair for SSH access (used for emergency debugging).
+
+  Ec2InstanceType:
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.micro, t3.micro, t3.small, t3.medium, t3a.medium]
+    Description: EC2 instance type.
+
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: Amazon Linux 2023 latest AMI (auto-resolved from SSM).
+
+  S3BucketName:
+    Type: String
+    Description: >
+      Existing S3 bucket for workspace blob storage. CloudFront will be placed
+      in front of this bucket for cached reads.
+
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: >
+      ACM certificate ARN for HTTPS on the ALB. Leave blank to use HTTP only
+      (not recommended for production).
+
+  AppRepoUrl:
+    Type: String
+    Default: https://github.com/dreddi-edit/mesh-komp.git
+    Description: Git repository URL. Instances pull this on first boot.
+
+  EnvFileS3Key:
+    Type: String
+    Default: config/mesh-gateway.env
+    Description: >
+      S3 key (within S3BucketName) of the .env file to pull onto each instance.
+      Store sensitive env vars here — never in UserData or LaunchTemplate.
+
+  MinInstances:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 6
+
+  MaxInstances:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 10
+
+  TargetCpuUtilization:
+    Type: Number
+    Default: 60
+    MinValue: 20
+    MaxValue: 90
+    Description: Target CPU % for the ASG scaling policy.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Conditions
+# ─────────────────────────────────────────────────────────────────────────────
+Conditions:
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Resources
+# ─────────────────────────────────────────────────────────────────────────────
+Resources:
+
+  # ── IAM Role for EC2 instances ───────────────────────────────────────────────
+  Ec2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub mesh-gateway-ec2-role-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore   # SSM Session Manager
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy     # CloudWatch metrics/logs
+      Policies:
+        - PolicyName: MeshGatewayAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3WorkspaceAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub arn:aws:s3:::${S3BucketName}
+                  - !Sub arn:aws:s3:::${S3BucketName}/*
+              - Sid: DynamoDBAccess
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/mesh-*
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/mesh-*/index/*
+              - Sid: BedrockAccess
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: '*'
+              - Sid: TranscribePollyAccess
+                Effect: Allow
+                Action:
+                  - transcribe:StartStreamTranscriptionWebSocket
+                  - polly:SynthesizeSpeech
+                Resource: '*'
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref Ec2InstanceRole]
+
+  # ── Security Groups ──────────────────────────────────────────────────────────
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB — allow HTTP/HTTPS from internet
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub mesh-alb-sg-${AWS::StackName}
+
+  Ec2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EC2 — allow traffic only from ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub mesh-ec2-sg-${AWS::StackName}
+
+  # ── Application Load Balancer ────────────────────────────────────────────────
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub mesh-alb-${AWS::StackName}
+      Scheme: internet-facing
+      Type: application
+      Subnets: !Ref PublicSubnetIds
+      SecurityGroups: [!Ref AlbSecurityGroup]
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '120'
+        - Key: routing.http2.enabled
+          Value: 'true'
+        - Key: deletion_protection.enabled
+          Value: 'false'
+      Tags:
+        - Key: Name
+          Value: !Sub mesh-alb-${AWS::StackName}
+
+  AlbTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub mesh-tg-${AWS::StackName}
+      VpcId: !Ref VpcId
+      Protocol: HTTP
+      Port: 8080
+      TargetType: instance
+      HealthCheckPath: /healthz
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 15
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      # Deregistration delay — give in-flight WebSocket connections 30s to drain.
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+        - Key: stickiness.enabled
+          Value: 'false'
+      Tags:
+        - Key: Name
+          Value: !Sub mesh-tg-${AWS::StackName}
+
+  AlbListenerHttp:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - !If
+          - HasCertificate
+          - Type: redirect
+            RedirectConfig:
+              Protocol: HTTPS
+              Port: '443'
+              StatusCode: HTTP_301
+          - Type: forward
+            TargetGroupArn: !Ref AlbTargetGroup
+
+  AlbListenerHttps:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasCertificate
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref AlbTargetGroup
+
+  # ── Launch Template ──────────────────────────────────────────────────────────
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub mesh-lt-${AWS::StackName}
+      LaunchTemplateData:
+        ImageId: !Ref AmiId
+        InstanceType: !Ref Ec2InstanceType
+        KeyName: !Ref Ec2KeyPairName
+        IamInstanceProfile:
+          Arn: !GetAtt Ec2InstanceProfile.Arn
+        SecurityGroupIds: [!Ref Ec2SecurityGroup]
+        Monitoring:
+          Enabled: true
+        MetadataOptions:
+          HttpTokens: required          # IMDSv2 only — security hardening
+          HttpPutResponseHopLimit: 1
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 20
+              VolumeType: gp3
+              Iops: 3000
+              DeleteOnTermination: true
+              Encrypted: true
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -euo pipefail
+
+            # ── System packages ──────────────────────────────────────────────
+            dnf update -y
+            dnf install -y git
+
+            # ── Node.js 22 via NodeSource ────────────────────────────────────
+            curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
+            dnf install -y nodejs
+
+            # ── PM2 ──────────────────────────────────────────────────────────
+            npm install -g pm2
+
+            # ── Application ──────────────────────────────────────────────────
+            mkdir -p /home/ec2-user/app
+            chown ec2-user:ec2-user /home/ec2-user/app
+            cd /home/ec2-user/app
+            sudo -u ec2-user git clone ${AppRepoUrl} .
+            sudo -u ec2-user npm ci --ignore-scripts
+
+            # Pull env file from S3 (contains secrets — never commit these)
+            aws s3 cp s3://${S3BucketName}/${EnvFileS3Key} /home/ec2-user/app/.env
+            chown ec2-user:ec2-user /home/ec2-user/app/.env
+            chmod 600 /home/ec2-user/app/.env
+
+            # Start application via PM2 ecosystem config
+            sudo -u ec2-user bash -c "
+              cd /home/ec2-user/app
+              UV_THREADPOOL_SIZE=16 pm2 start ecosystem.config.js --env production
+              pm2 startup systemd -u ec2-user --hp /home/ec2-user
+              pm2 save
+            "
+
+            # Generate and run the systemd startup script pm2 printed above
+            env PATH=$PATH:/usr/bin pm2 startup systemd -u ec2-user --hp /home/ec2-user | tail -1 | bash
+
+            # ── CloudWatch Agent ─────────────────────────────────────────────
+            dnf install -y amazon-cloudwatch-agent
+            cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWEOF'
+            {
+              "metrics": {
+                "namespace": "Mesh/Gateway",
+                "metrics_collected": {
+                  "cpu": { "measurement": ["cpu_usage_idle", "cpu_usage_iowait"], "metrics_collection_interval": 30 },
+                  "mem": { "measurement": ["mem_used_percent"], "metrics_collection_interval": 30 }
+                }
+              },
+              "logs": {
+                "logs_collected": {
+                  "files": {
+                    "collect_list": [
+                      { "file_path": "/home/ec2-user/.pm2/logs/mesh-gateway-out.log", "log_group_name": "/mesh/gateway/app", "log_stream_name": "{instance_id}" },
+                      { "file_path": "/home/ec2-user/.pm2/logs/mesh-gateway-error.log", "log_group_name": "/mesh/gateway/errors", "log_stream_name": "{instance_id}" }
+                    ]
+                  }
+                }
+              }
+            }
+            CWEOF
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+              -a fetch-config -m ec2 \
+              -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub mesh-gateway-${AWS::StackName}
+              - Key: App
+                Value: mesh-gateway
+
+  # ── Auto Scaling Group ───────────────────────────────────────────────────────
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: 1
+        MaxBatchSize: 1
+        PauseTime: PT2M
+        WaitOnResourceSignals: false
+    Properties:
+      AutoScalingGroupName: !Sub mesh-asg-${AWS::StackName}
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: !Ref MinInstances
+      MaxSize: !Ref MaxInstances
+      DesiredCapacity: !Ref MinInstances
+      VPCZoneIdentifier: !Ref PrivateSubnetIds
+      TargetGroupARNs: [!Ref AlbTargetGroup]
+      HealthCheckType: ELB
+      # 5 min warm-up — give Node.js time to start and /healthz to pass
+      HealthCheckGracePeriod: 300
+      DefaultInstanceWarmup: 120
+      Tags:
+        - Key: Name
+          Value: !Sub mesh-gateway-${AWS::StackName}
+          PropagateAtLaunch: true
+
+  # Target tracking policy — scale out when average CPU > TargetCpuUtilization
+  ScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: !Ref TargetCpuUtilization
+        # Disable scale-in — let CloudFormation manage scale-in via min/max.
+        # Set to false to let the policy scale in automatically.
+        DisableScaleIn: false
+
+  # ── CloudFront for S3 workspace blobs ────────────────────────────────────────
+  CloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub mesh-s3-oac-${AWS::StackName}
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: Mesh workspace blob cache
+        Enabled: true
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100   # US/EU/Japan only — cheapest
+        Origins:
+          # Origin 1: S3 workspace blobs
+          - Id: S3WorkspaceBlobs
+            DomainName: !Sub ${S3BucketName}.s3.${AWS::Region}.amazonaws.com
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+            OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
+          # Origin 2: ALB for dynamic API requests
+          - Id: AlbOrigin
+            DomainName: !GetAtt Alb.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: !If [HasCertificate, https-only, http-only]
+        DefaultCacheBehavior:
+          # Default: forward everything to ALB (no caching for API)
+          TargetOriginId: AlbOrigin
+          ViewerProtocolPolicy: !If [HasCertificate, redirect-to-https, allow-all]
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # CachingDisabled
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # AllViewerExceptHostHeader
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+        CacheBehaviors:
+          # /workspace/blob/* → S3 with 1h TTL (compressed workspace chunks)
+          - PathPattern: /workspace/blob/*
+            TargetOriginId: S3WorkspaceBlobs
+            ViewerProtocolPolicy: !If [HasCertificate, redirect-to-https, allow-all]
+            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized (1d default, respects Cache-Control)
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+        # Custom error responses — return API errors as-is without CloudFront HTML
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponsePagePath: /
+            ResponseCode: 200
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponsePagePath: /
+            ResponseCode: 200
+            ErrorCachingMinTTL: 0
+      Tags:
+        - Key: Name
+          Value: !Sub mesh-cloudfront-${AWS::StackName}
+
+  # Allow CloudFront to read S3 objects via OAC
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3BucketName
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontOACRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${S3BucketName}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Outputs
+# ─────────────────────────────────────────────────────────────────────────────
+Outputs:
+  AlbDnsName:
+    Description: ALB DNS name — point your DNS CNAME here (or use CloudFront domain below)
+    Value: !GetAtt Alb.DNSName
+    Export:
+      Name: !Sub ${AWS::StackName}-AlbDns
+
+  CloudFrontDomain:
+    Description: CloudFront distribution domain — use this as your primary domain
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-CloudFrontDomain
+
+  AutoScalingGroupName:
+    Description: ASG name — use in deploy pipeline to trigger instance refresh
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-AsgName
+
+  LaunchTemplateId:
+    Description: Launch Template ID
+    Value: !Ref LaunchTemplate
+    Export:
+      Name: !Sub ${AWS::StackName}-LaunchTemplate

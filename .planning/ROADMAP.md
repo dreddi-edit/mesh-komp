@@ -82,20 +82,16 @@
 
 ### Phase 8: Fix compression analytics showing real data + improve dependency graph animations and live updates when code changes
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Compression analytics show real per-file data from the live compression map. Dependency graph nodes animate in with stagger entrance, cross-fade on rebuild, and update live when code changes.
+**Status:** completed
 **Depends on:** Phase 7
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 8 to break down)
 
 ---
 
 ### Phase 9: Performance — In-Process Caching (Zero-Cost Quick Wins)
 
 **Goal:** Eliminate redundant DynamoDB round-trips on every API request by adding TTL-based in-process caches for session resolution and BYOK credential lookups.
-**Status:** planned
+**Status:** completed
 **Depends on:** Phase 8
 **Scope:**
 - TTL cache for `resolveSession` (auth.js) — cache session + user lookup for 30s, saving 2 DynamoDB calls per authenticated request
@@ -111,28 +107,27 @@ Plans:
 
 ---
 
-### Phase 10: Performance — Brotli Worker Threads (Event Loop Unblocking)
+### Phase 10: Performance — libuv Thread Pool + pm2 Cluster Mode
 
-**Goal:** Move all synchronous Brotli compress/decompress operations off the Node.js event loop into a worker thread pool, eliminating latency spikes during large workspace syncs.
-**Status:** planned
+**Goal:** Expand libuv's shared async I/O thread pool and configure pm2 cluster mode so all vCPUs are utilized, preventing thread pool saturation under concurrent S3 + Brotli workloads.
+**Status:** completed
 **Depends on:** Phase 9
 **Scope:**
-- Worker thread pool (2 workers) for `brotliCompressSync` / `brotliDecompress` in `workspace-infrastructure.js`
-- Async wrapper replaces all sync Brotli calls — event loop free during compression
-- Applies to: workspace tunnel encoding, S3 blob compression, local workspace compression
-- Graceful fallback to sync if worker pool unavailable
+- `UV_THREADPOOL_SIZE=16` in `.env.example` and `ecosystem.config.js` (must be set before Node starts — pool is initialized at process boot, not in application code)
+- `ecosystem.config.js` with `exec_mode: cluster`, `instances: max`, graceful shutdown, CloudWatch agent log paths
+- Deploy workflow updated: `pm2 reload ecosystem.config.js` for zero-downtime reloads
 
 **Success Criteria:**
-- No Brotli operation blocks event loop for >1ms
-- Workspace sync latency spikes (>50ms) eliminated for files >200KB
-- All existing compression tests pass
+- Concurrent S3 PutObject + Brotli compress calls don't starve each other's libuv threads
+- pm2 cluster mode active on multi-vCPU instances
+- Zero-downtime `pm2 reload` on deploy
 
 ---
 
 ### Phase 11: Performance — CloudFront + ALB + Auto Scaling (Infrastructure Scale)
 
 **Goal:** Put CloudFront in front of S3 for workspace blob caching, add an Application Load Balancer, and configure Auto Scaling for the EC2 fleet — eliminating the single point of failure and enabling horizontal scale.
-**Status:** planned
+**Status:** completed
 **Depends on:** Phase 10
 **Scope:**
 - CloudFront distribution pointing at S3 workspace bucket — cache workspace blobs at edge, TTL 1h
