@@ -445,15 +445,10 @@
                     data = await buildLocalGraph();
                 }
             } else {
-                // No folder open at all — check server for any active workspace
-                try {
-                    const resp = await fetch('/api/assistant/workspace/graph');
-                    const remote = await resp.json();
-                    // Only use if the client has no folder context (avoids stale cross-session data)
-                    data = (remote.ok && !S?.dirName) ? remote : { ok: true, nodes: [], edges: [] };
-                } catch {
-                    data = { ok: true, nodes: [], edges: [] };
-                }
+                // No folder open on the client — skip server fetch entirely.
+                // Server RAM may hold a stale workspace from a previous session;
+                // using it would show a phantom graph while the explorer shows "No Folder Opened".
+                data = { ok: true, nodes: [], edges: [] };
             }
 
             const edges = (data.edges || []).map(e => ({ source: e.from, target: e.to }));

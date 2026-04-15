@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mesh. — IDE</title>
+<style>
+  #page-transition-overlay {
+    position: fixed; inset: 0; background: #fff; z-index: 9999; pointer-events: none;
+    animation: page-fade-in 700ms ease-in-out 80ms both;
+  }
+  @keyframes page-fade-in { from { opacity: 1; } to { opacity: 0; } }
+</style>
 <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
 <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
 <script>
@@ -21,7 +28,7 @@
 <link rel="stylesheet" href="/assets/app-workspace.css?v=20260408b">
 <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js" defer></script>
-<script src="/assets/app-graph.js?v=20260408b" defer></script>
+<script src="/assets/app-graph.js?v=20260415f" defer></script>
 <style>
 /* ── Antigravity-style additions ── */
 .tb-text-btn{font-size:.75rem;color:var(--tx3);padding:3px 10px;border-radius:3px;white-space:nowrap;-webkit-app-region:no-drag}
@@ -102,6 +109,7 @@
 </style>
 </head>
 <body>
+<div id="page-transition-overlay"></div>
 
 <!-- AUTH -->
 <div id="authOverlay" class="auth-overlay is-visible">
@@ -301,7 +309,7 @@
         <div class="voice-surface-actions voice-surface-actions-center">
           <button class="fv-btn" id="btnVoiceSurfaceStart">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="1" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            <span>Jetzt starten</span>
+            <span>Start Session</span>
           </button>
         </div>
       </div>
@@ -322,7 +330,7 @@
           <div class="voice-surface-viewer-head">
             <div>
               <div class="voice-surface-kicker">Viewer</div>
-              <div class="voice-surface-live-title" id="voiceSurfaceModel">GPT 5.4 Mini</div>
+              <div class="voice-surface-live-title" id="voiceSurfaceModel">Claude Sonnet 4.6</div>
             </div>
             <button class="fv-btn" id="btnVoiceSurfaceChat">
               <span>Open Editor Chat</span>
@@ -391,14 +399,42 @@
   <div class="chat-in-area">
     <div class="chat-in-row">
       <button class="ci-btn" id="btnAttach" title="Attach file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
-      <select id="chatMode" class="ci-sel"><option value="agent">Agent</option><option value="plan">Planning</option><option value="ask">Ask permission</option></select>
-      <select id="chatModel" class="ci-sel">
-        <option value="gpt-5.4-mini" selected>GPT 5.4 Mini</option>
+
+      <!-- Hidden selects keep all existing JS working unchanged -->
+      <select id="chatMode" style="display:none"><option value="agent">Agent</option><option value="plan">Planning</option><option value="ask">Ask permission</option></select>
+      <select id="chatModel" style="display:none">
+        <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6</option>
         <option value="claude-opus-4-6-v1">Claude Opus 4.6</option>
         <option value="claude-opus-4-5">Claude Opus 4.5</option>
-        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
         <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
       </select>
+
+      <!-- Custom mode pill -->
+      <div class="ci-drop" id="modeDropWrap">
+        <button class="ci-pill" id="modeDropBtn" aria-haspopup="listbox" aria-expanded="false">
+          <span id="modeDropLabel">Agent</span>
+          <svg class="ci-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <ul class="ci-menu" role="listbox" id="modeDropMenu">
+          <li class="ci-opt ci-opt-active" role="option" data-val="agent">Agent</li>
+          <li class="ci-opt" role="option" data-val="plan">Planning</li>
+          <li class="ci-opt" role="option" data-val="ask">Ask permission</li>
+        </ul>
+      </div>
+
+      <!-- Custom model pill -->
+      <div class="ci-drop" id="modelDropWrap">
+        <button class="ci-pill" id="modelDropBtn" aria-haspopup="listbox" aria-expanded="false">
+          <span id="modelDropLabel">Claude Sonnet 4.6</span>
+          <svg class="ci-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <ul class="ci-menu" role="listbox" id="modelDropMenu">
+          <li class="ci-opt ci-opt-active" role="option" data-val="claude-sonnet-4-6">Claude Sonnet 4.6</li>
+          <li class="ci-opt" role="option" data-val="claude-opus-4-6-v1">Claude Opus 4.6</li>
+          <li class="ci-opt" role="option" data-val="claude-opus-4-5">Claude Opus 4.5</li>
+          <li class="ci-opt" role="option" data-val="claude-haiku-4-5">Claude Haiku 4.5</li>
+        </ul>
+      </div>
     </div>
     <div class="chat-in-box"><textarea id="chatIn" placeholder="Ask Mesh AI… (Enter to send)" rows="1"></textarea><button class="chat-send" id="btnSend" title="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div>
   </div>
@@ -417,12 +453,6 @@
     </div>
   </div>
   <div class="stb-r">
-    <span class="stb"><span class="stb-dot stb-dot-red"></span>Claude: 0%</span>
-    <span class="stb">|</span>
-    <span class="stb"><span class="stb-dot stb-dot-grn"></span>GPT 5.4: 100%</span>
-    <span class="stb">|</span>
-    <span class="stb"><span class="stb-dot stb-dot-red"></span>Gemini: 0%</span>
-    <span class="stb" style="color:var(--bd)">|</span>
     <span class="stb" id="stPos">Ln 1, Col 1</span>
     <span class="stb">Spaces: 2</span>
     <span class="stb">UTF-8</span>
@@ -452,7 +482,7 @@
   window.dispatchEvent(new CustomEvent('xterm-ready'));
 </script>
 <script src="/assets/features/_bus.js" defer></script>
-<script src="/assets/app-workspace.js?v=20260408b" defer></script>
+<script src="/assets/app-workspace.js?v=20260415f" defer></script>
 <script src="/assets/features/streaming-chat.js" defer></script>
 <script src="/assets/features/at-mentions.js" defer></script>
 <script src="/assets/features/agentic-edits.js" defer></script>
@@ -512,6 +542,134 @@
   if (btnCR) btnCR.addEventListener('click', cloneRepo);
   var btnCR2 = document.getElementById('btnCloneSidebar');
   if (btnCR2) btnCR2.addEventListener('click', cloneRepo);
+})();
+</script>
+<script>
+(function () {
+  function initCiDrop(wrapId, btnId, menuId, hiddenSelId, labelId) {
+    var wrap = document.getElementById(wrapId);
+    var btn  = document.getElementById(btnId);
+    var menu = document.getElementById(menuId);
+    var sel  = document.getElementById(hiddenSelId);
+    var lbl  = document.getElementById(labelId);
+    if (!wrap || !btn || !menu || !sel || !lbl) return;
+
+    function open() {
+      menu.classList.add('is-open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+    function close() {
+      menu.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      menu.classList.contains('is-open') ? close() : open();
+    });
+
+    menu.addEventListener('click', function (e) {
+      var opt = e.target.closest('.ci-opt');
+      if (!opt) return;
+      var val = opt.dataset.val;
+      // Update label and hidden select
+      lbl.textContent = opt.textContent;
+      sel.value = val;
+      // Fire change event so existing listeners react
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      // Update active highlight
+      menu.querySelectorAll('.ci-opt').forEach(function (o) {
+        o.classList.toggle('ci-opt-active', o.dataset.val === val);
+      });
+      close();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target)) close();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') close();
+    });
+
+    // Keep custom UI in sync if hidden select is changed programmatically
+    sel.addEventListener('change', function () {
+      var activeOpt = menu.querySelector('.ci-opt[data-val="' + sel.value + '"]');
+      if (activeOpt) {
+        lbl.textContent = activeOpt.textContent;
+        menu.querySelectorAll('.ci-opt').forEach(function (o) {
+          o.classList.toggle('ci-opt-active', o.dataset.val === sel.value);
+        });
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    initCiDrop('modeDropWrap',  'modeDropBtn',  'modeDropMenu',  'chatMode',  'modeDropLabel');
+    initCiDrop('modelDropWrap', 'modelDropBtn', 'modelDropMenu', 'chatModel', 'modelDropLabel');
+  });
+})();
+</script>
+<script src="/node_modules/animejs/dist/bundles/anime.umd.min.js"></script>
+<script>
+(function () {
+  if (!window.anime) return;
+
+  // ── Welcome screen: wait for app-workspace.js to show #welcomeScr, then stagger ──
+  // app-workspace.js is deferred — it hides then re-shows #welcomeScr via style.display.
+  // We watch the attribute change and animate once it becomes visible.
+  var scr = document.getElementById('welcomeScr');
+  if (scr) {
+    var inner = scr.querySelector('.welcome-in');
+    if (inner) {
+      var welcomed = false;
+      function runWelcomeAnim() {
+        if (welcomed) return;
+        welcomed = true;
+        var items = Array.from(inner.children);
+        // anime.js v4: animate(targets, params) — no longer a callable function
+        window.anime.animate(items, {
+          opacity: [0, 1],
+          translateY: [20, 0],
+          scale: [0.95, 1],
+          delay: window.anime.stagger(65, { start: 40 }),
+          duration: 500,
+          ease: 'spring(1, 85, 14, 0)',
+        });
+      }
+
+      var obs = new MutationObserver(function () {
+        if (scr.style.display && scr.style.display !== 'none') {
+          obs.disconnect();
+          // one rAF to let the browser paint display:grid before animating
+          requestAnimationFrame(runWelcomeAnim);
+        }
+      });
+      obs.observe(scr, { attributes: true, attributeFilter: ['style'] });
+    }
+  }
+
+  // ── Chat message pop-in ──
+  var chatMsgs = document.getElementById('chatMsgs');
+  if (chatMsgs) {
+    new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType !== 1 || !node.classList.contains('msg') || node.id === 'typEl') return;
+          // anime.js v4: animate(targets, params)
+          window.anime.animate(node, {
+            opacity: [0, 1],
+            translateY: [10, 0],
+            scale: [0.97, 1],
+            duration: 280,
+            ease: 'spring(1, 100, 16, 0)',
+          });
+        });
+      });
+    }).observe(chatMsgs, { childList: true });
+  }
 })();
 </script>
 </body>

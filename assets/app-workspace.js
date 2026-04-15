@@ -978,9 +978,12 @@ function compressionTooltip(path, isDir){
 }
 
 function renderTree(){
-  const c=$('#fileTree');if(!c)return;c.innerHTML='';
-  if(!S.tree.length){const e=$('#emptyExp');if(e){e.style.display='flex';c.appendChild(e);}return;}
-  const e=$('#emptyExp');if(e)e.style.display='none';
+  const c=$('#fileTree');if(!c)return;
+  // Detach emptyExp before clearing innerHTML so it survives the DOM wipe
+  const e=$('#emptyExp');if(e)e.remove();
+  c.textContent='';
+  if(!S.tree.length){if(e){e.style.display='flex';c.appendChild(e);}return;}
+  if(e)e.style.display='none';
   buildTree(S.tree,c,0);
 }
 
