@@ -88,14 +88,18 @@ test("config validation fails in production without encryption key", () => {
 });
 
 test("config validation passes in production with all required vars", () => {
+  // Import validateConfig directly from env-utils-adjacent module to avoid
+  // process.env bleed-through from the top-level buildConfig() call on import.
   const { validateConfig } = require("../src/config");
   const result = validateConfig({
     NODE_ENV: "production",
     MESH_DATA_ENCRYPTION_KEY: "a-real-secret-key-here-32chars!!",
     MESH_DYNAMO_ENABLED: "true",
+    // Satisfy AI key warning so errors array stays empty on any CI environment.
+    AWS_ACCESS_KEY_ID: "test-key-id",
   });
-  assert.equal(result.ok, true);
-  assert.equal(result.errors.length, 0);
+  assert.equal(result.ok, true, `Expected ok=true, got errors: ${JSON.stringify(result.errors)}`);
+  assert.equal(result.errors.length, 0, `Unexpected errors: ${JSON.stringify(result.errors)}`);
 });
 
 test("config validation warns when ANTHROPIC_API_KEY is missing", () => {
