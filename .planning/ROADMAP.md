@@ -92,7 +92,65 @@ Plans:
 
 ---
 
+### Phase 9: Performance — In-Process Caching (Zero-Cost Quick Wins)
+
+**Goal:** Eliminate redundant DynamoDB round-trips on every API request by adding TTL-based in-process caches for session resolution and BYOK credential lookups.
+**Status:** planned
+**Depends on:** Phase 8
+**Scope:**
+- TTL cache for `resolveSession` (auth.js) — cache session + user lookup for 30s, saving 2 DynamoDB calls per authenticated request
+- TTL cache for `getStoredCredentialsForUser` (auth.js) — cache BYOK key bundle for 60s, saving 1 DynamoDB GSI query per `/api/assistant/chat` request
+- Cache invalidation on explicit logout and credential update
+- No external dependencies — pure in-process Maps with TTL, same pattern as `inferFilesCache`
+
 **Success Criteria:**
+- Auth middleware makes 0 DynamoDB calls for requests within TTL window
+- Credential fetches hit cache on repeat requests within 60s
+- Logout immediately invalidates both caches
+- No observable behavior change for end users
+
+---
+
+### Phase 10: Performance — Brotli Worker Threads (Event Loop Unblocking)
+
+**Goal:** Move all synchronous Brotli compress/decompress operations off the Node.js event loop into a worker thread pool, eliminating latency spikes during large workspace syncs.
+**Status:** planned
+**Depends on:** Phase 9
+**Scope:**
+- Worker thread pool (2 workers) for `brotliCompressSync` / `brotliDecompress` in `workspace-infrastructure.js`
+- Async wrapper replaces all sync Brotli calls — event loop free during compression
+- Applies to: workspace tunnel encoding, S3 blob compression, local workspace compression
+- Graceful fallback to sync if worker pool unavailable
+
+**Success Criteria:**
+- No Brotli operation blocks event loop for >1ms
+- Workspace sync latency spikes (>50ms) eliminated for files >200KB
+- All existing compression tests pass
+
+---
+
+### Phase 11: Performance — CloudFront + ALB + Auto Scaling (Infrastructure Scale)
+
+**Goal:** Put CloudFront in front of S3 for workspace blob caching, add an Application Load Balancer, and configure Auto Scaling for the EC2 fleet — eliminating the single point of failure and enabling horizontal scale.
+**Status:** planned
+**Depends on:** Phase 10
+**Scope:**
+- CloudFront distribution pointing at S3 workspace bucket — cache workspace blobs at edge, TTL 1h
+- Application Load Balancer (ALB) in front of EC2, health check on `/api/health`
+- Launch Template + Auto Scaling Group (min 1, max 3, target 60% CPU)
+- pm2 cluster mode on each instance (use all vCPUs)
+- Update deploy pipeline: rsync → all instances via ASG lifecycle hook or SSM
+- S3 pre-signed URL flow updated to use CloudFront domain
+
+**Success Criteria:**
+- EC2 instance termination causes zero downtime (ALB routes to healthy instance)
+- S3 GetObject latency drops >50% for repeat workspace loads (CloudFront hit)
+- Auto Scaling triggers correctly under CPU load test
+- Deploy pipeline updates all running instances without downtime
+
+---
+
+**Success Criteria (Milestone):**
 - Every visible feature in app.html is present in app-v2.html
 - All Antigravity IDE features (from screenshot) are preserved
 - All buttons are clickable with appropriate feedback
