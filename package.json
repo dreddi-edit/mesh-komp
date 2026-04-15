@@ -6,6 +6,7 @@
     "start": "node --env-file .env src/server.js",
     "monitor": "node ccmon.js",
     "bench:compression": "node benchmarks/compression-benchmark.js",
+    "bench:compression:save": "node benchmarks/compression-benchmark.js --save",
     "test": "node --test --test-force-exit --test-timeout=120000",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -22,8 +23,14 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1030.0",
-    "@azure/cosmos": "^4.9.2",
-    "@azure/storage-blob": "^12.31.0",
+    "@aws-sdk/client-cloudwatch": "^3.1030.0",
+    "@aws-sdk/client-dynamodb": "^3.1030.0",
+    "@aws-sdk/client-polly": "^3.1030.0",
+    "@aws-sdk/client-s3": "^3.1030.0",
+    "@aws-sdk/client-transcribe-streaming": "^3.1030.0",
+    "@aws-sdk/lib-dynamodb": "^3.1030.0",
+    "@aws-sdk/s3-request-presigner": "^3.1030.0",
+    "animejs": "^4.3.6",
     "better-sqlite3": "^11.10.0",
     "express": "^5.2.1",
     "fast-xml-parser": "^5.5.10",
@@ -35,6 +42,7 @@
     "neo-blessed": "^0.2.0",
     "node-pty": "^1.1.0",
     "node-sql-parser": "^5.4.0",
+    "pptxgenjs": "^4.0.1",
     "terser": "^5.46.1",
     "toml": "^4.1.1",
     "tree-sitter": "^0.21.1",
@@ -49,6 +57,7 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
-    "eslint": "^8.57.0"
+    "eslint": "^8.57.0",
+    "puppeteer": "^24.41.0"
   }
 }

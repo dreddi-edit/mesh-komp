@@ -92,8 +92,7 @@ test("config validation passes in production with all required vars", () => {
   const result = validateConfig({
     NODE_ENV: "production",
     MESH_DATA_ENCRYPTION_KEY: "a-real-secret-key-here-32chars!!",
-    MESH_COSMOS_ENDPOINT: "https://example.com",
-    MESH_COSMOS_KEY: "key",
+    MESH_DYNAMO_ENABLED: "true",
   });
   assert.equal(result.ok, true);
   assert.equal(result.errors.length, 0);

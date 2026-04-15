@@ -38,8 +38,8 @@ const STATIC_MODELS = {
     "claude-sonnet-4-6",
     "claude-haiku-4-5"
   ],
-  openai: ["gpt-5.4-mini"],
-  google: ["gemini-3-flash"],
+  openai: ["gpt-4o-mini", "gpt-4o"],
+  google: ["gemini-2.0-flash", "gemini-1.5-pro"],
 };
 
 const MESH_DEFAULT_MODEL = config.MESH_DEFAULT_MODEL;
@@ -55,11 +55,21 @@ const MESH_SYSTEM_PROMPT = [
   "You are powered by state-of-the-art AI models and run on Mesh's cloud infrastructure.",
 ].join(" ");
 
-/** Inject system prompt at the beginning of messages if not already present */
-function injectMeshSystemPrompt(messages) {
+/**
+ * Inject the Mesh system prompt at the beginning of the messages array.
+ * @param {Array} messages - Normalized chat messages.
+ * @param {object} [options]
+ * @param {string} [options.codecContext] - Optional codec context document to append to the
+ *   system prompt. Placing it here (vs. prepending to the first user message) keeps the
+ *   message array prefix stable across all turns, enabling Bedrock/Anthropic KV-cache reuse.
+ */
+function injectMeshSystemPrompt(messages, options = {}) {
   if (!Array.isArray(messages) || messages.length === 0) return messages;
   if (messages[0]?.role === "system") return messages;
-  return [{ role: "system", content: MESH_SYSTEM_PROMPT }, ...messages];
+  const systemContent = options.codecContext
+    ? `${MESH_SYSTEM_PROMPT}\n\n${options.codecContext}`
+    : MESH_SYSTEM_PROMPT;
+  return [{ role: "system", content: systemContent }, ...messages];
 }
 
 const ALL_STATIC_MODELS = new Set([
@@ -868,10 +878,7 @@ async function runModelChat({ model, messages, credentials = {} }) {
 
   if (resolved.provider === "openai") {
     const userApiKey = String(credentials?.openai?.apiKey || config.OPENAI_API_KEY || "").trim();
-    const azureEndpoint = String(config.AZURE_OPENAI_ENDPOINT || "").trim().replace(/\/+$/, "");
-    const azureKey = String(config.AZURE_OPENAI_KEY || "").trim();
 
-    // If user has their own key, use direct OpenAI
     if (userApiKey) {
       const openAiResult = await callOpenAICompatibleChat({
         apiKey: userApiKey,
@@ -888,63 +895,6 @@ async function runModelChat({ model, messages, credentials = {} }) {
         content: openAiResult.content,
         usage: openAiResult.usage,
         providerRequestId: openAiResult.requestId,
-      };
-    }
-
-    // Azure OpenAI fallback — platform-provided key (never exposed to frontend)
-    if (azureEndpoint && azureKey) {
-      const deploymentName = resolved.model;
-      const azureUrl = `${azureEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-12-01-preview`;
-      const body = buildOpenAIChatCompletionBody({
-        model: resolved.model,
-        messages: injectMeshSystemPrompt(messages),
-        maxTokens: 4096,
-        tokenField: "max_tokens",
-        includeModel: false,
-      });
-
-      const azureResponse = await fetch(azureUrl, {
-        method: "POST",
-        headers: {
-          "api-key": azureKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-
-      const azurePayload = await readJsonResponse(azureResponse);
-      if (!azureResponse.ok) {
-        // Try with max_completion_tokens if max_tokens fails
-        if (providerWantsMaxCompletionTokens(parseProviderError(azurePayload, ""))) {
-          const retryBody = buildOpenAIChatCompletionBody({
-            model: resolved.model,
-            messages: injectMeshSystemPrompt(messages),
-            maxTokens: 4096,
-            tokenField: "max_completion_tokens",
-            includeModel: false,
-          });
-          const retryResp = await fetch(azureUrl, {
-            method: "POST",
-            headers: { "api-key": azureKey, "Content-Type": "application/json" },
-            body: JSON.stringify(retryBody),
-          });
-          const retryPayload = await readJsonResponse(retryResp);
-          if (retryResp.ok) {
-            const content = extractAssistantTextFromChatPayload(retryPayload);
-            if (content) return { provider: "azure-openai", model: resolved.model, content, usage: normalizeProviderUsage(retryPayload?.usage) };
-          }
-        }
-        throw new Error(parseProviderError(azurePayload, `Azure OpenAI request failed (${azureResponse.status})`));
-      }
-
-      const content = extractAssistantTextFromChatPayload(azurePayload);
-      if (!content) throw new Error("Azure OpenAI returned no content.");
-      return {
-        provider: "azure-openai",
-        model: resolved.model,
-        content,
-        usage: normalizeProviderUsage(azurePayload?.usage),
-        providerRequestId: String(azureResponse.headers.get("x-request-id") || "").trim(),
       };
     }
 

@@ -48,7 +48,7 @@ async function enrichLocalWorkspaceRecords(ctx = {}) {
       let content = "";
       let truncated = false;
       let originalSize = Number(meta?.originalSize || 0);
-      if (meta?.storage?.provider === "azure-blob") {
+      if (meta?.storage?.provider === "s3") {
         const blob = await readWorkspaceBlobText(meta.storage, originalSize);
         content = blob.content;
         truncated = Boolean(blob.truncated);
@@ -61,10 +61,10 @@ async function enrichLocalWorkspaceRecords(ctx = {}) {
         legacyBrotliQuality: WORKSPACE_BROTLI_QUALITY,
         initialBrotliQuality: WORKSPACE_INITIAL_BROTLI_QUALITY,
         originalSizeOverride: originalSize,
-        storage: meta?.storage?.provider === "azure-blob" ? meta.storage : undefined,
+        storage: meta?.storage?.provider === "s3" ? meta.storage : undefined,
         truncated,
-        persistRawContent: meta?.storage?.provider === "azure-blob" ? false : undefined,
-        persistTransportChunks: meta?.storage?.provider === "azure-blob" ? false : undefined,
+        persistRawContent: meta?.storage?.provider === "s3" ? false : undefined,
+        persistTransportChunks: meta?.storage?.provider === "s3" ? false : undefined,
         workspaceFilePaths,
         recordMode: "full",
       });
@@ -254,7 +254,7 @@ async function localWorkspaceSelect(data) {
       ...(storage ? {
         storage,
         rawStorage: {
-          encoding: "external-azure-blob",
+          encoding: "external-s3",
           rawBytes: normalizedSize,
         },
       } : {}),
@@ -498,7 +498,7 @@ async function localWorkspaceFile(pathInput, viewMode = "original", viewOptions 
       tier: viewOptions.tier || viewOptions.capsuleTier || viewOptions.variant || "",
       query: viewOptions.query || viewOptions.focus || "",
       focus: viewOptions.focus || viewOptions.query || "",
-      readUrl: meta?.storage?.provider === "azure-blob" ? buildWorkspaceBlobReadUrl(meta.storage) : "",
+      readUrl: "",
       legacyBrotliQuality: WORKSPACE_BROTLI_QUALITY,
     });
     await syncLocalUploadWorkspaceSummary(workspaceId, {
@@ -524,7 +524,7 @@ async function localWorkspaceFile(pathInput, viewMode = "original", viewOptions 
     tier: viewOptions.tier || viewOptions.capsuleTier || viewOptions.variant || "",
     query: viewOptions.query || viewOptions.focus || "",
     focus: viewOptions.focus || viewOptions.query || "",
-    readUrl: meta?.storage?.provider === "azure-blob" ? buildWorkspaceBlobReadUrl(meta.storage) : "",
+    readUrl: "",
     legacyBrotliQuality: WORKSPACE_BROTLI_QUALITY,
   });
   return {
@@ -546,7 +546,7 @@ async function localWorkspaceSave(pathInput, nextContent) {
   if (workspaceMetadataStore.enabled && isUploadWorkspaceState()) {
     const workspaceId = String(localAssistantWorkspace.workspaceId || "").trim();
     const existing = await workspaceMetadataStore.getWorkspaceFile(workspaceId, requested);
-    const packed = existing?.storage?.provider === "azure-blob"
+    const packed = existing?.storage?.provider === "s3"
       ? await packLocalBlobBackedWorkspaceRecord(requested, normalized, {
         storage: existing.storage,
         writeToBlob: true,
@@ -582,7 +582,7 @@ async function localWorkspaceSave(pathInput, nextContent) {
   }
 
   const existing = localAssistantWorkspace.files.get(requested);
-  const packed = existing?.storage?.provider === "azure-blob"
+  const packed = existing?.storage?.provider === "s3"
     ? await packLocalBlobBackedWorkspaceRecord(requested, normalized, {
       storage: existing.storage,
       writeToBlob: true,
@@ -643,7 +643,7 @@ async function localWorkspaceCreate(pathInput, nextContent, options = {}) {
     if (existing && !overwrite) {
       return { ok: false, error: "File already exists" };
     }
-    const packed = existing?.storage?.provider === "azure-blob"
+    const packed = existing?.storage?.provider === "s3"
       ? await packLocalBlobBackedWorkspaceRecord(requested, normalized, {
         storage: existing.storage,
         writeToBlob: true,
@@ -681,7 +681,7 @@ async function localWorkspaceCreate(pathInput, nextContent, options = {}) {
   }
 
   const existing = localAssistantWorkspace.files.get(requested);
-  const packed = existing?.storage?.provider === "azure-blob"
+  const packed = existing?.storage?.provider === "s3"
     ? await packLocalBlobBackedWorkspaceRecord(requested, normalized, {
       storage: existing.storage,
       writeToBlob: true,
@@ -947,7 +947,7 @@ async function localWorkspaceRename(fromPathInput, toPathInput, options = {}) {
     if (targetDoc && !overwrite) return { ok: false, error: "Target file already exists." };
     const targetStorage = localWorkspaceUploadBlobStorageForPath(toPath);
     if (!targetStorage) return { ok: false, error: "Target blob path is invalid." };
-    if (targetDoc?.storage?.provider === "azure-blob" && overwrite) {
+    if (targetDoc?.storage?.provider === "s3" && overwrite) {
       await deleteWorkspaceBlob(targetDoc.storage);
     }
     await copyWorkspaceBlob(sourceDoc.storage, targetStorage);
@@ -1005,14 +1005,14 @@ async function localWorkspaceRename(fromPathInput, toPathInput, options = {}) {
     }
     await fs.promises.mkdir(path.dirname(targetInfo.absolutePath), { recursive: true });
     await fs.promises.rename(sourceInfo.absolutePath, targetInfo.absolutePath);
-  } else if (source?.storage?.provider === "azure-blob") {
+  } else if (source?.storage?.provider === "s3") {
     const targetStorage = localWorkspaceUploadBlobStorageForPath(toPath);
     if (!targetStorage) {
       return { ok: false, error: "Target blob path is invalid." };
     }
     if (localAssistantWorkspace.files.has(toPath) && overwrite) {
       const existingTarget = localAssistantWorkspace.files.get(toPath);
-      if (existingTarget?.storage?.provider === "azure-blob") {
+      if (existingTarget?.storage?.provider === "s3") {
         await deleteWorkspaceBlob(existingTarget.storage);
       }
     }
@@ -1048,7 +1048,7 @@ async function localWorkspaceDelete(pathInput) {
     const workspaceId = String(localAssistantWorkspace.workspaceId || "").trim();
     const existing = await workspaceMetadataStore.getWorkspaceFile(workspaceId, requested);
     if (!existing) return { ok: false, error: "File not found." };
-    if (existing.storage?.provider === "azure-blob") {
+    if (existing.storage?.provider === "s3") {
       await deleteWorkspaceBlob(existing.storage);
     }
     await workspaceMetadataStore.deleteWorkspaceFileRecord(workspaceId, requested, {
@@ -1078,7 +1078,7 @@ async function localWorkspaceDelete(pathInput) {
     await fs.promises.rm(absolutePath, { force: false });
   } else {
     const existing = localAssistantWorkspace.files.get(requested);
-    if (existing?.storage?.provider === "azure-blob") {
+    if (existing?.storage?.provider === "s3") {
       await deleteWorkspaceBlob(existing.storage);
     }
   }
@@ -1172,9 +1172,9 @@ async function localGitStatus() {
 }
 
 async function ingestWorkspaceChunkFromOffload(payload = {}, context = {}) {
-  const azureBlob = workspaceOffloadConfig.azureBlob || {};
-  if (!azureBlob.enabled) {
-    throw new Error("Azure workspace offload is not configured on this gateway.");
+  const s3Config = workspaceOffloadConfig.s3 || {};
+  if (!s3Config.enabled) {
+    throw new Error("S3 workspace offload is not configured on this gateway.");
   }
 
   const folderName = String(payload?.folderName || "workspace").trim() || "workspace";
@@ -1199,7 +1199,7 @@ async function ingestWorkspaceChunkFromOffload(payload = {}, context = {}) {
     }
 
     if (!files.length) {
-      throw new Error("Azure offload manifest has no usable files.");
+      throw new Error("S3 offload manifest has no usable files.");
     }
 
     const selectPayload = {
@@ -1216,10 +1216,7 @@ async function ingestWorkspaceChunkFromOffload(payload = {}, context = {}) {
         path: file.path,
         sizeBytes: file.sizeBytes,
         lastModified: file.lastModified,
-        storage: {
-          ...file.storage,
-          readUrl: buildWorkspaceBlobReadUrl(file.storage),
-        },
+        storage: file.storage,
       })),
       append,
       sync: payload?.sync === true,
@@ -1252,29 +1249,17 @@ async function ingestWorkspaceChunkFromOffload(payload = {}, context = {}) {
     throw new Error("blobPath is required.");
   }
 
-  const blobUrl = buildAzureBlobAbsoluteUrl(
-    azureBlob.baseUrl,
-    azureBlob.container,
-    blobPath,
-    azureBlob.ingestSasToken,
-  );
-
-  const response = await fetch(blobUrl, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Azure offload download failed (${response.status}).`);
+  // Fetch chunk manifest from S3 via SDK
+  const chunkText = await readWorkspaceBlobText({ provider: "s3", blobPath });
+  if (!chunkText.content) {
+    throw new Error(`S3 offload download failed: empty response for key ${blobPath}.`);
   }
 
   let chunkPayload;
   try {
-    chunkPayload = await response.json();
+    chunkPayload = JSON.parse(chunkText.content);
   } catch {
-    throw new Error("Azure offload payload is not valid JSON.");
+    throw new Error("S3 offload payload is not valid JSON.");
   }
 
   const candidateFiles = Array.isArray(chunkPayload?.files) ? chunkPayload.files : [];
@@ -1292,7 +1277,7 @@ async function ingestWorkspaceChunkFromOffload(payload = {}, context = {}) {
   }
 
   if (!files.length) {
-    throw new Error("Azure offload chunk has no usable files.");
+    throw new Error("S3 offload chunk has no usable files.");
   }
 
   const selectPayload = {
@@ -1564,9 +1549,33 @@ function rankWorkspacePathsForQuery(lastUserMessage, candidatePaths = [], maxMat
     .map((item) => item.path);
 }
 
+/** Short-lived LRU cache for `inferReferencedFilesFromWorkspace`.
+ * Key: lastUserMessage text (workspace file lists change slowly; 30 s TTL is safe).
+ * Cap: 50 entries — prevents unbounded growth under concurrent users.
+ */
+const INFER_FILES_CACHE_TTL_MS = 30_000;
+const INFER_FILES_CACHE_MAX = 50;
+const inferFilesCache = new Map();
+
+function pruneInferFilesCache() {
+  if (inferFilesCache.size <= INFER_FILES_CACHE_MAX) return;
+  // Evict oldest entries first.
+  const cutoff = Date.now() - INFER_FILES_CACHE_TTL_MS;
+  for (const [key, entry] of inferFilesCache) {
+    if (entry.ts < cutoff || inferFilesCache.size > INFER_FILES_CACHE_MAX) {
+      inferFilesCache.delete(key);
+    }
+  }
+}
+
 async function inferReferencedFilesFromWorkspace(lastUserMessage) {
   const text = String(lastUserMessage || "").trim();
   if (!text) return [];
+
+  const cached = inferFilesCache.get(text);
+  if (cached && Date.now() - cached.ts < INFER_FILES_CACHE_TTL_MS) {
+    return cached.result;
+  }
 
   const extensionHints = extractQueryExtensionHints(text);
   const maxMatches = selectReferenceMatchLimit(text, extensionHints);
@@ -1590,7 +1599,10 @@ async function inferReferencedFilesFromWorkspace(lastUserMessage) {
     if (filtered.length > 0) indexedPaths = filtered;
   }
 
-  return rankWorkspacePathsForQuery(text, indexedPaths, maxMatches);
+  const result = rankWorkspacePathsForQuery(text, indexedPaths, maxMatches);
+  inferFilesCache.set(text, { result, ts: Date.now() });
+  pruneInferFilesCache();
+  return result;
 }
 
 async function localAssistantReply(model, messages) {

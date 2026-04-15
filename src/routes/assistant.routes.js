@@ -60,7 +60,6 @@ function createAssistantRouter(core) {
     localGitStatus,
     openWorkspaceFileWithFallback,
     readLocalWorkspaceFileText,
-    buildWorkspaceBlobReadUrl,
     createAssistantTerminalSession,
     destroyAssistantTerminalSession,
     listAssistantTerminalOutput,
@@ -91,6 +90,7 @@ function createAssistantRouter(core) {
     encodeMeshModelCodec,
     decodeCompressedModelResponse,
     hasCodecContextMarker,
+    buildMeshCodecContextDocument,
     injectCodecContextIntoMessages,
     injectCompressedContextIntoMessages,
     isCodecContextInitializedForSession,
@@ -246,6 +246,7 @@ router.get("/api/assistant/workspace/graph", requireAuth, async (req, res) => {
     if (local?.ok && (local.hasWorkspace || (Array.isArray(local.nodes) && local.nodes.length > 0))) {
       res.json({
         ...local,
+        folderName: localAssistantWorkspace.folderName || null,
         warning: "Using active gateway workspace graph.",
       });
       return;
@@ -268,6 +269,7 @@ router.get("/api/assistant/workspace/graph", requireAuth, async (req, res) => {
       if (shouldPreferLocalFallback && local?.ok && (local.hasWorkspace || localNodeCount > 0)) {
         res.json({
           ...local,
+          folderName: localAssistantWorkspace.folderName || null,
           warning: "Using richer active local workspace graph.",
         });
         return;
@@ -279,6 +281,7 @@ router.get("/api/assistant/workspace/graph", requireAuth, async (req, res) => {
       const local = await localWorkspaceGraph(payload);
       res.json({
         ...local,
+        folderName: localAssistantWorkspace.folderName || null,
         warning: `Mesh worker unavailable: ${error.message || "offline"}`,
       });
     } catch {
@@ -301,12 +304,6 @@ router.get("/api/assistant/workspace/file", requireAuth, async (req, res) => {
       query: String(req.query.q || req.query.query || req.query.focus || ""),
       focus: String(req.query.focus || req.query.q || req.query.query || ""),
     });
-    if (String(view || "original").trim().toLowerCase() === "original" && result?.storage?.provider === "azure-blob" && !result?.storage?.readUrl) {
-      result.storage = {
-        ...result.storage,
-        readUrl: buildWorkspaceBlobReadUrl(result.storage),
-      };
-    }
     res.json(result);
   } catch (error) {
     const message = String(error?.message || "File open failed");
@@ -946,7 +943,7 @@ router.post("/api/assistant/git/delete-branch", requireAuth, async (req, res) =>
 
 router.post("/api/assistant/chat", requireAuth, async (req, res) => {
   const {
-    model = MESH_DEFAULT_MODEL || "gpt-5.4-mini",
+    model = MESH_DEFAULT_MODEL || "claude-sonnet-4-6",
     messages = [],
     activeFilePath = "",
     chatSessionId = "",
@@ -986,39 +983,46 @@ router.post("/api/assistant/chat", requireAuth, async (req, res) => {
   let skippedOversizeContextPaths = [];
   let contextBlock = "";
 
-  const capsuleContextResult = await loadCapsuleContextEntries(contextPaths, {
-    maxFiles: adaptiveContextBudget.maxFiles,
-    maxModelChars: adaptiveContextBudget.maxModelCompressedChars,
-    firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
-    query: lastUserMessage,
-    disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
-  });
+  // Capsule loading and span recovery are independent — run them in parallel.
+  // Span recovery uses contextPaths directly so it doesn't wait for capsule results.
+  const spanRecoveryPaths = contextPaths.slice(0, hasActiveFileFocus ? 2 : 1);
+  const [capsuleContextResult, recoveredSpanEntriesRaw] = await Promise.all([
+    loadCapsuleContextEntries(contextPaths, {
+      maxFiles: adaptiveContextBudget.maxFiles,
+      maxModelChars: adaptiveContextBudget.maxModelCompressedChars,
+      firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
+      query: lastUserMessage,
+      disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
+    }),
+    loadRecoveredSpanEntries(spanRecoveryPaths, lastUserMessage, {
+      maxFiles: hasActiveFileFocus ? 2 : 1,
+      maxSpansPerFile: hasActiveFileFocus ? 4 : 2,
+    }),
+  ]);
   capsuleContextEntries = capsuleContextResult.entries;
   skippedOversizeContextPaths = capsuleContextResult.skippedOversizePaths;
-  recoveredSpanEntries = await loadRecoveredSpanEntries(
-    capsuleContextEntries.map((entry) => entry.path),
-    lastUserMessage,
-    { maxFiles: hasActiveFileFocus ? 2 : 1, maxSpansPerFile: hasActiveFileFocus ? 4 : 2 },
-  );
+  recoveredSpanEntries = recoveredSpanEntriesRaw;
   contextBlock = buildCapsuleContextBlock(capsuleContextEntries, recoveredSpanEntries);
   const requiresCodecDictionary = capsuleContextEntries.some((entry) => Boolean(entry.usesCodecDictionary));
 
-  let modelMessages = injectCompressedContextIntoMessages(normalizedMessages, contextBlock);
+  const modelMessages = injectCompressedContextIntoMessages(normalizedMessages, contextBlock);
   let injectedCodecContext = false;
 
+  // Build codec context and embed it in the system prompt rather than prepending to user
+  // messages. This keeps the message array prefix stable across all turns, enabling
+  // Bedrock/Anthropic KV-cache reuse from turn 2 onward.
+  let codecContextDoc = "";
   if (!hasCodecContextMarker(modelMessages) && !isCodecContextInitializedForSession(normalizedSessionId, {
     requireDictionary: requiresCodecDictionary,
   })) {
-    modelMessages = injectCodecContextIntoMessages(modelMessages, {
-      dictionaryEnabled: requiresCodecDictionary,
-    });
+    codecContextDoc = buildMeshCodecContextDocument({ dictionaryEnabled: requiresCodecDictionary });
     injectedCodecContext = true;
   }
 
   try {
     let routed = await runModelChat({
       model,
-      messages: modelMessages,
+      messages: injectMeshSystemPrompt(modelMessages, { codecContext: codecContextDoc || undefined }),
       credentials: resolvedCredentials,
     });
 
@@ -1214,7 +1218,7 @@ router.post("/api/assistant/codec/decode", requireAuth, async (req, res) => {
 ───────────────────────────────────────── */
 router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
   const {
-    model = MESH_DEFAULT_MODEL || "gpt-5.4-mini",
+    model = MESH_DEFAULT_MODEL || "claude-sonnet-4-6",
     messages = [],
     activeFilePath = "",
     chatSessionId = "",
@@ -1260,33 +1264,40 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
       hasActiveFileFocus,
     });
 
-    const capsuleContextResult = await loadCapsuleContextEntries(contextPaths, {
-      maxFiles: adaptiveContextBudget.maxFiles,
-      maxModelChars: adaptiveContextBudget.maxModelCompressedChars,
-      firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
-      query: lastUserMessage,
-      disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
-    });
+    // Capsule loading and span recovery are independent — run them in parallel.
+    const spanRecoveryPaths = contextPaths.slice(0, hasActiveFileFocus ? 2 : 1);
+    const [capsuleContextResult, recoveredSpanEntries] = await Promise.all([
+      loadCapsuleContextEntries(contextPaths, {
+        maxFiles: adaptiveContextBudget.maxFiles,
+        maxModelChars: adaptiveContextBudget.maxModelCompressedChars,
+        firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
+        query: lastUserMessage,
+        disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
+      }),
+      loadRecoveredSpanEntries(spanRecoveryPaths, lastUserMessage, {
+        maxFiles: hasActiveFileFocus ? 2 : 1,
+        maxSpansPerFile: hasActiveFileFocus ? 4 : 2,
+      }),
+    ]);
     const capsuleContextEntries = capsuleContextResult.entries;
-    const recoveredSpanEntries = await loadRecoveredSpanEntries(
-      capsuleContextEntries.map((entry) => entry.path),
-      lastUserMessage,
-      { maxFiles: hasActiveFileFocus ? 2 : 1, maxSpansPerFile: hasActiveFileFocus ? 4 : 2 },
-    );
     const contextBlock = buildCapsuleContextBlock(capsuleContextEntries, recoveredSpanEntries);
     const requiresCodecDictionary = capsuleContextEntries.some((entry) => Boolean(entry.usesCodecDictionary));
 
     let modelMessages = injectCompressedContextIntoMessages(normalizedMessages, contextBlock);
     let injectedCodecContext = false;
 
+    // Build codec context and embed it in the system prompt rather than prepending to user
+    // messages. This keeps the message array prefix stable across all turns, enabling
+    // Bedrock/Anthropic KV-cache reuse from turn 2 onward.
+    let codecContextDoc = "";
     if (!hasCodecContextMarker(modelMessages) && !isCodecContextInitializedForSession(normalizedSessionId, {
       requireDictionary: requiresCodecDictionary,
     })) {
-      modelMessages = injectCodecContextIntoMessages(modelMessages, {
-        dictionaryEnabled: requiresCodecDictionary,
-      });
+      codecContextDoc = buildMeshCodecContextDocument({ dictionaryEnabled: requiresCodecDictionary });
       injectedCodecContext = true;
     }
+
+    const messagesWithSystem = injectMeshSystemPrompt(modelMessages, { codecContext: codecContextDoc || undefined });
 
     sendSSE("context", {
       referencedFiles: capsuleContextEntries.map((e) => e.path),
@@ -1307,7 +1318,7 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
         /* Bedrock SDK direct streaming — no proxy, native AWS SDK */
         await streamBedrockDirect({
           model: resolved.model,
-          messages: injectMeshSystemPrompt(modelMessages),
+          messages: messagesWithSystem,
           res, sendSSE,
           injectedCodecContext,
           normalizedSessionId,
@@ -1320,8 +1331,8 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
         return;
       } else if (apiKey) {
         /* Anthropic native streaming */
-        const anthropicSystem = modelMessages.filter(m => m.role === "system").map(m => m.content).join("\n");
-        const anthropicMsgs = toAnthropicMessages(modelMessages);
+        const anthropicSystem = messagesWithSystem.filter(m => m.role === "system").map(m => m.content).join("\n");
+        const anthropicMsgs = toAnthropicMessages(messagesWithSystem);
         const maxTokens = Math.max(64, Number(resolvedCredentials?.anthropic?.maxTokens || 1024));
 
         const streamBody = {
@@ -1395,30 +1406,14 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
       }
     } else if (resolved.provider === "openai") {
       const userApiKey = String(resolvedCredentials?.openai?.apiKey || config.OPENAI_API_KEY || "").trim();
-      const azureEndpoint = config.AZURE_OPENAI_ENDPOINT;
-      const azureKey = config.AZURE_OPENAI_KEY;
 
       if (userApiKey) {
         await streamOpenAICompatible({
           apiKey: userApiKey,
           model: resolved.model,
-          messages: injectMeshSystemPrompt(modelMessages),
+          messages: messagesWithSystem,
           baseUrl: "https://api.openai.com/v1",
           orgId: String(resolvedCredentials?.openai?.orgId || "").trim(),
-          res, sendSSE,
-          injectedCodecContext, normalizedSessionId, requiresCodecDictionary,
-          capsuleContextEntries, recoveredSpanEntries, adaptiveContextBudget,
-          referencedFiles,
-        });
-      } else if (azureEndpoint && azureKey) {
-        const deploymentName = resolved.model;
-        const url = `${azureEndpoint}/openai/deployments/${deploymentName}/chat/completions?api-version=2024-12-01-preview`;
-        await streamOpenAICompatible({
-          apiKey: azureKey,
-          model: resolved.model,
-          messages: injectMeshSystemPrompt(modelMessages),
-          baseUrl: url,
-          isAzure: true,
           res, sendSSE,
           injectedCodecContext, normalizedSessionId, requiresCodecDictionary,
           capsuleContextEntries, recoveredSpanEntries, adaptiveContextBudget,
@@ -1429,7 +1424,7 @@ router.post("/api/assistant/chat/stream", requireAuth, async (req, res) => {
       }
     } else {
       /* Fallback: non-streaming for unsupported providers */
-      const routed = await runModelChat({ model, messages: modelMessages, credentials: resolvedCredentials });
+      const routed = await runModelChat({ model, messages: messagesWithSystem, credentials: resolvedCredentials });
       const decoded = decodeCompressedModelResponse(String(routed.content || ""), { allowLegacy: true, allowUnframedRot47: true });
       const polished = polishDecompressedAssistantText(decoded.decoded);
       sendSSE("token", { text: polished });
@@ -1608,7 +1603,7 @@ async function finalizeStreamedResponse({ fullContent, injectedCodecContext, nor
 ───────────────────────────────────────── */
 router.post("/api/inline-complete", requireAuth, async (req, res) => {
   const {
-    model = MESH_DEFAULT_MODEL || "gpt-5.4-mini",
+    model = MESH_DEFAULT_MODEL || "claude-sonnet-4-6",
     prefix = "",
     suffix = "",
     filePath = "",

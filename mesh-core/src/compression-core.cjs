@@ -1873,11 +1873,16 @@ function buildInitialTransportEnvelope(pathValue, rawStorage, spanMap = {}, opti
   };
 }
 
-function encodeRawStorage(rawText) {
+function encodeRawStorage(rawText, options = {}) {
   const buffer = Buffer.from(String(rawText || ""), "utf8");
+  // quality 4 for initial records (~90% ratio, ~15% encode time vs quality 9);
+  // quality 9 for full records where storage density matters more.
+  const quality = Number(options.quality) >= 1 && Number(options.quality) <= 11
+    ? Number(options.quality)
+    : 9;
   const compressed = zlib.brotliCompressSync(buffer, {
     params: {
-      [zlib.constants.BROTLI_PARAM_QUALITY]: 9,
+      [zlib.constants.BROTLI_PARAM_QUALITY]: quality,
     },
   });
   return {
@@ -1966,7 +1971,7 @@ async function buildWorkspaceFileRecord(pathValue, rawText, options = {}) {
   const persistRawContent = !(externalStorage && options.persistRawContent === false);
   const persistTransportChunks = !(externalStorage && options.persistTransportChunks === false);
   const rawStorage = persistRawContent
-    ? encodeRawStorage(normalizedText)
+    ? encodeRawStorage(normalizedText, { quality: recordMode === "initial" ? 4 : 9 })
     : buildExternalRawStorage(normalizedText, {
       rawBytes: Number(options.originalSizeOverride || Buffer.byteLength(normalizedText, "utf8")),
       truncated: Boolean(options.truncated),

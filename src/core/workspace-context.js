@@ -810,56 +810,65 @@ async function loadCapsuleContextEntries(paths = [], options = {}) {
   const entries = [];
   const skippedOversizePaths = [];
 
-  for (const [index, path] of dedupePaths(paths).slice(0, maxFiles).entries()) {
-    try {
-      const opened = await openWorkspaceFileWithFallback(path, query ? "focused" : "capsule", { query });
-      const rendered = String(opened?.content || "").trim();
-      if (!rendered) continue;
-
-      const perFileLimit = index === 0 ? firstFileMaxModelChars : maxModelChars;
-      let modelContent = rendered;
-      let modelEncoding = "plain-text";
-      let usesCodecDictionary = false;
-      let truncated = false;
-
-      if (rendered.length > perFileLimit) {
-        const encodedMeta = encodeMeshModelCodec(rendered, {
-          withMeta: true,
-          disableDictionary: disableCodecDictionary,
-        });
-        if (encodedMeta?.encoded && encodedMeta.encoded.length <= perFileLimit) {
-          modelContent = encodedMeta.encoded;
-          modelEncoding = MESH_MODEL_CODEC_VERSION;
-          usesCodecDictionary = Boolean(encodedMeta.dictionaryEnabled);
-        } else {
-          const nextLimit = Math.max(600, perFileLimit - 128);
-          modelContent = `${rendered.slice(0, nextLimit)}\n\n[capsule truncated by gateway budget]`;
-          truncated = true;
-        }
+  // Fetch all files in parallel — preserving per-index budget assignments via indexed tuples.
+  const dedupedPaths = dedupePaths(paths).slice(0, maxFiles);
+  const fetchResults = await Promise.all(
+    dedupedPaths.map(async (path, index) => {
+      try {
+        const opened = await openWorkspaceFileWithFallback(path, query ? "focused" : "capsule", { query });
+        return { path, index, opened, error: false };
+      } catch {
+        return { path, index, opened: null, error: true };
       }
+    }),
+  );
 
-      if (modelContent.length > perFileLimit * 1.15) {
-        skippedOversizePaths.push(path);
-        continue;
-      }
+  for (const { path, index, opened, error } of fetchResults) {
+    if (error || !opened) continue;
+    const rendered = String(opened?.content || "").trim();
+    if (!rendered) continue;
 
-      entries.push({
-        path,
-        fileType: String(opened?.fileType || ""),
-        parserFamily: String(opened?.parserFamily || ""),
-        capsuleMode: String(opened?.capsule?.capsuleMode || opened?.capsuleMode || ""),
-        modelEncoding,
-        modelContent,
-        contentTruncated: truncated,
-        usesCodecDictionary,
-        rawBytes: Number(opened?.rawBytes || opened?.originalSize || 0),
-        capsuleBytes: Number(opened?.capsuleBytes || Buffer.byteLength(rendered, "utf8")),
-        recoveryEligible: Boolean(opened?.capsule?.recoveryEligible),
-        isSkeleton: Boolean(opened?.isSkeleton || opened?.capsule?.isSkeleton),
+    const perFileLimit = index === 0 ? firstFileMaxModelChars : maxModelChars;
+    let modelContent = rendered;
+    let modelEncoding = "plain-text";
+    let usesCodecDictionary = false;
+    let truncated = false;
+
+    if (rendered.length > perFileLimit) {
+      const encodedMeta = encodeMeshModelCodec(rendered, {
+        withMeta: true,
+        disableDictionary: disableCodecDictionary,
       });
-    } catch {
-      // Ignore individual file failures.
+      if (encodedMeta?.encoded && encodedMeta.encoded.length <= perFileLimit) {
+        modelContent = encodedMeta.encoded;
+        modelEncoding = MESH_MODEL_CODEC_VERSION;
+        usesCodecDictionary = Boolean(encodedMeta.dictionaryEnabled);
+      } else {
+        const nextLimit = Math.max(600, perFileLimit - 128);
+        modelContent = `${rendered.slice(0, nextLimit)}\n\n[capsule truncated by gateway budget]`;
+        truncated = true;
+      }
     }
+
+    if (modelContent.length > perFileLimit * 1.15) {
+      skippedOversizePaths.push(path);
+      continue;
+    }
+
+    entries.push({
+      path,
+      fileType: String(opened?.fileType || ""),
+      parserFamily: String(opened?.parserFamily || ""),
+      capsuleMode: String(opened?.capsule?.capsuleMode || opened?.capsuleMode || ""),
+      modelEncoding,
+      modelContent,
+      contentTruncated: truncated,
+      usesCodecDictionary,
+      rawBytes: Number(opened?.rawBytes || opened?.originalSize || 0),
+      capsuleBytes: Number(opened?.capsuleBytes || Buffer.byteLength(rendered, "utf8")),
+      recoveryEligible: Boolean(opened?.capsule?.recoveryEligible),
+      isSkeleton: Boolean(opened?.isSkeleton || opened?.capsule?.isSkeleton),
+    });
   }
 
   entries.sort((a, b) => a.path.localeCompare(b.path));
@@ -877,28 +886,30 @@ async function loadRecoveredSpanEntries(paths = [], query = "", options = {}) {
 
   const maxFiles = Math.min(Math.max(Number(options.maxFiles) || 2, 1), 4);
   const maxSpansPerFile = Math.min(Math.max(Number(options.maxSpansPerFile) || 3, 1), 6);
-  const recovered = [];
+  const dedupedPaths = dedupePaths(paths).slice(0, maxFiles);
 
-  for (const path of dedupePaths(paths).slice(0, maxFiles)) {
-    try {
-      const result = await recoverWorkspaceWithFallback(path, { query });
-      const spans = Array.isArray(result?.spans) ? result.spans.slice(0, maxSpansPerFile) : [];
-      for (const span of spans) {
-        if (!span?.text) continue;
-        recovered.push({
-          path,
-          spanId: String(span.spanId || ""),
-          lineStart: Number(span.lineStart || 0),
-          lineEnd: Number(span.lineEnd || 0),
-          text: String(span.text || ""),
-        });
+  // Recover all files in parallel — span order per file is preserved by flatMap.
+  const perFileSpans = await Promise.all(
+    dedupedPaths.map(async (path) => {
+      try {
+        const result = await recoverWorkspaceWithFallback(path, { query });
+        const spans = Array.isArray(result?.spans) ? result.spans.slice(0, maxSpansPerFile) : [];
+        return spans
+          .filter((span) => Boolean(span?.text))
+          .map((span) => ({
+            path,
+            spanId: String(span.spanId || ""),
+            lineStart: Number(span.lineStart || 0),
+            lineEnd: Number(span.lineEnd || 0),
+            text: String(span.text || ""),
+          }));
+      } catch {
+        return [];
       }
-    } catch {
-      // Ignore individual recovery failures.
-    }
-  }
+    }),
+  );
 
-  return recovered;
+  return perFileSpans.flat();
 }
 
 function renderCapsuleFileTag(entry) {
