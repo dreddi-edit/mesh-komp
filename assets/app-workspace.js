@@ -11,7 +11,7 @@ const S={
   tabs:[],activeTab:null,dirHandle:null,dirName:'',workspaceId:'',
   editor:null,monacoReady:false,modified:new Set(),
   ops:{pending:[],history:[]},
-  settings:{theme:'dark',fontSize:14,wordWrap:true,minimap:true,model:'gpt-5.4-mini'},
+  settings:{theme:'dark',fontSize:14,wordWrap:true,minimap:true,model:'claude-sonnet-4-6'},
   switches:{},
   workspaceConfig:{},
   accountProfile:null,
@@ -30,7 +30,9 @@ const S={
     backgroundIndexRunning: false,
     lastMode: '',
     stats: { discovered: 0, indexed: 0, skipped: 0, deleted: 0 },
-  }
+  },
+  // path → { rawBytes, capsuleBytes } — populated from sync responses
+  compressionMap: new Map(),
 };
 
 const SHELL_STATE_KEY = 'mesh-app-shell-state';
@@ -282,6 +284,9 @@ async function syncWorkspaceIndexDiff(diff, options = {}) {
       }),
     });
     if (syncResult?.workspaceId) S.workspaceId = syncResult.workspaceId;
+    if (Array.isArray(syncResult?.compressionStats)) {
+      syncResult.compressionStats.forEach(e => { if (e.rawBytes > 0) S.compressionMap.set(e.path, e); });
+    }
     synced += slice.length;
     const ratio = totalChanged > 0 ? synced / totalChanged : 1;
     updateIndexProgressState(mode === 'initial' ? 'scanning' : 'background', {
@@ -419,7 +424,7 @@ function updateWorkspaceSurfaceUI() {
   });
   $('#ide')?.setAttribute('data-surface', S.surfaceMode);
   const modelLabel = $('#voiceSurfaceModel');
-  if (modelLabel) modelLabel.textContent = ($('#chatModel')?.selectedOptions?.[0]?.textContent || S.settings.model || 'GPT 5.4 Mini').trim();
+  if (modelLabel) modelLabel.textContent = ($('#chatModel')?.selectedOptions?.[0]?.textContent || S.settings.model || 'Claude Sonnet 4.6').trim();
   const stateLabel = $('#voiceSurfaceState');
   if (stateLabel) {
     if (S.surfaceMode === 'terminal') stateLabel.textContent = 'Terminal Focus';
@@ -531,7 +536,7 @@ function showView(v){
   S.currentView=v;
   [$('#monaco'),$('#welcomeScr'),$('#opsView'),$('#marketplaceView'),$('#graphView'),$('#voiceCodingView'),$('#terminalSurfaceView')].forEach(e=>{if(e)e.style.display='none';});
   $$('.tab[data-t="settings"],.tab[data-t="ops"],.tab[data-t="marketplace"],.tab[data-t="graph"],.tab[data-t="voice"],.tab[data-t="terminal"]').forEach(t=>t.remove());
-  if(v==='ops'){$('#opsView').style.display='block';renderOps();addViewTab('ops','📊 Operations');}
+  if(v==='ops'){$('#opsView').style.display='block';loadCompressionMap().then(()=>{renderOps();renderTree();});addViewTab('ops','📊 Operations');}
   else if(v==='marketplace'){$('#marketplaceView').style.display='block';addViewTab('marketplace','🛍 Marketplace');}
   else if(v==='graph'){$('#graphView').style.display='block';if(window.initWorkspaceGraph)window.initWorkspaceGraph('graphView');addViewTab('graph','🕸 Mesh Graph');}
   else if(v==='voice'){$('#voiceCodingView').style.display='block';}
@@ -603,17 +608,27 @@ async function ensureChildren(item){
 // Count files recursively (only counts loaded children)
 function countLoaded(items){let c=0;for(const i of items){if(i.isDir&&i.children)c+=countLoaded(i.children);else if(!i.isDir)c++;}return c;}
 
+function seedCompressionMapFromTree(){
+  const files=flatFiles(S.tree||[]);
+  for(const item of files){
+    if(!item.path||!isIndexableWorkspacePath(item.path)) continue;
+    if(S.compressionMap.has(item.path)) continue;
+    S.compressionMap.set(item.path,{path:item.path,rawBytes:item.size||0,capsuleBytes:0,status:'pending'});
+  }
+}
+
 async function openFolder(){
   if(!('showDirectoryPicker' in window)){toast('Error','Requires Chromium browser');return;}
   try{
     const h=await window.showDirectoryPicker({mode:'readwrite'});
-    S.dirHandle=h;S.dirName=h.name;S.workspaceId='';
+    S.dirHandle=h;S.dirName=h.name;S.workspaceId='';S.compressionMap.clear();
     resetWorkspaceIndexState();
     const title=$('#tbTitle');if(title)title.textContent='Mesh AI — '+h.name;
     const prog=$('#scanProg');if(prog)prog.style.display='inline';
     toast('Scanning','"'+h.name+'"…');
     updateIndexProgressState('scanning', { ratio: 0.08, label: 'Preparing workspace scan...' });
     S.tree=await fullScan(h);
+    seedCompressionMapFromTree();
     renderTree();
     const f=$('#fileFoot');if(f)f.style.display='flex';
     await runWorkspaceIndexCycle('initial', { scanEpoch: S.workspaceIndex.scanEpoch, complete: false });
@@ -623,10 +638,13 @@ async function openFolder(){
       if(prog)prog.style.display='none';
       const n=$('#fileNum');if(n)n.textContent=S.totalFiles+' files';
       toast('Done',S.totalFiles+' files in "'+h.name+'"');
+      seedCompressionMapFromTree();
       renderTree();
+      if(S.currentView==='ops') renderOps();
       await runWorkspaceIndexCycle('background', { scanEpoch: S.workspaceIndex.scanEpoch, complete: true, deferReadyState: true });
       await initMeshMetadata(h, { force: true, phase: 'background-complete', attachToTree: true });
       updateIndexProgressState('graph-ready', { ratio: 1 });
+      loadCompressionMap().then(() => { renderTree(); if (S.currentView === 'ops') renderOps(); });
     });
     if (window.idbKeyval) await idbKeyval.set('last-folder', h);
     await initMeshMetadata(h, { attachToTree: false, phase: 'initial' });
@@ -855,6 +873,7 @@ async function restoreFolder(options = {}) {
     const prog = $('#scanProg'); if (prog) prog.style.display = 'inline';
     updateIndexProgressState('scanning', { ratio: 0.08, label: 'Preparing workspace scan...' });
     S.tree = await fullScan(h);
+    seedCompressionMapFromTree();
     renderTree();
     const f = $('#fileFoot'); if (f) f.style.display = 'flex';
     await runWorkspaceIndexCycle('initial', { scanEpoch: S.workspaceIndex.scanEpoch, complete: false });
@@ -862,10 +881,13 @@ async function restoreFolder(options = {}) {
       S.totalFiles = countLoaded(S.tree);
       if (prog) prog.style.display = 'none';
       const n = $('#fileNum'); if (n) n.textContent = S.totalFiles + ' files';
+      seedCompressionMapFromTree();
       renderTree();
+      if (S.currentView === 'ops') renderOps();
       await runWorkspaceIndexCycle('background', { scanEpoch: S.workspaceIndex.scanEpoch, complete: true, deferReadyState: true });
       await initMeshMetadata(h, { force: true, phase: 'background-complete', attachToTree: true });
       updateIndexProgressState('graph-ready', { ratio: 1 });
+      loadCompressionMap().then(() => { renderTree(); if (S.currentView === 'ops') renderOps(); });
       if (options.reopenPath) {
         const item = findInTree(S.tree, options.reopenPath);
         if (item) openFile(item);
@@ -899,6 +921,15 @@ async function deepScanAll(items, progress = null){
       await ensureChildren(item);
       const childCount = Array.isArray(item.children) ? item.children.length : 0;
       tracker.discoveredUnits += childCount;
+      // Seed newly discovered files into compressionMap immediately so Ops view
+      // shows all files as pending without waiting for the full sync cycle.
+      if(item.children){
+        for(const child of item.children){
+          if(!child.isDir && child.path && isIndexableWorkspacePath(child.path) && !S.compressionMap.has(child.path)){
+            S.compressionMap.set(child.path,{path:child.path,rawBytes:child.size||0,capsuleBytes:0,status:'pending'});
+          }
+        }
+      }
     }
     paintDeepScanProgress(tracker);
     if(item.isDir && item.children)await deepScanAll(item.children, tracker);
@@ -930,6 +961,22 @@ function ensureTopLevelDirectoryInTree(name, handle) {
   });
 }
 
+function compressionTooltip(path, isDir){
+  if(!S.compressionMap.size) return '';
+  if(!isDir){
+    const e=S.compressionMap.get(path);
+    if(!e||!e.rawBytes) return '';
+    const pct=Math.round((1-e.capsuleBytes/e.rawBytes)*100);
+    return pct+'% compressed';
+  }
+  // Directory: average ratio of all indexed children under this path prefix
+  const prefix=path+'/';
+  const matches=[...S.compressionMap.values()].filter(e=>e.path.startsWith(prefix)&&e.rawBytes>0);
+  if(!matches.length) return '';
+  const avg=Math.round(matches.reduce((s,e)=>s+(1-e.capsuleBytes/e.rawBytes),0)/matches.length*100);
+  return avg+'% avg compression ('+matches.length+' files)';
+}
+
 function renderTree(){
   const c=$('#fileTree');if(!c)return;c.innerHTML='';
   if(!S.tree.length){const e=$('#emptyExp');if(e){e.style.display='flex';c.appendChild(e);}return;}
@@ -945,6 +992,7 @@ function buildTree(items,parent,depth){
       el.appendChild(ch);
       const ic=document.createElement('span');ic.className='fi-i';ic.innerHTML=fIcon(item.name,true);el.appendChild(ic);
       el.appendChild(document.createTextNode(item.name));
+      const dirTip=compressionTooltip(item.path,true);if(dirTip)el.title=dirTip;
       const kids=document.createElement('div');kids.className='fi-kids'+(item.expanded?' open':'');
       if(item.expanded&&item.children)buildTree(item.children,kids,depth+1);
       el.addEventListener('click',async e=>{
@@ -966,6 +1014,7 @@ function buildTree(items,parent,depth){
       const sp=document.createElement('span');sp.style.width='12px';sp.style.display='inline-block';el.appendChild(sp);
       const ic=document.createElement('span');ic.className='fi-i';ic.innerHTML=fIcon(item.name,false);el.appendChild(ic);
       el.appendChild(document.createTextNode(item.name));
+      const fileTip=compressionTooltip(item.path,false);if(fileTip)el.title=fileTip;
       el.addEventListener('click',()=>openFile(item));
       el.addEventListener('contextmenu',e=>{e.preventDefault();showCtx(e,item);});
       parent.appendChild(el);
@@ -1421,24 +1470,268 @@ function closeTerminal(){$('#bottomPanel')&&($('#bottomPanel').style.display='no
 function toggleTerm(){const p=$('#bottomPanel');if(p&&p.style.display!=='none'&&p.style.display!=='')closeTerminal();else openTerminal();}
 
 /* ═══ OPS VIEW ═══ */
-function genComp(){
-  const fl=flatFiles(S.tree);
-  if(!fl.length)return[{n:'index.js',o:145200,c:38700},{n:'app.html',o:12800,c:3900},{n:'styles.css',o:28400,c:7100},{n:'utils.ts',o:34500,c:9200},{n:'server.js',o:253787,c:56200},{n:'package.json',o:2100,c:890},{n:'README.md',o:5600,c:2100},{n:'config.yml',o:1800,c:620}];
-  // Real-ish data based on workspace structure
-  return fl.slice(0,100).map(f=>{
-    const ext=(f.path.split('.').pop()||'').toLowerCase();
-    const isCode=['js','ts','py','go','rs','java','cpp','c','h','html','css'].includes(ext);
-    const baseSize=isCode?Math.floor(Math.random()*45000+2500):Math.floor(Math.random()*850000+10000);
-    const r=isCode?(.15+Math.random()*.25):(.5+Math.random()*.4); // Code compresses better than binaries/others in our simulation
-    return{n:f.path.split('/').pop(),o:baseSize,c:Math.floor(baseSize*r)};
-  });
+function drawDonut(cv,ratio){
+  const ctx=cv.getContext('2d'),w=cv.width,h=cv.height,cx=w/2,cy=h/2,r=Math.min(w,h)/2-10,lw=16;
+  ctx.clearRect(0,0,w,h);
+  ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);
+  ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--bd').trim();
+  ctx.lineWidth=lw;ctx.stroke();
+  if(ratio>0){
+    ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+2*Math.PI*ratio);
+    ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--grn').trim();
+    ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();
+  }
 }
-function drawDonut(cv,ratio){const ctx=cv.getContext('2d'),w=cv.width,h=cv.height,cx=w/2,cy=h/2,r=Math.min(w,h)/2-8,lw=14;ctx.clearRect(0,0,w,h);ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--bd').trim();ctx.lineWidth=lw;ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+2*Math.PI*ratio);ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--grn').trim();ctx.lineWidth=lw;ctx.lineCap='round';ctx.stroke();}
+
+async function loadCompressionMap(){
+  try{
+    const [d,fb]= await Promise.all([
+      api('/api/app/compression').catch(()=>null),
+      api('/api/assistant/workspace/files').catch(()=>null),
+    ]);
+    // Only trust server data when its folderName matches the currently open folder.
+    // If the server still has a cached workspace from a different session, ignore it.
+    const serverFolderName = d?.folderName || fb?.folderName || '';
+    const folderMatches = !S.dirName || !serverFolderName || serverFolderName === S.dirName;
+
+    if(folderMatches){
+      for(const source of [d,fb]){
+        if(!Array.isArray(source?.files)) continue;
+        for(const f of source.files){
+          if(!f.path) continue;
+          const existing=S.compressionMap.get(f.path);
+          const incomingRaw=f.rawBytes||f.originalSize||0;
+          // Only overwrite if server has better data (real byte counts)
+          if(!existing || incomingRaw>existing.rawBytes){
+            S.compressionMap.set(f.path,{
+              path:f.path,
+              rawBytes:incomingRaw,
+              capsuleBytes:f.capsuleBytes||f.compressedSize||0,
+              status:f.status||(f.indexed?'indexed':'pending'),
+            });
+          }
+        }
+      }
+    }
+
+    // Seed any locally-known files not yet returned by the server
+    if(S.workspaceIndex.knownFilesByPath.size>0){
+      for(const [path,meta] of S.workspaceIndex.knownFilesByPath){
+        if(S.compressionMap.has(path)) continue;
+        S.compressionMap.set(path,{path,rawBytes:meta.size||0,capsuleBytes:0,status:'pending'});
+      }
+    }
+  }catch(e){console.error('[compression] load failed',e);}
+}
+
+let opsSort={col:'path',asc:true}; // default: group by directory alphabetically
+let opsFilter='';
+let opsCollapsed=new Set();
+
 function renderOps(){
   const v=$('#opsView');if(!v)return;
-  const data=genComp();const tO=data.reduce((s,d)=>s+d.o,0),tC=data.reduce((s,d)=>s+d.c,0),ratio=tO?1-tC/tO:0;
-  v.innerHTML='<div class="fv-scr"><h2 class="fv-t">Operations & Compression Analytics</h2><div class="ops-stats"><div class="ops-card"><canvas id="compChart" width="120" height="120"></canvas><div class="ops-big" id="compRatio">'+Math.round(ratio*100)+'% saved</div><div class="ops-lbl">Compression</div></div><div class="ops-card"><div class="ops-big">'+fmtB(tO)+'</div><div class="ops-lbl">Original</div></div><div class="ops-card"><div class="ops-big">'+fmtB(tC)+'</div><div class="ops-lbl">Compressed</div></div><div class="ops-card"><div class="ops-big">'+data.length+'</div><div class="ops-lbl">Files</div></div></div><h3 class="fv-sub">File Breakdown</h3><table class="ops-tbl"><thead><tr><th>File</th><th>Original</th><th>Compressed</th><th>Saved</th><th></th></tr></thead><tbody>'+data.map(d=>{const sv=d.o?Math.round((1-d.c/d.o)*100):0;return'<tr><td>'+esc(d.n)+'</td><td>'+fmtB(d.o)+'</td><td>'+fmtB(d.c)+'</td><td>'+sv+'%</td><td><div class="cbar"><div class="cbar-f" style="width:'+sv+'%"></div></div></td></tr>';}).join('')+'</tbody></table></div>';
-  setTimeout(()=>{const cv=v.querySelector('#compChart');if(cv)drawDonut(cv,ratio);},50);
+  if(!S.dirName){
+    v.textContent='';
+    const wrap=document.createElement('div');wrap.className='fv-scr';
+    const h=document.createElement('h2');h.className='fv-t';h.textContent='Operations & Compression Analytics';
+    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:20px 0';p.textContent='No folder open. Open a workspace folder to see compression analytics.';
+    wrap.append(h,p);v.appendChild(wrap);
+    return;
+  }
+  if(!S.compressionMap.size){
+    v.textContent='';
+    const wrap=document.createElement('div');wrap.className='fv-scr';
+    const h=document.createElement('h2');h.className='fv-t';h.textContent='Operations & Compression Analytics';
+    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:20px 0';
+    const b=document.createElement('strong');b.textContent=S.dirName;
+    p.append(b,' is open — compression data will appear once files finish indexing.');
+    wrap.append(h,p);v.appendChild(wrap);
+    return;
+  }
+
+  // Merge compressionMap with knownFilesByPath so files discovered by deepScanAll
+  // but not yet synced to the server still appear (as pending) in the table.
+  const merged = new Map(S.compressionMap);
+  for (const [path, meta] of S.workspaceIndex.knownFilesByPath) {
+    if (!merged.has(path) && isIndexableWorkspacePath(path)) {
+      merged.set(path, { path, rawBytes: meta.size || 0, capsuleBytes: 0, status: 'pending' });
+    }
+  }
+
+  const allData=[...merged.values()].map(f=>{
+    const o=f.rawBytes||0,c=f.capsuleBytes||0;
+    const saved=o?Math.round((1-c/o)*100):0;
+    const dir=f.path.includes('/')?f.path.slice(0,f.path.lastIndexOf('/')):'(root)';
+    const name=f.path.includes('/')?f.path.slice(f.path.lastIndexOf('/')+1):f.path;
+    return{path:f.path,name,dir,o,c,saved,status:f.status||'indexed'};
+  });
+
+  const filtered=opsFilter
+    ?allData.filter(d=>d.path.toLowerCase().includes(opsFilter.toLowerCase()))
+    :allData;
+
+  filtered.sort((a,b)=>{
+    let cmp=0;
+    if(opsSort.col==='path') cmp=a.path.localeCompare(b.path);
+    else if(opsSort.col==='original') cmp=a.o-b.o;
+    else if(opsSort.col==='capsule') cmp=a.c-b.c;
+    else if(opsSort.col==='saved') cmp=a.saved-b.saved;
+    return opsSort.asc?cmp:-cmp;
+  });
+
+  const tO=allData.reduce((s,d)=>s+d.o,0);
+  const tC=allData.reduce((s,d)=>s+d.c,0);
+  const ratio=tO?Math.max(0,Math.min(1,1-tC/tO)):0;
+
+  const dirs=new Map();
+  for(const d of filtered){
+    if(!dirs.has(d.dir)) dirs.set(d.dir,[]);
+    dirs.get(d.dir).push(d);
+  }
+
+  v.textContent='';
+
+  // ── Summary cards ──
+  const indexedCount=allData.filter(d=>d.status==='indexed'||d.status==='completed').length;
+  const pendingCount=allData.length-indexedCount;
+  const stats=document.createElement('div');stats.className='ops-stats';
+  const cards=[
+    {big:String(allData.length),bigCls:'blue',lbl:'Files',sub:dirs.size+' director'+(dirs.size===1?'y':'ies')},
+    {big:String(indexedCount),bigCls:'green',lbl:'Indexed',sub:pendingCount>0?pendingCount+' pending':'all indexed'},
+    {big:fmtB(tO),bigCls:'',lbl:'Original',sub:'raw token size'},
+    {big:Math.round(ratio*100)+'%',bigCls:'green',lbl:'Saved',sub:fmtB(tC)+' capsule'},
+  ];
+  for(const c of cards){
+    const card=document.createElement('div');card.className='ops-card';
+    const lbl=document.createElement('div');lbl.className='ops-lbl';lbl.textContent=c.lbl;
+    const big=document.createElement('div');big.className='ops-big'+(c.bigCls?' '+c.bigCls:'');big.textContent=c.big;
+    const sub=document.createElement('div');sub.className='ops-sub';sub.textContent=c.sub;
+    card.append(lbl,big,sub);stats.appendChild(card);
+  }
+  v.appendChild(stats);
+
+  // ── Toolbar: search + sort ──
+  const toolbar=document.createElement('div');toolbar.className='ops-toolbar';
+  const searchWrap=document.createElement('div');searchWrap.className='ops-search-wrap';
+  const searchSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  searchSvg.setAttribute('width','12');searchSvg.setAttribute('height','12');searchSvg.setAttribute('viewBox','0 0 24 24');searchSvg.setAttribute('fill','none');searchSvg.setAttribute('stroke','currentColor');searchSvg.setAttribute('stroke-width','2');
+  const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');circ.setAttribute('cx','11');circ.setAttribute('cy','11');circ.setAttribute('r','8');
+  const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1','21');ln.setAttribute('y1','21');ln.setAttribute('x2','16.65');ln.setAttribute('y2','16.65');
+  searchSvg.append(circ,ln);
+  const searchInput=document.createElement('input');searchInput.className='ops-search';searchInput.type='text';searchInput.placeholder='Filter files…';searchInput.value=opsFilter;
+  searchWrap.append(searchSvg,searchInput);
+  const searchCount=document.createElement('span');searchCount.className='ops-search-count';
+  searchCount.textContent=filtered.length+' / '+allData.length;
+  const sortGroup=document.createElement('div');sortGroup.className='ops-sort-group';
+  const sortLbl=document.createElement('span');sortLbl.className='ops-sort-label';sortLbl.textContent='Sort';
+  sortGroup.appendChild(sortLbl);
+  const sortCols=[{key:'saved',label:'savings'},{key:'path',label:'name'},{key:'original',label:'size'}];
+  for(const sc of sortCols){
+    const pill=document.createElement('button');pill.className='ops-sort-pill'+(opsSort.col===sc.key?' active':'');
+    pill.textContent=sc.label+(opsSort.col===sc.key?(opsSort.asc?' ↑':' ↓'):'');
+    pill.addEventListener('click',()=>{
+      if(opsSort.col===sc.key) opsSort.asc=!opsSort.asc;
+      else{opsSort.col=sc.key;opsSort.asc=false;}
+      renderOps();
+    });
+    sortGroup.appendChild(pill);
+  }
+  toolbar.append(searchWrap,searchCount,sortGroup);
+  v.appendChild(toolbar);
+  searchInput.addEventListener('input',()=>{opsFilter=searchInput.value;renderOps();});
+
+  // ── File table ──
+  const tblWrap=document.createElement('div');tblWrap.className='ops-tbl-wrap';
+  const tbl=document.createElement('table');tbl.className='ops-tbl';
+
+  const thead=document.createElement('thead');
+  const headRow=document.createElement('tr');
+  const cols=[
+    {key:'path',label:'File'},
+    {key:'saved',label:'Savings'},
+    {key:'original',label:'Original'},
+    {key:'capsule',label:'Capsule'},
+    {key:'',label:'Status'},
+  ];
+  for(const col of cols){
+    const th=document.createElement('th');
+    if(col.key){
+      if(opsSort.col===col.key) th.classList.add('ops-sorted');
+      th.textContent=col.label;
+      const arrow=document.createElement('span');arrow.className='ops-sort';
+      arrow.textContent=opsSort.col===col.key?(opsSort.asc?'↑':'↓'):'↓';
+      th.appendChild(arrow);
+      th.addEventListener('click',()=>{
+        if(opsSort.col===col.key) opsSort.asc=!opsSort.asc;
+        else{opsSort.col=col.key;opsSort.asc=false;}
+        renderOps();
+      });
+    } else {
+      th.textContent=col.label;
+    }
+    headRow.appendChild(th);
+  }
+  thead.appendChild(headRow);tbl.appendChild(thead);
+
+  const tbody=document.createElement('tbody');
+  for(const [dir,files] of dirs){
+    const isCollapsed=opsCollapsed.has(dir);
+    const dirRow=document.createElement('tr');dirRow.className='ops-dir-row'+(isCollapsed?' collapsed':'');
+    const dirTd=document.createElement('td');dirTd.colSpan=5;
+    const ch=document.createElement('span');ch.className='ops-dir-ch';ch.textContent='▾';
+    const dirTotal=files.reduce((s,f)=>s+f.o,0);
+    const dirCap=files.reduce((s,f)=>s+f.c,0);
+    const dirSaved=dirTotal?Math.round((1-dirCap/dirTotal)*100):0;
+    const dirLabel=document.createElement('span');
+    dirLabel.textContent=' '+dir;
+    const dirMeta=document.createElement('span');
+    dirMeta.style.cssText='font-weight:400;color:var(--tx3);margin-left:8px';
+    dirMeta.textContent=files.length+' files · avg '+dirSaved+'% saved';
+    dirTd.append(ch,dirLabel,dirMeta);
+    dirRow.appendChild(dirTd);
+    dirRow.addEventListener('click',()=>{
+      if(opsCollapsed.has(dir)) opsCollapsed.delete(dir);
+      else opsCollapsed.add(dir);
+      renderOps();
+    });
+    tbody.appendChild(dirRow);
+
+    if(!isCollapsed){
+      for(const d of files){
+        const tr=document.createElement('tr');
+        const statusCls=d.status==='indexed'||d.status==='completed'?'s-ok':d.status==='failed'?'s-fail':'s-pending';
+        const tdName=document.createElement('td');tdName.title=d.path;
+        const dot=document.createElement('span');dot.className='ops-status-dot '+statusCls;
+        tdName.append(dot,d.name);
+        const tdSaved=document.createElement('td');
+        const barWrap=document.createElement('div');barWrap.className='cbar-wrap';
+        const bar=document.createElement('div');bar.className='cbar';
+        const fill=document.createElement('div');fill.className='cbar-f';fill.style.width=Math.max(0,Math.min(100,d.saved))+'%';
+        const pct=document.createElement('span');pct.className='cbar-pct';pct.textContent=d.saved+'%';
+        bar.appendChild(fill);barWrap.append(bar,pct);tdSaved.appendChild(barWrap);
+        const tdO=document.createElement('td');tdO.style.color='var(--tx3)';tdO.textContent=fmtB(d.o);
+        const tdC=document.createElement('td');tdC.style.color='var(--tx3)';tdC.textContent=fmtB(d.c);
+        const tdSt=document.createElement('td');
+        const stLabel=document.createElement('span');
+        stLabel.style.cssText='font-size:.66rem;color:'+(statusCls==='s-ok'?'var(--grn)':statusCls==='s-fail'?'var(--red)':'var(--org)');
+        stLabel.textContent=d.status==='indexed'||d.status==='completed'?'indexed':d.status==='failed'?'failed':'pending';
+        tdSt.appendChild(stLabel);
+        tr.append(tdName,tdSaved,tdO,tdC,tdSt);
+        tbody.appendChild(tr);
+      }
+    }
+  }
+
+  if(filtered.length===0){
+    const emptyRow=document.createElement('tr');
+    const emptyTd=document.createElement('td');emptyTd.colSpan=5;emptyTd.className='ops-empty';
+    emptyTd.textContent=opsFilter?'No files matching "'+opsFilter+'"':'No compression data available.';
+    emptyRow.appendChild(emptyTd);tbody.appendChild(emptyRow);
+  }
+
+  tbl.appendChild(tbody);tblWrap.appendChild(tbl);v.appendChild(tblWrap);
+
+  setTimeout(()=>{const inp=v.querySelector('.ops-search');if(inp&&opsFilter)inp.focus();},60);
 }
 
 /* ═══ SETTINGS LOGIC ═══ */
@@ -1470,10 +1763,10 @@ function initSearch(){const inp=$('#searchIn');if(!inp)return;inp.addEventListen
 function findInTree(items,p){for(const i of items){if(!i.isDir&&i.path===p)return i;if(i.isDir&&i.children){const r=findInTree(i.children,p);if(r)return r;}}return null;}
 
 /* ═══ RESIZE ═══ */
-function resizer(hSel,tSel,prop,min,max,dir='h'){
+function resizer(hSel,tSel,prop,min,max,dir='h',invert=false){
   const handle=$(hSel);if(!handle)return;let d=false,s0=0,sz0=0;
   handle.addEventListener('mousedown',e=>{d=true;s0=dir==='h'?e.clientX:e.clientY;sz0=$(tSel)?.[dir==='h'?'offsetWidth':'offsetHeight']||200;handle.classList.add('drag');document.body.style.cursor=dir==='h'?'col-resize':'row-resize';document.body.style.userSelect='none';e.preventDefault();});
-  addEventListener('mousemove',e=>{if(!d)return;const delta=s0-(dir==='h'?e.clientX:e.clientY);document.documentElement.style.setProperty(prop,Math.max(min,Math.min(max,sz0+delta))+'px');});
+  addEventListener('mousemove',e=>{if(!d)return;const cur=dir==='h'?e.clientX:e.clientY;const delta=invert?(s0-cur):(cur-s0);document.documentElement.style.setProperty(prop,Math.max(min,Math.min(max,sz0+delta))+'px');});
   addEventListener('mouseup',()=>{if(!d)return;d=false;handle.classList.remove('drag');document.body.style.cursor='';document.body.style.userSelect='';S.editor?.layout();S.termFit?.fit();});
 }
 
@@ -1566,6 +1859,7 @@ function bind(){
   wireShellAction('#btnStTerm', 'terminal:toggle');
   wireShellAction('#wRestore', 'workspace:restore-folder');
   wireShellAction('#btnRestore2', 'workspace:restore-folder');
+  $$('.ws-item').forEach(el => el.addEventListener('click', openFolder));
   $('#abUser')?.addEventListener('click',()=>openStandaloneSettings('account',{from:'avatar'}));
   $('#wChat')?.addEventListener('click',()=>$('#chatIn')?.focus());
   $('#btnVoiceSurfaceStart')?.addEventListener('click', triggerVoiceSurfaceStart);
@@ -1614,8 +1908,8 @@ function bind(){
   // Bottom panel tabs
   $$('.bp-tab').forEach(t=>{t.addEventListener('click',()=>{$$('.bp-tab').forEach(x=>x.classList.toggle('is-active',x===t));$$('.bp-content').forEach(c=>c.classList.toggle('is-active',c.dataset.bp===t.dataset.bp));if(t.dataset.bp==='terminal')openTerminal();});});
   // Resize
-  resizer('#rsChat','#chatPanel','--ch-w',260,700);
-  resizer('#rsSb','#sidebar','--sb-w',160,500);
+  resizer('#rsChat','#chatPanel','--ch-w',260,700,'h',true);
+  resizer('#rsSb','#sidebar','--sb-w',160,500,'h',false);
   // Terminal resize
   const rT=$('#rsTerm');if(rT){let d=false,s0=0,h0=0;rT.addEventListener('mousedown',e=>{d=true;s0=e.clientY;h0=$('#bottomPanel')?.offsetHeight||200;document.body.style.cursor='row-resize';document.body.style.userSelect='none';e.preventDefault();});addEventListener('mousemove',e=>{if(!d)return;const h=Math.max(80,Math.min(500,h0+(s0-e.clientY)));$('#bottomPanel').style.height=h+'px';S.termFit?.fit();});addEventListener('mouseup',()=>{if(!d)return;d=false;document.body.style.cursor='';document.body.style.userSelect='';S.termFit?.fit();S.editor?.layout();});}
   window.addEventListener('resize',()=>{S.termFit?.fit();S.editor?.layout();});
@@ -1641,6 +1935,9 @@ async function init(){
   const u = await api('/api/auth/session',{skip:true}).then(d=>d?.user||null).catch(()=>null);
   if(!u){setAuth(true,'');return;}
   applyUser(u);setAuth(false);await bootstrap();
+  // Pre-load compression map from server state (covers reload-with-existing-workspace).
+  // S.dirName is empty here but loadCompressionMap checks server-side folderName.
+  loadCompressionMap().then(()=>{ if(S.tree?.length) renderTree(); });
   const snapshot = readShellSnapshot();
   applyShellSnapshot(snapshot);
   if (snapshot?.reason === 'open-settings') {
@@ -1655,6 +1952,19 @@ async function init(){
     }
   }
 }
+window.addEventListener('mesh-indexing-complete',()=>{
+  loadCompressionMap().then(()=>{
+    renderTree();
+    if(S.currentView==='ops') renderOps();
+  });
+});
+window.addEventListener('mesh-indexing-initial-ready', () => {
+  loadCompressionMap().then(() => {
+    renderTree();
+    if (S.currentView === 'ops') renderOps();
+  });
+});
+
 document.addEventListener('DOMContentLoaded',()=>void init());
 
 /* ═══ EXPOSE STATE FOR FEATURE MODULES ═══ */
