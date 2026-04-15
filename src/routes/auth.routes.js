@@ -85,6 +85,7 @@ function createAuthRouter(core) {
     readAuthCookieToken, readAuthTokenFromRequest,
     resolveAuthUserFromRequest, requireAuth,
     pruneExpiredSessions, sanitizeAuthUser, reportAuthStoreError,
+    invalidateSessionCache, invalidateSessionCacheForUser,
     secureDb,
   } = core;
 
@@ -191,6 +192,7 @@ function createAuthRouter(core) {
     try {
       if (mode === "all") {
         const deleted = await secureDb.deleteSessionsByUser(req.authUser.id);
+        invalidateSessionCacheForUser(req.authUser.id);
         clearAuthCookie(res);
         res.json({ ok: true, deleted, signedOut: true });
         return;
@@ -198,6 +200,7 @@ function createAuthRouter(core) {
 
       if (mode === "others") {
         const deleted = await secureDb.deleteSessionsByUser(req.authUser.id, { excludeIds: [currentId] });
+        invalidateSessionCacheForUser(req.authUser.id);
         res.json({ ok: true, deleted, signedOut: false });
         return;
       }
@@ -213,6 +216,9 @@ function createAuthRouter(core) {
         return;
       }
 
+      // Use user-level invalidation: we have sessionId but not the token.
+      // Clearing all user entries is safe and conservative.
+      invalidateSessionCacheForUser(req.authUser.id);
       const signedOut = targetId === currentId;
       if (signedOut) clearAuthCookie(res);
       res.json({ ok: true, deleted: 1, signedOut });
@@ -227,6 +233,7 @@ function createAuthRouter(core) {
     if (token) {
       try {
         await secureDb.deleteSession(token);
+        invalidateSessionCache(token);
       } catch (error) {
         reportAuthStoreError("logout", error);
       }

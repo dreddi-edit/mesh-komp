@@ -47,6 +47,70 @@ const USER_STORE_ALLOWED_KEYS = new Set([
 ]);
 const USER_STORE_MAX_JSON_BYTES = 1024 * 1024;
 
+// ── Session resolution cache ──────────────────────────────────────────────────
+// Saves 2 DynamoDB calls (readSession + getUserById) per authenticated request.
+// Expiry is still re-checked on every cache hit — no security shortcut.
+const SESSION_CACHE_TTL_MS = 30_000;
+const SESSION_CACHE_MAX    = 100;
+/** @type {Map<string, { result: { token: string, user: object, session: object }, ts: number }>} */
+const sessionCache = new Map();
+
+function pruneSessionCache() {
+  if (sessionCache.size <= SESSION_CACHE_MAX) return;
+  const cutoff = Date.now() - SESSION_CACHE_TTL_MS;
+  for (const [key, entry] of sessionCache) {
+    if (entry.ts < cutoff || sessionCache.size > SESSION_CACHE_MAX) {
+      sessionCache.delete(key);
+    }
+  }
+}
+
+/**
+ * Evict a single session token from the in-process cache (call on logout).
+ * @param {string} token
+ */
+function invalidateSessionCache(token) {
+  sessionCache.delete(String(token || ''));
+}
+
+/**
+ * Evict all session cache entries for a user (call on revoke-all / revoke-others).
+ * @param {string} userId
+ */
+function invalidateSessionCacheForUser(userId) {
+  const uid = String(userId || '');
+  if (!uid) return;
+  for (const [key, entry] of sessionCache) {
+    if (entry.result?.user?.id === uid) sessionCache.delete(key);
+  }
+}
+
+// ── Credential cache ──────────────────────────────────────────────────────────
+// Saves 1 DynamoDB GSI query (getUserStoreValues) per /api/assistant/chat request.
+// Invalidated immediately on PUT /api/user/store/:key.
+const CREDENTIAL_CACHE_TTL_MS = 60_000;
+const CREDENTIAL_CACHE_MAX    = 100;
+/** @type {Map<string, { result: object, ts: number }>} */
+const credentialCache = new Map();
+
+function pruneCredentialCache() {
+  if (credentialCache.size <= CREDENTIAL_CACHE_MAX) return;
+  const cutoff = Date.now() - CREDENTIAL_CACHE_TTL_MS;
+  for (const [key, entry] of credentialCache) {
+    if (entry.ts < cutoff || credentialCache.size > CREDENTIAL_CACHE_MAX) {
+      credentialCache.delete(key);
+    }
+  }
+}
+
+/**
+ * Evict a user's credential cache entry (call after PUT /api/user/store/:key).
+ * @param {string} userId
+ */
+function invalidateCredentialCache(userId) {
+  credentialCache.delete(String(userId || ''));
+}
+
 let lastAuthStoreErrorLogAt = 0;
 
 // ── Auth functions ──
@@ -263,6 +327,28 @@ async function resolveAuthUserFromRequest(req) {
     const token = readAuthTokenFromRequest(req);
     if (!token) return null;
 
+    // ── Cache hit path ────────────────────────────────────────────────────────
+    const cached = sessionCache.get(token);
+    if (cached && Date.now() - cached.ts < SESSION_CACHE_TTL_MS) {
+      // Re-validate expiry even on cache hit — a cached session may have expired
+      // or been deleted (logout from another tab) within the TTL window.
+      if (Number(cached.result.session.expiresAt || 0) <= Date.now()) {
+        sessionCache.delete(token);
+        await secureDb.deleteSession(token);
+        return null;
+      }
+      // Still honour the touchSession interval to keep lastSeenAt accurate.
+      const nowMs = Date.now();
+      const lastSeenAt = Number(cached.result.session.lastSeenAt || 0);
+      if (AUTH_SESSION_TOUCH_INTERVAL_MS > 0 && (nowMs - lastSeenAt >= AUTH_SESSION_TOUCH_INTERVAL_MS)) {
+        await secureDb.touchSession(token, nowMs);
+        // Update cached session's lastSeenAt so next hit doesn't touch again immediately.
+        cached.result.session.lastSeenAt = nowMs;
+      }
+      return cached.result;
+    }
+
+    // ── Cache miss path (original logic) ────────────────────────────────────
     const session = await secureDb.readSession(token);
     if (!session) return null;
 
@@ -284,7 +370,10 @@ async function resolveAuthUserFromRequest(req) {
       return null;
     }
 
-    return { token, user, session };
+    const result = { token, user, session };
+    sessionCache.set(token, { result, ts: Date.now() });
+    pruneSessionCache();
+    return result;
   } catch (error) {
     reportAuthStoreError('resolve-session', error);
     return null;
@@ -369,7 +458,17 @@ function normalizeStoredByokProviders(byokConfig, registry) {
  * @returns {Promise<{ anthropic: { apiKey: string, maxTokens: number }, openai: { apiKey: string, orgId: string }, google: { apiKey: string }, byok: { providers: Array } }>}
  */
 async function getStoredCredentialsForUser(userId) {
-  const values = await secureDb.getUserStoreValues(userId, [
+  const uid = String(userId || '').trim();
+  if (!uid) return { anthropic: { apiKey: '', maxTokens: 2048 }, openai: { apiKey: '', orgId: '' }, google: { apiKey: '' }, byok: { providers: [] } };
+
+  // ── Cache hit path ─────────────────────────────────────────────────────────
+  const cached = credentialCache.get(uid);
+  if (cached && Date.now() - cached.ts < CREDENTIAL_CACHE_TTL_MS) {
+    return cached.result;
+  }
+
+  // ── Cache miss path (original logic) ──────────────────────────────────────
+  const values = await secureDb.getUserStoreValues(uid, [
     'meshAiAnthropic',
     'meshAiOpenAI',
     'meshAiGoogle',
@@ -383,7 +482,7 @@ async function getStoredCredentialsForUser(userId) {
   const byok      = values.meshAiByok      && typeof values.meshAiByok      === 'object' ? values.meshAiByok      : {};
   const registry  = values.meshByokModelRegistry && typeof values.meshByokModelRegistry === 'object' ? values.meshByokModelRegistry : {};
 
-  return {
+  const result = {
     anthropic: {
       apiKey:    String(anthropic.apiKey || '').trim(),
       maxTokens: Number(anthropic.maxTokens || 2048) || 2048,
@@ -399,6 +498,10 @@ async function getStoredCredentialsForUser(userId) {
       providers: normalizeStoredByokProviders(byok, registry),
     },
   };
+
+  credentialCache.set(uid, { result, ts: Date.now() });
+  pruneCredentialCache();
+  return result;
 }
 
 function mergeChatCredentials(storedCredentials) {
@@ -452,4 +555,7 @@ module.exports = {
   normalizeStoredByokProviders,
   getStoredCredentialsForUser,
   mergeChatCredentials,
+  invalidateSessionCache,
+  invalidateSessionCacheForUser,
+  invalidateCredentialCache,
 };

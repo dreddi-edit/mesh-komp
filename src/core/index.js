@@ -69,6 +69,7 @@ const {
   resolveAuthUserFromRequest, requireAuth, pruneExpiredSessions,
   normalizeUserStoreKey, normalizeRequestedStoreKeys, normalizeStoredByokProviders,
   getStoredCredentialsForUser, mergeChatCredentials,
+  invalidateSessionCache, invalidateSessionCacheForUser, invalidateCredentialCache,
 } = auth;
 let lastAuthStoreErrorLogAt = 0; // retained for global export; internal tracking is in auth.js
 
@@ -917,6 +918,9 @@ module.exports = {
   normalizeStoredByokProviders,
   getStoredCredentialsForUser,
   mergeChatCredentials,
+  invalidateSessionCache,
+  invalidateSessionCacheForUser,
+  invalidateCredentialCache,
   serializeLocalWorkspaceState,
   persistLocalWorkspaceState,
   restoreLocalWorkspaceState,

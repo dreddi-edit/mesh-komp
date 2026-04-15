@@ -253,6 +253,7 @@ function createAppRouter(core) {
     validateProviderKey,
     runModelChat,
     Anthropic,
+    invalidateCredentialCache,
   } = core;
 
   async function loadBillingStateForUser(userId) {
@@ -386,6 +387,7 @@ function createAppRouter(core) {
     }
 
     await secureDb.setUserStoreValue(req.authUser.id, key, value);
+    invalidateCredentialCache(req.authUser.id);
     res.json({ ok: true, key, updatedAt: toIsoNow() });
   });
 
