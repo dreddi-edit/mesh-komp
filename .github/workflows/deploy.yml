@@ -1,0 +1,58 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run tests
+        run: npm test
+
+      - name: Rsync code to EC2
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -az --delete
+            --exclude='node_modules'
+            --exclude='.git'
+            --exclude='.env'
+            --exclude='*.png'
+            --exclude='*.jpg'
+            --exclude='.playwright-mcp'
+            --exclude='.superpowers'
+            --exclude='docs/benchmark-results'
+          path: ./
+          remote_path: /home/ec2-user/app/
+          remote_host: 35.175.88.93
+          remote_user: ec2-user
+          remote_key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Install deps and reload
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 35.175.88.93
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 300s
+          script: |
+            set -e
+            cd /home/ec2-user/app
+            npm ci --ignore-scripts
+            pm2 restart mesh-gateway --update-env
+            pm2 save
+            sleep 3
+            curl -sf http://localhost:8080/healthz | grep '"service"'
+            echo "Deploy successful"
