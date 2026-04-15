@@ -1,12 +1,12 @@
 const WebSocket = require('ws');
 const { createVoiceAgentSession, voiceChatToolDefinitions } = require('../core/voice-agent');
 const {
-  buildAzureVoiceConfig,
-  ensureAzureVoiceConfig,
+  buildAwsVoiceConfig,
+  ensureAwsVoiceConfig,
   transcribePcm16Buffer,
   synthesizeSpeech,
-  runAzureVoiceToolLoop,
-} = require('../core/voice-azure-audio');
+  runAwsVoiceToolLoop,
+} = require('../core/voice-aws-audio');
 const config = require('../config');
 const logger = require('../logger');
 
@@ -27,9 +27,27 @@ const PROCESSING_TIMEOUT_MS = config.VOICE_PROCESSING_TIMEOUT_MS;
  * @param {import('http').Server} server
  * @param {object} core  All exports from src/core/index.js
  */
+// Maximum concurrent voice WebSocket sessions per user.
+// Prevents runaway Transcribe/Polly cost from browser-reload loops.
+const MAX_VOICE_SESSIONS_PER_USER = 2;
+
 function setupRealtimeRelay(server, core) {
   const { readAuthTokenFromRequest, resolveAuthUserFromRequest } = core;
   const wss = new WebSocket.Server({ noServer: true });
+  /** @type {Map<string, Set<import('ws')>>} */
+  const activeSessions = new Map();
+
+  function registerSession(userId, ws) {
+    if (!activeSessions.has(userId)) activeSessions.set(userId, new Set());
+    activeSessions.get(userId).add(ws);
+    ws.once('close', () => {
+      const set = activeSessions.get(userId);
+      if (set) {
+        set.delete(ws);
+        if (set.size === 0) activeSessions.delete(userId);
+      }
+    });
+  }
 
   server.on('upgrade', async (req, socket, head) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -48,10 +66,20 @@ function setupRealtimeRelay(server, core) {
         socket.destroy();
         return;
       }
+      const userId = String(resolved.user.id);
+      const existing = activeSessions.get(userId);
+      if (existing && existing.size >= MAX_VOICE_SESSIONS_PER_USER) {
+        logger.warn('Voice session limit reached', { scope: 'realtime-routes', userId, active: existing.size });
+        socket.write('HTTP/1.1 429 Too Many Requests\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(req, socket, head, (clientWs) => {
-        handleSession(clientWs, { authUserId: resolved.user.id, core });
+        registerSession(userId, clientWs);
+        handleSession(clientWs, { authUserId: userId, core });
       });
-    } catch {
+    } catch (upgradeErr) {
+      logger.error('Voice WS upgrade failed', { scope: 'realtime-routes', error: String(upgradeErr?.message || upgradeErr || 'unknown') });
       socket.write('HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
       socket.destroy();
     }
@@ -226,9 +254,9 @@ async function buildVoiceCapsuleContext(voiceSession, core = {}) {
 
 async function handleSession(clientWs, options = {}) {
   const { core } = options;
-  const voiceConfig = buildAzureVoiceConfig(process.env);
+  const voiceConfig = buildAwsVoiceConfig(process.env);
   try {
-    ensureAzureVoiceConfig(voiceConfig);
+    ensureAwsVoiceConfig(voiceConfig);
   } catch (error) {
     clientWs.send(JSON.stringify({ type: 'error', error: { message: String(error?.message || 'Voice service not configured') } }));
     clientWs.close();
@@ -250,7 +278,7 @@ async function handleSession(clientWs, options = {}) {
     authUserId: String(options?.authUserId || ''),
     deps: buildVoiceDeps(core),
     sendClientEvent,
-    sendAzureEvent: () => {},
+    sendAzureEvent: () => {}, // legacy no-op — voice-agent.js calls this for Azure Realtime events, AWS path ignores them
   });
 
   function sendClientEvent(payload) {
@@ -399,7 +427,7 @@ async function handleSession(clientWs, options = {}) {
       ];
 
       const toolLoopStartedAt = Date.now();
-      const result = await runAzureVoiceToolLoop({
+      const result = await runAwsVoiceToolLoop({
         config: voiceConfig,
         messages,
         tools: voiceChatToolDefinitions(),
@@ -484,7 +512,7 @@ async function handleSession(clientWs, options = {}) {
           sessionConfigured = true;
           sendClientEvent({
             type: 'session.ready',
-            protocol: 'azure-stt-text-tts',
+            protocol: 'aws-transcribe-bedrock-polly',
             deployment: voiceConfig.textDeployment,
             profile: voiceConfig.label,
           });

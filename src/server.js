@@ -182,7 +182,7 @@ const { setupRealtimeRelay } = require('./routes/realtime.routes');
 const http = require('http');
 const server = http.createServer(app);
 
-/* Voice: WebSocket relay to Azure OpenAI Realtime API */
+/* Voice: WebSocket relay (AWS Transcribe + Polly) */
 setupRealtimeRelay(server, core);
 
 app.use('/', createAuthRouter(core));
