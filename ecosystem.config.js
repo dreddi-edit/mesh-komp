@@ -27,6 +27,15 @@ module.exports = {
       instances: 'max',
       exec_mode: 'cluster',
 
+      // ── Env file ─────────────────────────────────────────────────────────────
+      // Node --env-file loads .env before any require(). This is the canonical
+      // way to pass secrets (DB key, AWS creds) without embedding them in the
+      // ecosystem config or the process environment at startup time.
+      // UV_THREADPOOL_SIZE must ALSO be in env_production (not just .env) because
+      // the libuv thread pool is created before --env-file is processed in cluster
+      // worker forks spawned by pm2 — pm2 passes env_production to workers directly.
+      node_args: '--env-file /home/ec2-user/app/.env',
+
       // ── Performance ──────────────────────────────────────────────────────────
       // UV_THREADPOOL_SIZE: 4x vCPUs, capped at 128. Prevents pool saturation
       // when concurrent Brotli compressions, S3 PutObject calls, and fs reads
