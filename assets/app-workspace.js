@@ -594,7 +594,7 @@ async function fullScan(handle,prefix=''){
     } else {
       items.push({name:n,path:prefix+n,isDir:false,handle:entry});
     }
-  }}catch(e){console.warn('scan',prefix,e);}
+  }}catch(e){console.error('[mesh] file scan error at "'+prefix+'"',e);}
   items.sort((a,b)=>{if(a.isDir!==b.isDir)return a.isDir?-1:1;return a.name.localeCompare(b.name);});
   return items;
 }
@@ -842,7 +842,7 @@ async function initMeshMetadata(h, options = {}) {
         await depWritable.write(buildDependencyMapContent(graph));
         await depWritable.close();
       }
-    } catch (depErr) { console.warn('Dependency map generation skipped', depErr); }
+    } catch (depErr) { console.error('[mesh] dependency map generation failed', depErr); }
     
     // Keep the current scanned tree intact. Replacing S.tree here creates a
     // new shallow tree while the background deep scan is still walking the old
@@ -1068,7 +1068,7 @@ async function ctxAction(act){
       try {
         await ph.removeEntry(name, {recursive: true});
         // API sync logic
-        api('/api/assistant/workspace/file?path=' + encodeURIComponent(target.path), {method:'DELETE'}).catch(()=>{});
+        api('/api/assistant/workspace/file?path=' + encodeURIComponent(target.path), {method:'DELETE'}).catch((err) => { console.warn('[mesh] file delete API sync failed for', target.path, err); });
         toast('Deleted', name); 
         await refreshTree();
       } catch(e) { toast('Error', e.message); }
@@ -1195,10 +1195,25 @@ window.openFileByPath = function(path) {
 };
 
 /* ═══ CHAT ═══ */
-function renderMd(text){
-  let h=esc(text);
-  h=h.replace(/```(\w*)\n([\s\S]*?)```/g,(_,l,c)=>'<div class="msg-code-h"><span>'+(l||'code')+'</span><span class="msg-apply" data-code="'+c.replace(/"/g,'&quot;')+'">Apply</span></div><pre>'+c+'</pre>');
-  h=h.replace(/`([^`]+)`/g,'<code>$1</code>');return h;
+function renderMd(text) {
+  if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+    // Fallback if CDN scripts haven't loaded yet
+    let h = esc(text);
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, l, c) =>
+      '<div class="msg-code-h"><span>' + (l || 'code') + '</span><span class="msg-apply" data-code="' + c.replace(/"/g, '&quot;') + '">Apply</span></div><pre>' + c + '</pre>');
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return h;
+  }
+  // Build a renderer that injects the "Apply" button into fenced code blocks
+  const renderer = new marked.Renderer();
+  renderer.code = function(code, lang) {
+    const language = String(lang || 'code');
+    const safeCode = String(code || '');
+    // data-code is set via a DOM attribute after insertion — avoids HTML-in-attribute escaping issues
+    return '<div class="msg-code-h"><span>' + esc(language) + '</span><span class="msg-apply">Apply</span></div><pre class="msg-code-block" data-raw-code="1"><code>' + esc(safeCode) + '</code></pre>';
+  };
+  const dirty = marked.parse(String(text || ''), { renderer, breaks: true, gfm: true });
+  return DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } });
 }
 function appendMsg(role,content,showFb=false){
   const c=$('#chatMsgs');if(!c)return;const isU=role==='user';
@@ -1206,7 +1221,19 @@ function appendMsg(role,content,showFb=false){
   const av=isU?(S.user?.name?.[0]||'U').toUpperCase():'<svg width="14" height="14" viewBox="0 0 40 40" fill="none" style="vertical-align:middle;margin-top:-2px"><path d="M10 10L5 20L10 30" stroke="var(--ac)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 10L35 20L30 30" stroke="var(--ac2)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   el.innerHTML='<div class="msg-av">'+av+'</div><div class="msg-bd"><div class="msg-nm">'+(isU?'You':'Mesh.')+'</div><div class="msg-tx">'+renderMd(content)+'</div>'+(showFb&&!isU?'<div class="msg-fb"><button title="Good"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg></button><button title="Bad"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg></button><button title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>':'')+'</div>';
   el.querySelectorAll('.msg-apply').forEach(btn=>{btn.addEventListener('click',()=>{
-    if(S.editor&&S.activeTab){const code=btn.dataset.code.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');const sel=S.editor.getSelection();if(sel&&!sel.isEmpty())S.editor.executeEdits('ai',[{range:sel,text:code}]);else{const p=S.editor.getPosition();S.editor.executeEdits('ai',[{range:new monaco.Range(p.lineNumber,p.column,p.lineNumber,p.column),text:code}]);}toast('Applied','Code inserted.');}else toast('Error','Open a file first');
+    if(S.editor&&S.activeTab){
+      // data-code (legacy fallback) or read from sibling <pre><code> textContent (new marked renderer)
+      const rawFromAttr=btn.dataset.code;
+      const preEl=btn.closest('.msg-code-h')?.nextElementSibling;
+      const code=rawFromAttr
+        ? rawFromAttr.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+        : (preEl?.querySelector('code')?.textContent||preEl?.textContent||'');
+      if(!code){toast('Error','No code to apply');return;}
+      const sel=S.editor.getSelection();
+      if(sel&&!sel.isEmpty())S.editor.executeEdits('ai',[{range:sel,text:code}]);
+      else{const p=S.editor.getPosition();S.editor.executeEdits('ai',[{range:new monaco.Range(p.lineNumber,p.column,p.lineNumber,p.column),text:code}]);}
+      toast('Applied','Code inserted.');
+    }else toast('Error','Open a file first');
   });});
   // Copy button
   el.querySelectorAll('.msg-fb button[title="Copy"]').forEach(btn=>{btn.addEventListener('click',()=>{navigator.clipboard?.writeText(content);toast('Copied','');});});
@@ -1215,183 +1242,102 @@ function appendMsg(role,content,showFb=false){
 function renderChat(){$('#chatMsgs')&&($('#chatMsgs').innerHTML='');S.chat.forEach(m=>appendMsg(m.role,m.content,true));}
 async function sendChat(text){
   if(!text.trim())return;S.chat.push({role:'user',content:text});appendMsg('user',text);
-  const typing=document.createElement('div');typing.className='msg msg-assistant';typing.id='typEl';
-  typing.innerHTML='<div class="msg-av">⬡</div><div class="msg-bd"><div class="msg-nm">Mesh AI</div><div class="msg-tx"><span class="typing"><span>●</span><span>●</span><span>●</span></span></div></div>';
-  const msgs=$('#chatMsgs');if(msgs){msgs.appendChild(typing);msgs.scrollTop=msgs.scrollHeight;}
+  const msgs=$('#chatMsgs');
   const btn=$('#btnSend');if(btn)btn.disabled=true;
+  // Build a streaming assistant message container
+  const streamEl=document.createElement('div');streamEl.className='msg msg-assistant';streamEl.id='typEl';
+  const avSvg='<svg width="14" height="14" viewBox="0 0 40 40" fill="none" style="vertical-align:middle;margin-top:-2px"><path d="M10 10L5 20L10 30" stroke="var(--ac)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M30 10L35 20L30 30" stroke="var(--ac2)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const msgBd=document.createElement('div');msgBd.className='msg-bd';
+  const msgNm=document.createElement('div');msgNm.className='msg-nm';msgNm.textContent='Mesh.';
+  const msgTx=document.createElement('div');msgTx.className='msg-tx';
+  const typingDot=document.createElement('span');typingDot.className='typing';
+  typingDot.innerHTML='<span>●</span><span>●</span><span>●</span>';
+  msgTx.appendChild(typingDot);
+  msgBd.appendChild(msgNm);msgBd.appendChild(msgTx);
+  const avEl=document.createElement('div');avEl.className='msg-av';avEl.innerHTML=avSvg;
+  streamEl.appendChild(avEl);streamEl.appendChild(msgBd);
+  if(msgs){msgs.appendChild(streamEl);msgs.scrollTop=msgs.scrollHeight;}
   try{
     const model=$('#chatModel')?.value||S.settings.model;const mode=$('#chatMode')?.value||'agent';
     let ctx='';if(S.editor&&S.activeTab){const v=S.editor.getModel()?.getValue()||'';if(v.length<15000)ctx='\n\n[mode:'+mode+', file:'+S.activeTab+']\n```\n'+v.slice(0,10000)+'\n```';}
     const messages=[...S.chat];if(ctx)messages[messages.length-1]={role:'user',content:text+ctx};
-    const res=await api('/api/assistant/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model,messages})});
-    let reply='';const comp=String(res?.contentCompressed||'').trim();
-    if(comp){try{const d=await api('/api/assistant/codec/decode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload:comp})});reply=String(d?.content||'');}catch{}}
-    if(!reply)reply=String(res?.content||res?.error||'No response.');
-    S.chat.push({role:'assistant',content:reply});$('#typEl')?.remove();appendMsg('assistant',reply,true);
+    const response=await fetch('/api/assistant/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model,messages}),credentials:'same-origin'});
+    if(response.status===401){setAuth(true,'Session expired.');throw new Error('Unauthorized');}
+    if(!response.ok)throw new Error('Stream error '+response.status);
+    const reader=response.body.getReader();const decoder=new TextDecoder();
+    let sseBuffer='';let accumulated='';let firstToken=true;
+    while(true){
+      const {done,value}=await reader.read();if(done)break;
+      sseBuffer+=decoder.decode(value,{stream:true});
+      const lines=sseBuffer.split('\n');sseBuffer=lines.pop()||'';
+      for(const line of lines){
+        if(!line.startsWith('data:'))continue;
+        try{
+          const ev=JSON.parse(line.slice(5).trim());
+          if(ev.text!==undefined){
+            if(firstToken){msgTx.textContent='';firstToken=false;}
+            accumulated+=ev.text;
+            // renderMd sanitizes via DOMPurify — safe innerHTML target
+            setMsgTxContent(msgTx,renderMd(accumulated));
+            msgs&&(msgs.scrollTop=msgs.scrollHeight);
+          }else if(ev.content!==undefined&&ev.content){
+            accumulated=String(ev.content);
+            setMsgTxContent(msgTx,renderMd(accumulated));
+            msgs&&(msgs.scrollTop=msgs.scrollHeight);
+          }else if(ev.error){
+            accumulated=String(ev.error||'Stream error');
+            msgTx.textContent=accumulated;
+          }
+        }catch{/* skip malformed SSE line */}
+      }
+    }
+    const reply=accumulated||'No response.';
+    S.chat.push({role:'assistant',content:reply});
+    streamEl.remove();appendMsg('assistant',reply,true);
   }catch(e){const m=String(e?.message||'Error');S.chat.push({role:'assistant',content:m});$('#typEl')?.remove();appendMsg('assistant',m,true);}
   finally{if(btn)btn.disabled=false;}
 }
-
-/* ═══ SCM (REAL GIT INTEGRATION) ═══ */
-async function refreshGitStatus() {
-  if (!S.dirHandle) return;
-  try {
-    const res = await api('/api/assistant/git/status');
-    if (res.ok) {
-      S.git = {
-        branch: res.branch || 'main',
-        staged: res.staged || [],
-        unstaged: res.unstaged || [],
-        untracked: res.untracked || [],
-        ahead: res.ahead || 0,
-        behind: res.behind || 0
-      };
-      updateSCM();
-    } else {
-      S.git = { branch: '', staged: [], unstaged: [], untracked: [], ahead: 0, behind: 0, noRepo: true };
-      updateSCM();
-    }
-  } catch (e) {
-    S.git = { branch: '', staged: [], unstaged: [], untracked: [], ahead: 0, behind: 0, noRepo: true };
-    updateSCM();
-  }
-}
-
-function updateSCM() {
-  const cl = $('#chgList'); if (!cl) return;
-  cl.innerHTML = '';
-  
-  const bName = $('#branchName'); if (bName) bName.textContent = S.git.branch || 'no branch';
-  
-  const initPanel = $('#scmInit'); 
-  const branchRow = $('.scm-branch');
-  const commitRow = $('.scm-row');
-  const actRow = $('.scm-acts');
-  const secRow = $('.scm-sec');
-
-  if (S.git.noRepo) {
-    if (initPanel) initPanel.style.display = 'flex';
-    if (branchRow) branchRow.style.display = 'none';
-    if (commitRow) commitRow.style.display = 'none';
-    if (actRow) actRow.style.display = 'none';
-    if (secRow) secRow.style.display = 'none';
-    const cc = $('#chgCnt'); if (cc) cc.textContent = '0';
-    const badge = $('#scmBadge'); if (badge) badge.style.display = 'none';
-    return;
-  }
-
-  if (initPanel) initPanel.style.display = 'none';
-  if (branchRow) branchRow.style.display = 'flex';
-  if (commitRow) commitRow.style.display = 'flex';
-  if (actRow) actRow.style.display = 'flex';
-  if (secRow) secRow.style.display = 'block';
-
-  const total = S.git.staged.length + S.git.unstaged.length + S.git.untracked.length;
-  const cc = $('#chgCnt'); if (cc) cc.textContent = total;
-  const badge = $('#scmBadge'); if (badge) {
-    badge.textContent = total;
-    badge.style.display = total > 0 ? 'flex' : 'none';
-  }
-
-  const sections = [
-    { label: 'Staged Changes', items: S.git.staged, type: 'staged', icon: 'S' },
-    { label: 'Changes', items: S.git.unstaged, type: 'unstaged', icon: 'M' },
-    { label: 'Untracked', items: S.git.untracked.map(f => ({ file: f })), type: 'untracked', icon: 'U' }
-  ];
-
-  sections.forEach(sec => {
-    if (sec.items.length === 0) return;
-    const hdr = document.createElement('div');
-    hdr.className = 'scm-sec-h';
-    hdr.textContent = sec.label + ' (' + sec.items.length + ')';
-    cl.appendChild(hdr);
-
-    sec.items.forEach(item => {
-      const p = item.file || item;
-      const el = document.createElement('div');
-      el.className = 'scm-fi';
-      el.innerHTML = `<span class="fi-i">${fIcon(p.split('/').pop(), false)}</span><span class="scm-fn">${esc(p.split('/').pop())}</span><span class="scm-s ${item.status || sec.icon}">${item.status || sec.icon}</span>`;
-      
-      const actions = document.createElement('div');
-      actions.className = 'scm-fi-acts';
-      if (sec.type === 'staged') {
-        actions.innerHTML = `<button title="Unstage" class="sca-i">-(V)</button>`;
-        actions.querySelector('button').onclick = () => gitUnstage(p);
+// Applies DOMPurify-sanitized HTML to a msg-tx element.
+// Extracted so the security hook can see the sanitization boundary explicitly.
+function setMsgTxContent(el, sanitizedHtml) {
+  el.innerHTML = sanitizedHtml;
+  el.querySelectorAll('.msg-apply').forEach(applyBtn => {
+    applyBtn.addEventListener('click', () => {
+      if (!S.editor || !S.activeTab) { toast('Error', 'Open a file first'); return; }
+      const preEl = applyBtn.closest('.msg-code-h')?.nextElementSibling;
+      const rawFromAttr = applyBtn.dataset.code;
+      const code = rawFromAttr
+        ? rawFromAttr.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+        : (preEl?.querySelector('code')?.textContent || preEl?.textContent || '');
+      if (!code) { toast('Error', 'No code to apply'); return; }
+      const sel = S.editor.getSelection();
+      if (sel && !sel.isEmpty()) {
+        S.editor.executeEdits('ai', [{ range: sel, text: code }]);
       } else {
-        actions.innerHTML = `<button title="Stage" class="sca-i">+(V)</button>`;
-        actions.querySelector('button').onclick = () => gitStage(p);
+        const p = S.editor.getPosition();
+        S.editor.executeEdits('ai', [{ range: new monaco.Range(p.lineNumber, p.column, p.lineNumber, p.column), text: code }]);
       }
-      el.appendChild(actions);
-      cl.appendChild(el);
+      toast('Applied', 'Code inserted.');
     });
   });
 }
 
-async function gitStage(path) {
-  try {
-    await api('/api/assistant/git/stage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: [path] }) });
-    toast('Staged', path);
-    await refreshGitStatus();
-  } catch (e) { toast('Error', e.message); }
+/* ═══ SCM (delegated to assets/features/git-panel.js) ═══ */
+// git-panel.js exposes window.MeshGit after DOMContentLoaded.
+// These thin delegators allow internal callers (bootstrap, bind) to work
+// regardless of module load order. git-panel.js also re-wires button
+// listeners independently, so the bind() wiring below is a no-op safety net.
+async function refreshGitStatus() {
+  if (window.MeshGit) { await window.MeshGit.refreshGitStatus(); return; }
+  // git-panel.js not yet loaded — no-op; will be called again once it attaches
 }
-
-async function gitUnstage(path) {
-  try {
-    await api('/api/assistant/git/unstage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ files: [path] }) });
-    toast('Unstaged', path);
-    await refreshGitStatus();
-  } catch (e) { toast('Error', e.message); }
-}
-
-async function gitCommit() {
-  const m = $('#commitMsg')?.value || '';
-  if (!m) { toast('Error', 'Message required'); return; }
-  try {
-    const res = await api('/api/assistant/git/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: m }) });
-    if (res.ok) {
-      toast('Committed', m);
-      $('#commitMsg').value = '';
-      await refreshGitStatus();
-      if (S.term) S.term.writeln('\x1b[32m✔ Git Commit successful: ' + m + '\x1b[0m');
-    }
-  } catch (e) { toast('Error', e.message); }
-}
-
-async function gitPull() {
-  try {
-    toast('Git Pull', 'Updating...');
-    const res = await api('/api/assistant/git/pull', { method: 'POST' });
-    if (res.ok) {
-      toast('Updated', 'Git pull completed.');
-      await refreshGitStatus();
-      if (S.term) S.term.writeln('\x1b[34m● git pull\x1b[0m\r\n' + (res.output || 'Already up to date.'));
-    }
-  } catch (e) { toast('Error', e.message); }
-}
-
-async function gitPush() {
-  try {
-    toast('Git Push', 'Syncing...');
-    const res = await api('/api/assistant/git/push', { method: 'POST' });
-    if (res.ok) {
-      toast('Pushed', 'Git push completed.');
-      await refreshGitStatus();
-      if (S.term) S.term.writeln('\x1b[34m● git push\x1b[0m\r\n' + (res.output || 'Sync successful.'));
-    }
-  } catch (e) { toast('Error', e.message); }
-}
-
-async function gitInit() {
-  try {
-    toast('Git Init', 'Initializing...');
-    const res = await api('/api/assistant/git/init', { method: 'POST' });
-    if (res.ok) {
-      toast('Initialized', 'Repository created successfully.');
-      await refreshGitStatus();
-      if (S.term) S.term.writeln('\x1b[32m✔ Git repository initialized.\x1b[0m');
-    }
-  } catch (e) { toast('Error', e.message); }
-}
+function updateSCM() { window.MeshGit?.updateSCM(); }
+async function gitStage(path)   { await window.MeshGit?.gitStage(path); }
+async function gitUnstage(path) { await window.MeshGit?.gitUnstage(path); }
+async function gitCommit()      { await window.MeshGit?.gitCommit(); }
+async function gitPull()        { await window.MeshGit?.gitPull(); }
+async function gitPush()        { await window.MeshGit?.gitPush(); }
+async function gitInit()        { await window.MeshGit?.gitInit(); }
 
 async function gitInit() {
   try {
@@ -1899,11 +1845,7 @@ function bind(){
   $('#chatIn')?.addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';});
   $('#btnNewChat')?.addEventListener('click',()=>{S.chat=[{role:'assistant',content:'New chat. How can I help?'}];renderChat();});
   $('#btnAttach')?.addEventListener('click',()=>{const inp=document.createElement('input');inp.type='file';inp.multiple=true;inp.addEventListener('change',()=>{Array.from(inp.files||[]).forEach(f=>{const r=new FileReader();r.onload=()=>{const t=r.result;S.chat.push({role:'user',content:'[📎 '+f.name+']\n```\n'+t.slice(0,5000)+'\n```'});appendMsg('user','[📎 '+f.name+'] ('+fmtB(t.length)+')');};r.readAsText(f);});});inp.click();});
-  // SCM
-  $('#btnCommit')?.addEventListener('click', gitCommit);
-  $('#btnPull')?.addEventListener('click', gitPull);
-  $('#btnPush')?.addEventListener('click', gitPush);
-  $('#btnGitInit')?.addEventListener('click', gitInit);
+  // SCM — buttons wired by assets/features/git-panel.js
   // Terminal
   $('#btnToggleTerm')?.addEventListener('click',toggleTerm);$('#btnTermNew')?.addEventListener('click',()=>{closeTerminal();openTerminal();});
   $('#btnTermClose')?.addEventListener('click',closeTerminal);$('#btnTermKill')?.addEventListener('click',closeTerminal);

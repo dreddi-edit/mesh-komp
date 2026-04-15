@@ -50,8 +50,6 @@ const REPO_DOCS_PRIORITY = [
   'UI-REVIEW.md',
   'DEPLOY.md',
   'CLAUDE.md',
-  'AZURE-ARCHITECTURE.md',
-  'CAPSULA-COMPRESSION-AZURE-GESAMTDOKU.md',
   'claude-overview.md',
   '.mesh/instructions.md',
   '.mesh/dependency-map.md',
@@ -245,12 +243,15 @@ function createAppRouter(core) {
     toIsoNow,
     snapshotOperationsPayload,
     operationsStore,
+    buildWorkspaceFileListingEntry,
+    localAssistantWorkspace,
     queueDeployment,
     settleDeploymentAction,
     createPolicy,
     updatePolicy,
     appendOperationLog,
     validateProviderKey,
+    runModelChat,
     Anthropic,
   } = core;
 
@@ -390,6 +391,17 @@ function createAppRouter(core) {
 
   router.get("/api/app/ops", requireAuth, (_req, res) => {
     res.json(snapshotOperationsPayload());
+  });
+
+  router.get("/api/app/compression", requireAuth, (_req, res) => {
+    const folderName = localAssistantWorkspace.folderName || null;
+    if (!folderName || !localAssistantWorkspace.files.size) {
+      return res.json({ ok: true, folderName, files: [] });
+    }
+    const files = [...localAssistantWorkspace.files.values()]
+      .map((meta) => buildWorkspaceFileListingEntry(meta))
+      .filter((f) => f.rawBytes > 0 || f.capsuleBytes > 0);
+    res.json({ ok: true, folderName, files });
   });
 
   router.get("/api/app/deployments", requireAuth, (_req, res) => {
@@ -548,67 +560,28 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
 
   router.post("/api/inline-complete", requireAuth, async (req, res) => {
     const { prefix = "", language = "plaintext" } = req.body || {};
-    const azureEndpoint = config.AZURE_OPENAI_ENDPOINT;
-    const azureKey = config.AZURE_OPENAI_KEY;
 
-    if (!azureEndpoint || !azureKey) {
-      res.status(503).json({ ok: false, error: "Inline completion not configured." });
-      return;
-    }
+    const messages = [
+      { role: "user", content: `You are a code completion engine. Complete the ${language} code at the cursor. Output ONLY the completion text, no explanation, no markdown fences.\n\n${prefix}` },
+    ];
 
-    const deployment = "gpt-4.1-mini";
-    const url = `${azureEndpoint}/openai/deployments/${deployment}/chat/completions?api-version=2024-12-01-preview`;
-    const body = {
-      messages: [
-        { role: "system", content: `You are a code completion engine. Complete the ${language} code at the cursor. Output ONLY the completion text, no explanation, no markdown fences.` },
-        { role: "user", content: prefix },
-      ],
-      temperature: 0,
-      max_tokens: 200,
-      stream: true,
-    };
-
-    let upstream;
     try {
-      upstream = await fetch(url, {
-        method: "POST",
-        headers: { "api-key": azureKey, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(60_000),
+      const result = await runModelChat({
+        model: config.MESH_DEFAULT_MODEL,
+        messages,
+        maxTokens: 200,
       });
+      const text = String(result?.content || "");
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
     } catch (err) {
       logger.error('Inline completion failed', { scope: 'app-routes', error: String(err?.message || err || 'unknown') });
       res.status(502).json({ ok: false, error: "Inline completion request failed." });
-      return;
     }
-
-    if (!upstream.ok) {
-      const errText = await upstream.text().catch(() => "");
-      logger.error('Inline completion upstream error', { scope: 'app-routes', status: upstream.status, body: errText.slice(0, 200) });
-      res.status(upstream.status).json({ ok: false, error: "Inline completion upstream error." });
-      return;
-    }
-
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-
-    const decoder = new TextDecoder();
-    for await (const chunk of upstream.body) {
-      const text = decoder.decode(chunk, { stream: true });
-      for (const line of text.split("\n")) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const data = trimmed.slice(5).trim();
-        if (data === "[DONE]") { res.write("data: [DONE]\n\n"); break; }
-        try {
-          const parsed = JSON.parse(data);
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
-        } catch {}
-      }
-    }
-    res.end();
   });
 
   return router;

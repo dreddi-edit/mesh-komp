@@ -199,8 +199,8 @@ const orbInteraction = {
 };
 
 /* Orb dimensions */
-const ORB_RENDER = 320;
-const ORB_DISPLAY = 320;
+const ORB_RENDER = 380;
+const ORB_DISPLAY = 380;
 
 /* ── Color palettes per state ── */
 const PALETTES = {
@@ -224,7 +224,7 @@ const voiceRuntime = {
 };
 
 function getSelectedCodingModel() {
-  return document.querySelector('#chatModel')?.value || window.MeshState?.settings?.model || 'gpt-5.4-mini';
+  return document.querySelector('#chatModel')?.value || window.MeshState?.settings?.model || 'claude-sonnet-4-6';
 }
 
 function appendChatMessage(role, content) {
@@ -738,42 +738,23 @@ function playAudioDelta(base64) {
    Rendered with canvas, lives inside #chatMsgs, draggable
    ══════════════════════════════════════════════════════════ */
 
-/* Pre-compute a sphere mesh (icosphere-ish) for wireframe rendering */
-function buildSphereMesh(latSegments, lonSegments) {
-  const verts = [];
-  const edges = [];
-  for (let lat = 0; lat <= latSegments; lat++) {
-    const theta = (lat / latSegments) * Math.PI;
-    for (let lon = 0; lon < lonSegments; lon++) {
-      const phi = (lon / lonSegments) * Math.PI * 2;
-      verts.push({
-        x: Math.sin(theta) * Math.cos(phi),
-        y: Math.cos(theta),
-        z: Math.sin(theta) * Math.sin(phi),
-        lat, lon,
-      });
-    }
-  }
-  /* Horizontal edges */
-  for (let lat = 0; lat <= latSegments; lat++) {
-    for (let lon = 0; lon < lonSegments; lon++) {
-      const a = lat * lonSegments + lon;
-      const b = lat * lonSegments + ((lon + 1) % lonSegments);
-      edges.push([a, b]);
-    }
-  }
-  /* Vertical edges */
-  for (let lat = 0; lat < latSegments; lat++) {
-    for (let lon = 0; lon < lonSegments; lon++) {
-      const a = lat * lonSegments + lon;
-      const b = (lat + 1) * lonSegments + lon;
-      edges.push([a, b]);
-    }
-  }
-  return { verts, edges };
-}
+/* Pre-compute 10 000 points on a unit sphere via Fibonacci (golden-angle) distribution.
+   This gives perceptually uniform coverage without polar clustering. */
+const PARTICLE_COUNT = 10000;
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
-const SPHERE = buildSphereMesh(14, 20);
+const SPHERE_PTS = (function buildFibonacciSphere() {
+  const pts = new Float32Array(PARTICLE_COUNT * 3);
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const y = 1 - (i / (PARTICLE_COUNT - 1)) * 2;
+    const r = Math.sqrt(1 - y * y);
+    const theta = GOLDEN_ANGLE * i;
+    pts[i * 3]     = Math.cos(theta) * r;  // x
+    pts[i * 3 + 1] = y;                    // y
+    pts[i * 3 + 2] = Math.sin(theta) * r;  // z
+  }
+  return pts;
+})();
 
 function createOrb() {
   destroyOrb();
@@ -892,132 +873,155 @@ function destroyOrb() {
 }
 
 /* ══════════════════════════════════════════════════════════
-   Visualization: Glowing Wireframe Mesh Sphere
-   - Sphere surface made of flowing wave-deformed wireframe lines
-   - Blue/cyan/purple glow, matching the reference image
-   - Sound energy deforms the mesh and brightens the glow
+   Visualization: Exploding Shell — 10 000 Fibonacci particles
+   - Particles erupt outward per-frequency-bin on audio input
+   - Quadratic eruption response: quiet = tight sphere, loud = explosive
+   - Back-hemisphere visible at low alpha (depth transparency)
    ══════════════════════════════════════════════════════════ */
 function startVisualization() {
   let t = 0;
 
+  /* Per-particle random phase and eruption sensitivity (set once, reused every frame) */
+  const phase       = new Float32Array(PARTICLE_COUNT);
+  const sensitivity = new Float32Array(PARTICLE_COUNT);
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    phase[i]       = Math.random() * Math.PI * 2;
+    sensitivity[i] = 0.4 + Math.random() * 0.6;
+  }
+
+  /* Smoothed amplitude — snappy attack, slow decay */
+  let smoothEnergy = 0;
+
   function draw() {
     if (!orbCtx || !orbCanvas) return;
     animFrame = requestAnimationFrame(draw);
-    t += 0.014;
+    t += 0.012;
 
     const dpr = devicePixelRatio;
-    const W = ORB_RENDER;
-    const H = ORB_RENDER;
+    const W  = ORB_RENDER;
+    const H  = ORB_RENDER;
     const CX = W / 2;
     const CY = H / 2;
 
     orbCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     orbCtx.clearRect(0, 0, W, H);
 
-    /* Frequency data */
+    /* ── Read live frequency data from AnalyserNode ── */
     const analyser = (state === 'speaking') ? analyserOut : analyserMic;
-    let energy = 0;
-    let data = null;
+    let rawEnergy = 0;
+    let freqData  = null;
     if (analyser) {
       const bufLen = analyser.frequencyBinCount;
-      data = new Uint8Array(bufLen);
-      analyser.getByteFrequencyData(data);
+      freqData = new Uint8Array(bufLen);
+      analyser.getByteFrequencyData(freqData);
       let sum = 0;
-      for (let i = 0; i < bufLen; i++) sum += data[i];
-      energy = Math.min(1, (sum / bufLen / 255) * 3.5);
+      for (let i = 0; i < bufLen; i++) sum += freqData[i];
+      rawEnergy = Math.min(1, (sum / bufLen / 255) * 4.0);
     }
-    /* Idle breathing when no audio */
-    if (state === 'connecting') energy = 0.15 + Math.sin(t * 2) * 0.1;
-    if (!isActive || state === 'idle') energy = 0.08 + Math.sin(t * 1.4) * 0.03;
+    /* Fallback breathing when no audio context */
+    if (state === 'connecting') rawEnergy = 0.15 + Math.sin(t * 2.0) * 0.08;
+    if (!isActive || state === 'idle') rawEnergy = 0.05 + Math.sin(t * 1.4) * 0.025;
 
-    const pal = PALETTES[state] || PALETTES.connecting;
-    const sphereR = 72 + energy * 16;
+    /* Snappy attack, slow decay — eruptions feel crisp */
+    const lerpSpeed = rawEnergy > smoothEnergy ? 0.22 : 0.045;
+    smoothEnergy += (rawEnergy - smoothEnergy) * lerpSpeed;
 
-    /* Rotation angles */
-    orbInteraction.yaw += (orbInteraction.targetYaw - orbInteraction.yaw) * 0.18;
+    const pal     = PALETTES[state] || PALETTES.connecting;
+    const BASE_R  = 108;
+    const sphereR = BASE_R + smoothEnergy * 18;
+
+    /* ── Rotation (auto + drag interaction) ── */
+    orbInteraction.yaw   += (orbInteraction.targetYaw   - orbInteraction.yaw)   * 0.18;
     orbInteraction.pitch += (orbInteraction.targetPitch - orbInteraction.pitch) * 0.18;
-    const rotY = t * 0.3 + orbInteraction.yaw;
-    const rotX = t * 0.15 + 0.3 + orbInteraction.pitch;
+    const rotY = t * 0.22 + orbInteraction.yaw;
+    const rotX = t * 0.11 + 0.3 + orbInteraction.pitch;
     const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
     const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
 
-    /* Transform & deform sphere verts */
-    const projected = SPHERE.verts.map((v, idx) => {
-      /* Wave deformation along surface */
-      const wave1 = Math.sin(v.lat * 0.9 + t * 2.5) * (0.03 + energy * 0.08);
-      const wave2 = Math.sin(v.lon * 1.3 + t * 1.8) * (0.02 + energy * 0.06);
-      const wave3 = Math.sin((v.lat + v.lon) * 0.7 + t * 3.2) * energy * 0.05;
-
-      /* Frequency-driven per-vertex displacement */
-      const freqIdx = data ? Math.floor((idx / SPHERE.verts.length) * data.length) : 0;
-      const freqVal = data ? (data[freqIdx] / 255) : 0;
-      const freqDisp = freqVal * 0.06;
-
-      const r = sphereR * (1 + wave1 + wave2 + wave3 + freqDisp);
-
-      let x = v.x * r;
-      let y = v.y * r;
-      let z = v.z * r;
-
-      /* Rotate Y */
-      const x1 = x * cosY - z * sinY;
-      const z1 = x * sinY + z * cosY;
-      /* Rotate X */
-      const y2 = y * cosX - z1 * sinX;
-      const z2 = y * sinX + z1 * cosX;
-
-      return { x: CX + x1, y: CY + y2, z: z2, brightness: 0.5 + z2 / (sphereR * 2) };
-    });
-
-    /* Background glow */
-    const glowGrad = orbCtx.createRadialGradient(CX, CY, sphereR * 0.3, CX, CY, sphereR * 1.5);
-    glowGrad.addColorStop(0, `rgba(${pal.r},${pal.g},${pal.b},${0.14 + energy * 0.14})`);
-    glowGrad.addColorStop(0.5, `rgba(${pal.r2},${pal.g2},${pal.b2},${0.08 + energy * 0.08})`);
-    glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    /* ── Ambient halo glow — grows with energy ── */
+    const haloR    = sphereR * (1.5 + smoothEnergy * 0.7);
+    const haloGrad = orbCtx.createRadialGradient(CX, CY, sphereR * 0.3, CX, CY, haloR);
+    haloGrad.addColorStop(0,   `rgba(${pal.r},${pal.g},${pal.b},${0.16 + smoothEnergy * 0.2})`);
+    haloGrad.addColorStop(0.5, `rgba(${pal.r},${pal.g},${pal.b},${0.04 + smoothEnergy * 0.06})`);
+    haloGrad.addColorStop(1,   'rgba(0,0,0,0)');
     orbCtx.beginPath();
-    orbCtx.arc(CX, CY, sphereR * 1.5, 0, Math.PI * 2);
-    orbCtx.fillStyle = glowGrad;
+    orbCtx.arc(CX, CY, haloR, 0, Math.PI * 2);
+    orbCtx.fillStyle = haloGrad;
     orbCtx.fill();
 
-    /* Draw edges as glowing wireframe lines */
-    for (const [a, b] of SPHERE.edges) {
-      const pa = projected[a];
-      const pb = projected[b];
-      if (!pa || !pb) continue;
+    /* ── Project & draw all 10 000 particles ── */
+    const freqBins = freqData ? freqData.length : 0;
+    const freqStep = freqBins > 0 ? freqBins / PARTICLE_COUNT : 0;
 
-      /* Depth-based alpha: front brighter, back dimmer */
-      const avgZ = (pa.z + pb.z) / 2;
-      const depthAlpha = 0.18 + ((avgZ + sphereR) / (sphereR * 2)) * 0.7;
-      const alpha = depthAlpha * (0.7 + energy * 0.65);
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      const bx = SPHERE_PTS[i * 3];
+      const by = SPHERE_PTS[i * 3 + 1];
+      const bz = SPHERE_PTS[i * 3 + 2];
 
-      /* Color interpolation based on depth */
-      const blend = (avgZ + sphereR) / (sphereR * 2);
-      const r = Math.round(pal.r + (pal.r2 - pal.r) * blend);
-      const g = Math.round(pal.g + (pal.g2 - pal.g) * blend);
-      const bv = Math.round(pal.b + (pal.b2 - pal.b) * blend);
+      /* Each particle owns a frequency bin — direct per-particle audio drive */
+      const freqVal = freqBins > 0
+        ? freqData[Math.min(freqBins - 1, (i * freqStep) | 0)] / 255
+        : 0;
+
+      /* Quadratic eruption: barely moves at low amp, explosive at high amp */
+      const eruptBase = smoothEnergy * smoothEnergy;
+      const eruption  = eruptBase * sensitivity[i] * (0.5 + 0.5 * Math.abs(Math.sin(phase[i] * 1.7 + t * 3.5)))
+                      + freqVal * smoothEnergy * 0.18;
+
+      /* Gentle surface wave at rest */
+      const wave = 0.012 * Math.sin(phase[i] + t * 1.6)
+                 + 0.008 * Math.sin(phase[i] * 1.4 + t * 2.3);
+
+      const r = sphereR * (1 + wave + eruption * 0.55);
+
+      let x = bx * r, y = by * r, z = bz * r;
+
+      /* Rotate Y */
+      const x1 =  x * cosY - z * sinY;
+      const z1 =  x * sinY + z * cosY;
+      /* Rotate X */
+      const y2 =  y * cosX - z1 * sinX;
+      const z2 =  y * sinX + z1 * cosX;
+
+      /* Depth 0=back, 1=front */
+      const depth = (z2 + sphereR * 1.4) / (sphereR * 2.8);
+
+      /* Back hemisphere faintly visible — gives the "see-through sphere" look */
+      const eruptGlow  = eruption * 0.75;
+      const alphaBase  = depth < 0.5
+        ? 0.06 + depth * 0.18 + eruptGlow * 0.5
+        : 0.15 + (depth - 0.5) * 0.85 + eruptGlow * 0.3;
+      const alpha = Math.min(0.95, alphaBase * (0.45 + smoothEnergy * 1.0));
+
+      /* Erupted particles get larger dots */
+      const dotR = 0.5 + depth * 1.1 + eruption * sphereR * 0.045 + freqVal * smoothEnergy * 1.5;
+
+      /* Erupted particles shift toward secondary (brighter) palette color */
+      const colorShift = Math.min(1, depth + eruption * 0.8);
+      const cr = (pal.r  + (pal.r2  - pal.r)  * colorShift) | 0;
+      const cg = (pal.g  + (pal.g2  - pal.g)  * colorShift) | 0;
+      const cb = (pal.b  + (pal.b2  - pal.b)  * colorShift) | 0;
 
       orbCtx.beginPath();
-      orbCtx.moveTo(pa.x, pa.y);
-      orbCtx.lineTo(pb.x, pb.y);
-      orbCtx.strokeStyle = `rgba(${r},${g},${bv},${Math.min(1, alpha)})`;
-      orbCtx.lineWidth = 0.95 + energy * 0.7;
-      orbCtx.stroke();
+      orbCtx.arc(CX + x1, CY + y2, Math.max(0.3, dotR), 0, Math.PI * 2);
+      orbCtx.fillStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(2)})`;
+      orbCtx.fill();
     }
 
-    /* Inner bright core glow */
-    const coreGrad = orbCtx.createRadialGradient(CX, CY, 0, CX, CY, sphereR * 0.6);
-    coreGrad.addColorStop(0, `rgba(${pal.r2},${pal.g2},${pal.b2},${0.14 + energy * 0.12})`);
+    /* ── Inner core glow ── */
+    const coreGrad = orbCtx.createRadialGradient(CX, CY, 0, CX, CY, sphereR * 0.5);
+    coreGrad.addColorStop(0, `rgba(${pal.r2},${pal.g2},${pal.b2},${0.2 + smoothEnergy * 0.22})`);
     coreGrad.addColorStop(1, 'rgba(0,0,0,0)');
     orbCtx.beginPath();
-    orbCtx.arc(CX, CY, sphereR * 0.6, 0, Math.PI * 2);
+    orbCtx.arc(CX, CY, sphereR * 0.5, 0, Math.PI * 2);
     orbCtx.fillStyle = coreGrad;
     orbCtx.fill();
 
-    /* Outer bloom ring */
+    /* ── Outer bloom ring ── */
     orbCtx.beginPath();
     orbCtx.arc(CX, CY, sphereR + 2, 0, Math.PI * 2);
-    orbCtx.strokeStyle = `rgba(${pal.r2},${pal.g2},${pal.b2},${0.14 + energy * 0.12})`;
-    orbCtx.lineWidth = 2.8;
+    orbCtx.strokeStyle = `rgba(${pal.r2},${pal.g2},${pal.b2},${0.1 + smoothEnergy * 0.16})`;
+    orbCtx.lineWidth = 2.5;
     orbCtx.stroke();
   }
 

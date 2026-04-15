@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js" defer id="lottie-script"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <link rel="stylesheet" href="assets/mesh-docs.css"/>
   <script>
     (function() {
@@ -1770,14 +1772,64 @@
       }
     }, { passive: true });
 
-    // ── Reveal observer (handles .reveal, .reveal-left, .reveal-right) ───
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) entry.target.classList.add("visible");
-      });
-    }, { threshold: 0.12 });
+    // ── Reveal observer — bento/steps/stats use anime.js spring stagger; others use CSS ──
+    (function () {
+      const ANIME_TARGETS = new Set([
+        'bento-card', 'step-item', 'stat-item', 'stats-row',
+      ]);
 
-    document.querySelectorAll(".reveal, .reveal-left, .reveal-right").forEach((el) => revealObserver.observe(el));
+      function isAnimeTarget(el) {
+        return [...el.classList].some((c) => ANIME_TARGETS.has(c));
+      }
+
+      function springReveal(el) {
+        if (el._animeRevealDone) return;
+        el._animeRevealDone = true;
+
+        if (!window.anime) {
+          el.classList.add('visible');
+          return;
+        }
+
+        // Collect stagger siblings: all .reveal children of the same parent that are anime targets
+        const parent = el.parentElement;
+        const siblings = parent
+          ? [...parent.querySelectorAll('.reveal, .reveal-left, .reveal-right')].filter(isAnimeTarget)
+          : [el];
+
+        const idx = siblings.indexOf(el);
+        const fromLeft = el.classList.contains('reveal-left');
+        const fromRight = el.classList.contains('reveal-right');
+
+        anime({
+          targets: el,
+          opacity: [0, 1],
+          translateY: fromLeft || fromRight ? [0, 0] : [28, 0],
+          translateX: fromLeft ? [-28, 0] : fromRight ? [28, 0] : [0, 0],
+          scale: [0.94, 1],
+          delay: idx * 55,
+          duration: 700,
+          easing: 'spring(1, 80, 12, 0)',
+        });
+      }
+
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          if (isAnimeTarget(el)) {
+            springReveal(el);
+          } else {
+            el.classList.add('visible');
+          }
+          revealObserver.unobserve(el);
+        });
+      }, { threshold: 0.12 });
+
+      document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach((el) => {
+        revealObserver.observe(el);
+      });
+    })();
 
     const counterObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -1925,6 +1977,43 @@
       setTimeout(typeNextLine, 1000);
     })();
 
+    // ── CTA button anime.js hover pulse ──
+    (function () {
+      const btn = document.querySelector('.btn-hero-primary');
+      if (!btn) return;
+
+      function waitForAnime(cb) {
+        if (window.anime) { cb(); return; }
+        document.getElementById('anime-script')?.addEventListener('load', cb, { once: true });
+      }
+
+      waitForAnime(function () {
+        let anim = null;
+
+        btn.addEventListener('mouseenter', function () {
+          if (anim) anim.pause();
+          anim = anime({
+            targets: btn,
+            scale: [1, 1.04],
+            boxShadow: ['0 0 42px rgba(15,106,123,0.3)', '0 0 64px rgba(15,106,123,0.55)'],
+            duration: 320,
+            easing: 'spring(1, 90, 14, 0)',
+          });
+        });
+
+        btn.addEventListener('mouseleave', function () {
+          if (anim) anim.pause();
+          anim = anime({
+            targets: btn,
+            scale: [null, 1],
+            boxShadow: [null, '0 0 42px rgba(15,106,123,0.3)'],
+            duration: 260,
+            easing: 'easeOutCubic',
+          });
+        });
+      });
+    })();
+
     (async function initHeroLoader() {
       const mount = document.getElementById("hero-mesh-loader");
       if (!mount) return;
@@ -1952,6 +2041,27 @@
         // no-op
       }
     })();
+  </script>
+  <script src="/node_modules/animejs/dist/bundles/anime.umd.min.js" id="anime-script"></script>
+  <script>
+  (function () {
+    var style = document.createElement('style');
+    style.textContent = '#tx-overlay{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:9999;transition:opacity 700ms ease-in-out;}#tx-overlay.active{opacity:1;}';
+    document.head.appendChild(style);
+
+    var overlay = document.createElement('div');
+    overlay.id = 'tx-overlay';
+    document.body.appendChild(overlay);
+
+    document.querySelectorAll('a[href^="app"]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var href = a.href;
+        overlay.classList.add('active');
+        setTimeout(function () { window.location.href = href; }, 710);
+      });
+    });
+  })();
   </script>
 </body>
 </html>

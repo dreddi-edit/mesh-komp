@@ -16,9 +16,6 @@ const {
   parseBooleanFlag,
   parseIntegerInRange,
   clampBrotliQuality,
-  trimTrailingSlashes,
-  normalizeSasToken,
-  sanitizeBlobContainerName,
 } = require('./env-utils');
 
 /**
@@ -43,10 +40,10 @@ function validateConfig(env = process.env) {
     errors.push('MESH_DATA_ENCRYPTION_KEY must be set in production. All encrypted user data depends on this value.');
   }
 
-  const cosmosEndpoint = String(env.MESH_COSMOS_ENDPOINT || '').trim();
-  const cosmosKey = String(env.MESH_COSMOS_KEY || '').trim();
-  if (isProduction && (!cosmosEndpoint || !cosmosKey)) {
-    errors.push('MESH_COSMOS_ENDPOINT and MESH_COSMOS_KEY must both be set in production. Auth and user storage require Cosmos DB.');
+  const dynamoEnabled = parseBooleanFlag(env.MESH_DYNAMO_ENABLED, false);
+  const dynamoTable = String(env.MESH_DYNAMO_USERS_TABLE || env.MESH_DYNAMO_TABLE_PREFIX || '').trim();
+  if (isProduction && !dynamoEnabled && !dynamoTable) {
+    errors.push('MESH_DYNAMO_ENABLED must be set to true in production. Auth and user storage require DynamoDB.');
   }
 
   const anthropicKey = String(env.ANTHROPIC_API_KEY || '').trim();
@@ -80,9 +77,13 @@ function buildConfig(env = process.env) {
 
     MESH_DATA_ENCRYPTION_KEY: String(env.MESH_DATA_ENCRYPTION_KEY || env.AUTH_SECRET || '').trim(),
     MESH_SECURE_DB_FILE: String(env.MESH_SECURE_DB_FILE || '').trim(),
-    MESH_COSMOS_ENDPOINT: String(env.MESH_COSMOS_ENDPOINT || '').trim(),
-    MESH_COSMOS_KEY: String(env.MESH_COSMOS_KEY || '').trim(),
-    MESH_COSMOS_DATABASE: String(env.MESH_COSMOS_DATABASE || 'mesh-db').trim(),
+
+    // DynamoDB (replaces Cosmos DB)
+    MESH_DYNAMO_ENABLED: parseBooleanFlag(env.MESH_DYNAMO_ENABLED, false),
+    MESH_DYNAMO_TABLE_PREFIX: String(env.MESH_DYNAMO_TABLE_PREFIX || 'mesh').trim(),
+    MESH_DYNAMO_USERS_TABLE: String(env.MESH_DYNAMO_USERS_TABLE || '').trim(),
+    MESH_DYNAMO_SESSIONS_TABLE: String(env.MESH_DYNAMO_SESSIONS_TABLE || '').trim(),
+    MESH_DYNAMO_STORES_TABLE: String(env.MESH_DYNAMO_STORES_TABLE || '').trim(),
 
     ANTHROPIC_API_KEY: String(env.ANTHROPIC_API_KEY || '').trim(),
     OPENAI_API_KEY: String(env.OPENAI_API_KEY || '').trim(),
@@ -92,12 +93,13 @@ function buildConfig(env = process.env) {
     AWS_ACCESS_KEY_ID: String(env.AWS_ACCESS_KEY_ID || '').trim(),
     AWS_SECRET_ACCESS_KEY: String(env.AWS_SECRET_ACCESS_KEY || '').trim(),
     AWS_REGION_BEDROCK: String(env.AWS_REGION_BEDROCK || 'us-east-1').trim(),
-    AZURE_OPENAI_ENDPOINT: String(env.AZURE_OPENAI_ENDPOINT || '').trim().replace(/\/+$/, ''),
-    AZURE_OPENAI_KEY: String(env.AZURE_OPENAI_KEY || '').trim(),
     MESH_DEFAULT_MODEL: String(env.MESH_DEFAULT_MODEL || 'claude-sonnet-4-6').trim(),
 
-    AZURE_OPENAI_VOICE_ENDPOINT: String(env.AZURE_OPENAI_VOICE_ENDPOINT || '').trim(),
-    AZURE_OPENAI_VOICE_KEY: String(env.AZURE_OPENAI_VOICE_KEY || '').trim(),
+    // AWS Voice (Amazon Transcribe + Polly)
+    MESH_VOICE_TRANSCRIBE_LANGUAGE: String(env.MESH_VOICE_TRANSCRIBE_LANGUAGE || env.MESH_VOICE_TRANSCRIBE_LANG || 'en-US').trim(),
+    MESH_VOICE_POLLY_VOICE: String(env.MESH_VOICE_POLLY_VOICE || 'Joanna').trim(),
+    MESH_VOICE_POLLY_ENGINE: String(env.MESH_VOICE_POLLY_ENGINE || 'neural').trim(),
+
     SPEECH_RMS_THRESHOLD: Number(env.MESH_VOICE_VAD_THRESHOLD || 0.012),
     SPEECH_PREFIX_MS: Number(env.MESH_VOICE_VAD_PREFIX_MS || 240),
     SPEECH_SILENCE_MS: Number(env.MESH_VOICE_VAD_SILENCE_MS || 720),
@@ -168,22 +170,14 @@ function buildConfig(env = process.env) {
     WORKSPACE_SELECT_MAX_JOB_HISTORY: parseIntegerInRange(env.MESH_WORKSPACE_SELECT_MAX_JOB_HISTORY, 500, 50, 5000),
     WORKSPACE_SELECT_MAX_PENDING: parseIntegerInRange(env.MESH_WORKSPACE_SELECT_MAX_PENDING, 12, 1, 200),
 
-    MESH_AZURE_OFFLOAD_ENABLED: parseBooleanFlag(env.MESH_AZURE_OFFLOAD_ENABLED, false),
-    MESH_AZURE_BLOB_BASE_URL: trimTrailingSlashes(env.MESH_AZURE_BLOB_BASE_URL || ''),
-    MESH_AZURE_BLOB_CONTAINER: sanitizeBlobContainerName(env.MESH_AZURE_BLOB_CONTAINER || ''),
-    MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN: normalizeSasToken(env.MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN || env.MESH_AZURE_BLOB_SAS_TOKEN || ''),
-    MESH_AZURE_BLOB_INGEST_SAS_TOKEN: normalizeSasToken(
-      env.MESH_AZURE_BLOB_INGEST_SAS_TOKEN || env.MESH_AZURE_BLOB_SAS_TOKEN || env.MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN || '',
-    ),
-    MESH_AZURE_BLOB_READ_SAS_TOKEN: normalizeSasToken(
-      env.MESH_AZURE_BLOB_READ_SAS_TOKEN || env.MESH_AZURE_BLOB_INGEST_SAS_TOKEN
-      || env.MESH_AZURE_BLOB_SAS_TOKEN || env.MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN || '',
-    ),
-    MESH_AZURE_BLOB_DELETE_SAS_TOKEN: normalizeSasToken(env.MESH_AZURE_BLOB_DELETE_SAS_TOKEN || ''),
-    MESH_AZURE_OFFLOAD_MAX_CHUNK_FILES: parseIntegerInRange(env.MESH_AZURE_OFFLOAD_MAX_CHUNK_FILES, 900, 100, 5000),
-    MESH_AZURE_OFFLOAD_MAX_CHUNK_BYTES: parseIntegerInRange(env.MESH_AZURE_OFFLOAD_MAX_CHUNK_BYTES, 60_000_000, 5_000_000, 250_000_000),
-    MESH_AZURE_OFFLOAD_MAX_PARALLEL_READS: parseIntegerInRange(env.MESH_AZURE_OFFLOAD_MAX_PARALLEL_READS, 64, 8, 192),
-    MESH_AZURE_OFFLOAD_MAX_INFLIGHT_CHUNKS: parseIntegerInRange(env.MESH_AZURE_OFFLOAD_MAX_INFLIGHT_CHUNKS, 4, 1, 12),
+    // S3 blob offload (replaces Azure Blob Storage)
+    MESH_S3_OFFLOAD_ENABLED: parseBooleanFlag(env.MESH_S3_OFFLOAD_ENABLED, false),
+    MESH_S3_BUCKET: String(env.MESH_S3_BUCKET || '').trim(),
+    MESH_S3_PREFIX: String(env.MESH_S3_PREFIX || '').trim().replace(/\/+$/, ''),
+    MESH_S3_OFFLOAD_MAX_CHUNK_FILES: parseIntegerInRange(env.MESH_S3_OFFLOAD_MAX_CHUNK_FILES, 900, 100, 5000),
+    MESH_S3_OFFLOAD_MAX_CHUNK_BYTES: parseIntegerInRange(env.MESH_S3_OFFLOAD_MAX_CHUNK_BYTES, 60_000_000, 5_000_000, 250_000_000),
+    MESH_S3_OFFLOAD_MAX_PARALLEL_READS: parseIntegerInRange(env.MESH_S3_OFFLOAD_MAX_PARALLEL_READS, 64, 8, 192),
+    MESH_S3_OFFLOAD_MAX_INFLIGHT_CHUNKS: parseIntegerInRange(env.MESH_S3_OFFLOAD_MAX_INFLIGHT_CHUNKS, 4, 1, 12),
 
     RATE_LIMIT_API_MAX: parseIntegerInRange(env.MESH_RATE_LIMIT_API_MAX, 100, 10, 10000),
     RATE_LIMIT_API_WINDOW_MS: parseIntegerInRange(env.MESH_RATE_LIMIT_API_WINDOW_MS, 60_000, 1000, 600_000),

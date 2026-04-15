@@ -163,10 +163,7 @@ const {
   shouldQueueWorkspaceSelectPayload,
   getWorkspaceSelectJobForUser,
   sortedLocalPaths,
-  buildAzureBlobAbsoluteUrl,
-  buildAzureBlobCanonicalUrl,
   normalizeWorkspaceBlobStorage,
-  buildWorkspaceBlobReadUrl,
   createWorkspaceOffloadConfig,
   workspaceOffloadConfig,
   workspaceOffloadClientConfig,
@@ -641,7 +638,7 @@ async function ensureLocalWorkspaceMeta(meta, pathHint = "") {
 
 async function loadLocalWorkspaceRecordText(meta, requestedPath = "") {
   const record = await ensureLocalWorkspaceMeta(meta, requestedPath || meta?.path || "");
-  if (record?.storage?.provider === "azure-blob") {
+  if (record?.storage?.provider === "s3") {
     const blobText = await readWorkspaceBlobText(record.storage, record.originalSize);
     return blobText.content;
   }
@@ -649,7 +646,10 @@ async function loadLocalWorkspaceRecordText(meta, requestedPath = "") {
 }
 
 function buildWorkspaceFileListingEntry(meta) {
-  const stats = meta?.compressionStats || {};
+  // Records store raw/capsule sizes under rawStorage and capsuleCache, not a compressionStats sub-object.
+  const rawBytes = Number(meta?.rawStorage?.rawBytes || meta?.originalSize || 0);
+  const capsuleBytes = Number(meta?.capsuleCache?.capsule?.capsuleBytes || 0);
+  const compressionRatio = rawBytes > 0 ? Math.max(0, 1 - capsuleBytes / rawBytes) : 0;
   return {
     path: meta.path,
     originalSize: Number(meta.originalSize || 0),
@@ -662,10 +662,10 @@ function buildWorkspaceFileListingEntry(meta) {
     capsuleMode: String(meta?.capsuleMode || ""),
     status: String(meta?.status || (workspaceRecordIndexed(meta) ? "completed" : "pending")),
     error: String(meta?.error || ""),
-    compressionRatio: Number(stats.compressionRatio || 0),
-    capsuleBytes: Number(stats.capsuleBytes || 0),
-    rawBytes: Number(stats.rawBytes || meta?.originalSize || 0),
-    transportBytes: Number(stats.transportBytes || 0),
+    compressionRatio,
+    capsuleBytes,
+    rawBytes,
+    transportBytes: Number(meta?.rawStorage?.transportBytes || 0),
   };
 }
 
@@ -790,6 +790,14 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
     total: localAssistantWorkspace.files.size,
   });
 
+  // Build per-file compression stats for only the files processed in this batch.
+  // Clients use this to update their local compressionMap without a separate API call.
+  const compressionStats = packedEntries.map(({ path, record }) => {
+    const raw = Number(record.rawStorage?.rawBytes || record.originalSize || 0);
+    const capsule = Number(record.capsuleCache?.capsule?.capsuleBytes || 0);
+    return { path, rawBytes: raw, capsuleBytes: capsule };
+  }).filter((e) => e.rawBytes > 0);
+
   return {
     ok: true,
     folderName: localAssistantWorkspace.folderName,
@@ -801,6 +809,7 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
     pendingCount: localAssistantWorkspace.fileCountPending,
     deletedCount: removedPaths.length,
     status: localAssistantWorkspace.status,
+    compressionStats,
   };
 }
 
@@ -955,10 +964,7 @@ module.exports = {
   shouldQueueWorkspaceSelectPayload,
   getWorkspaceSelectJobForUser,
   sortedLocalPaths,
-  buildAzureBlobAbsoluteUrl,
-  buildAzureBlobCanonicalUrl,
   normalizeWorkspaceBlobStorage,
-  buildWorkspaceBlobReadUrl,
   createWorkspaceOffloadConfig,
   workspaceOffloadConfig,
   workspaceOffloadClientConfig,

@@ -2,7 +2,7 @@
 /**
  * MESH — Workspace Infrastructure Layer
  * Tunnel, path utilities, local workspace state, git helpers, job queue,
- * Azure Blob offload, and workspace provisioning.
+ * S3 blob offload, and workspace provisioning.
  *
  * All functions reference mutable state and constants via globals (populated
  * by server.js at startup) at call-time. The five utility functions below are
@@ -18,7 +18,26 @@ const zlib   = require('zlib');
 const { MESH_SYSTEM_PROMPT } = require('./model-providers');
 const config = require('../config');
 const logger = require('../logger');
-const { normalizeSasToken, trimTrailingSlashes } = require('../config/env-utils');
+const { trimTrailingSlashes } = require('../config/env-utils');
+
+let S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand;
+try {
+  ({ S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CopyObjectCommand } = require('@aws-sdk/client-s3'));
+} catch {
+  S3Client = null;
+}
+
+let _s3Client = null;
+function getS3Client() {
+  if (_s3Client) return _s3Client;
+  if (!S3Client) throw new Error('AWS S3 SDK not available. Run: npm install @aws-sdk/client-s3');
+  const opts = { region: config.AWS_REGION_BEDROCK || process.env.AWS_REGION || 'us-east-1' };
+  if (config.AWS_ACCESS_KEY_ID && config.AWS_SECRET_ACCESS_KEY) {
+    opts.credentials = { accessKeyId: config.AWS_ACCESS_KEY_ID, secretAccessKey: config.AWS_SECRET_ACCESS_KEY };
+  }
+  _s3Client = new S3Client(opts);
+  return _s3Client;
+}
 
 function createWorkspacePerfTracker(scope, meta = {}) {
   const startedAt = Date.now();
@@ -494,9 +513,8 @@ async function packLocalWorkspaceContent(workspacePath, content, options = {}) {
 
 function localWorkspaceUploadBlobStorageForPath(filePath, extra = {}) {
   return normalizeWorkspaceBlobStorage({
-    provider: "azure-blob",
+    provider: "s3",
     blobPath: extra.blobPath || filePath,
-    azureBlobUrl: extra.azureBlobUrl,
   }, filePath);
 }
 
@@ -878,133 +896,61 @@ function sortedLocalPaths() {
   return [...localAssistantWorkspace.files.keys()].sort((a, b) => a.localeCompare(b));
 }
 
-function buildAzureBlobAbsoluteUrl(baseUrl, container, blobPath, sasToken) {
-  const normalizedBase = trimTrailingSlashes(baseUrl);
-  const normalizedContainer = sanitizeBlobContainerName(container);
-  const normalizedBlobPath = toSafePath(blobPath)
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-  const normalizedToken = normalizeSasToken(sasToken);
-
-  if (!normalizedBase || !normalizedContainer || !normalizedBlobPath || !normalizedToken) {
-    throw new Error("Azure blob URL cannot be built from current offload settings.");
-  }
-
-  return `${normalizedBase}/${encodeURIComponent(normalizedContainer)}/${normalizedBlobPath}?${normalizedToken}`;
-}
-
-function buildAzureBlobCanonicalUrl(baseUrl, container, blobPath) {
-  const normalizedBase = trimTrailingSlashes(baseUrl);
-  const normalizedContainer = sanitizeBlobContainerName(container);
-  const normalizedBlobPath = toSafePath(blobPath)
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-  if (!normalizedBase || !normalizedContainer || !normalizedBlobPath) {
-    throw new Error("Azure blob URL cannot be built from current offload settings.");
-  }
-  return `${normalizedBase}/${encodeURIComponent(normalizedContainer)}/${normalizedBlobPath}`;
-}
-
 function normalizeWorkspaceBlobStorage(storage, filePath = "") {
   if (!storage || typeof storage !== "object") return null;
-  if (!storage.provider && !storage.blobPath && !storage.azureBlobUrl) return null;
+  if (!storage.provider && !storage.blobPath && !storage.s3Key) return null;
   const provider = String(storage.provider || "").trim().toLowerCase();
-  if (provider && provider !== "azure-blob") return null;
-  const blobPath = toSafePath(storage.blobPath || filePath);
+  if (provider && provider !== "s3") return null;
+  const blobPath = toSafePath(storage.blobPath || storage.s3Key || filePath);
   if (!blobPath) return null;
-  const azureBlob = workspaceOffloadConfig.azureBlob || {};
-  const azureBlobUrl = String(storage.azureBlobUrl || "").trim()
-    || (azureBlob.baseUrl && azureBlob.container ? buildAzureBlobCanonicalUrl(azureBlob.baseUrl, azureBlob.container, blobPath) : "");
-  return {
-    provider: "azure-blob",
-    blobPath,
-    azureBlobUrl,
-  };
-}
-
-function buildWorkspaceBlobReadUrl(storage = {}) {
-  const azureBlob = workspaceOffloadConfig.azureBlob || {};
-  const normalized = normalizeWorkspaceBlobStorage(storage);
-  if (!normalized) {
-    throw new Error("Azure blob storage reference missing.");
-  }
-  const readToken = normalizeSasToken(config.MESH_AZURE_BLOB_READ_SAS_TOKEN || azureBlob.ingestSasToken || azureBlob.uploadSasToken || "");
-  if (!azureBlob.baseUrl || !azureBlob.container || !readToken) {
-    throw new Error("Azure blob read access is not configured on this gateway.");
-  }
-  return buildAzureBlobAbsoluteUrl(
-    azureBlob.baseUrl,
-    azureBlob.container,
-    normalized.blobPath,
-    readToken,
-  );
+  return { provider: "s3", blobPath };
 }
 
 function createWorkspaceOffloadConfig() {
-  const requested = config.MESH_AZURE_OFFLOAD_ENABLED;
-  const baseUrl = config.MESH_AZURE_BLOB_BASE_URL;
-  const container = config.MESH_AZURE_BLOB_CONTAINER;
-  const uploadSasToken = config.MESH_AZURE_BLOB_UPLOAD_SAS_TOKEN;
-  const ingestSasToken = normalizeSasToken(config.MESH_AZURE_BLOB_INGEST_SAS_TOKEN || uploadSasToken);
-  const readSasToken = normalizeSasToken(config.MESH_AZURE_BLOB_READ_SAS_TOKEN || ingestSasToken || uploadSasToken);
-  const maxChunkFiles = config.MESH_AZURE_OFFLOAD_MAX_CHUNK_FILES;
-  const maxChunkBytes = config.MESH_AZURE_OFFLOAD_MAX_CHUNK_BYTES;
-  const maxParallelReads = config.MESH_AZURE_OFFLOAD_MAX_PARALLEL_READS;
-  const maxInflightChunks = config.MESH_AZURE_OFFLOAD_MAX_INFLIGHT_CHUNKS;
+  const requested = config.MESH_S3_OFFLOAD_ENABLED;
+  const bucket = config.MESH_S3_BUCKET;
+  const prefix = config.MESH_S3_PREFIX || "";
+  const maxChunkFiles = config.MESH_S3_OFFLOAD_MAX_CHUNK_FILES;
+  const maxChunkBytes = config.MESH_S3_OFFLOAD_MAX_CHUNK_BYTES;
+  const maxParallelReads = config.MESH_S3_OFFLOAD_MAX_PARALLEL_READS;
+  const maxInflightChunks = config.MESH_S3_OFFLOAD_MAX_INFLIGHT_CHUNKS;
 
   let enabled = false;
   let reason = "disabled-by-env";
-  if (requested && !baseUrl) reason = "missing-base-url";
-  else if (requested && !container) reason = "missing-container";
-  else if (requested && !uploadSasToken) reason = "missing-upload-sas";
-  else if (requested && !ingestSasToken) reason = "missing-ingest-sas";
-  else if (requested && !readSasToken) reason = "missing-read-sas";
+  if (requested && !bucket) reason = "missing-bucket";
+  else if (requested && !S3Client) reason = "sdk-not-installed";
   else if (requested) {
     enabled = true;
     reason = "ready";
   }
 
   return {
-    mode: enabled ? "azure-blob" : "direct",
-    azureBlob: {
-      enabled,
-      reason,
-      baseUrl,
-      container,
-      uploadBaseUrl: baseUrl && container ? `${baseUrl}/${encodeURIComponent(container)}` : "",
-      uploadSasToken,
-      ingestSasToken,
-      readSasToken,
-      maxChunkFiles,
-      maxChunkBytes,
-      maxParallelReads,
-      maxInflightChunks,
-    },
+    mode: enabled ? "s3" : "direct",
+    s3: { enabled, reason, bucket, prefix, maxChunkFiles, maxChunkBytes, maxParallelReads, maxInflightChunks },
+    // Legacy alias so callers that read workspaceOffloadConfig.azureBlob still get a safe object
+    azureBlob: { enabled: false, reason: "migrated-to-s3" },
   };
 }
 
 const workspaceOffloadConfig = createWorkspaceOffloadConfig();
 
 function workspaceOffloadClientConfig() {
-  const azureBlob = workspaceOffloadConfig.azureBlob || {};
+  const s3 = workspaceOffloadConfig.s3 || {};
   return {
     ok: true,
-    mode: azureBlob.enabled ? "azure-blob" : "direct",
-    azureBlob: {
-      enabled: Boolean(azureBlob.enabled),
-      reason: String(azureBlob.reason || "disabled-by-env"),
-      uploadBaseUrl: String(azureBlob.uploadBaseUrl || ""),
-      sasToken: azureBlob.enabled ? String(azureBlob.uploadSasToken || "") : "",
-      readEnabled: Boolean(azureBlob.enabled && azureBlob.readSasToken),
-      maxChunkFiles: Number(azureBlob.maxChunkFiles || 0),
-      maxChunkBytes: Number(azureBlob.maxChunkBytes || 0),
-      maxParallelReads: Number(azureBlob.maxParallelReads || 0),
-      maxInflightChunks: Number(azureBlob.maxInflightChunks || 0),
+    mode: s3.enabled ? "s3" : "direct",
+    s3: {
+      enabled: Boolean(s3.enabled),
+      reason: String(s3.reason || "disabled-by-env"),
+      bucket: s3.enabled ? String(s3.bucket || "") : "",
+      prefix: String(s3.prefix || ""),
+      maxChunkFiles: Number(s3.maxChunkFiles || 0),
+      maxChunkBytes: Number(s3.maxChunkBytes || 0),
+      maxParallelReads: Number(s3.maxParallelReads || 0),
+      maxInflightChunks: Number(s3.maxInflightChunks || 0),
     },
+    // Legacy field — kept so frontend code that reads .azureBlob doesn't crash
+    azureBlob: { enabled: false, reason: "migrated-to-s3" },
   };
 }
 
@@ -1062,13 +1008,15 @@ function normalizeIncomingWorkspacePreindexedFile(candidate, filePath) {
 }
 
 async function readWorkspaceBlobText(storage = {}, sizeBytes = 0) {
-  const readUrl = buildWorkspaceBlobReadUrl(storage);
-  const response = await fetch(readUrl);
-  if (!response.ok || !response.body) {
-    throw new Error(`Azure blob download failed (${response.status || 0}).`);
-  }
+  const normalized = normalizeWorkspaceBlobStorage(storage);
+  if (!normalized) throw new Error("S3 storage reference missing.");
 
-  const reader = response.body.getReader();
+  const s3 = workspaceOffloadConfig.s3;
+  const key = s3.prefix ? `${s3.prefix}/${normalized.blobPath}` : normalized.blobPath;
+
+  const response = await getS3Client().send(new GetObjectCommand({ Bucket: s3.bucket, Key: key }));
+  if (!response.Body) throw new Error("S3 download returned empty body.");
+
   const decoder = new TextDecoder("utf-8", { fatal: false });
   const sizeLimit = 25_000_000;
   let totalBytes = 0;
@@ -1077,22 +1025,14 @@ async function readWorkspaceBlobText(storage = {}, sizeBytes = 0) {
   let binary = false;
   let content = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value || !value.length) continue;
+  for await (const chunk of response.Body) {
+    const value = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     totalBytes += value.length;
     for (let i = 0; i < value.length; i += 1) {
-      if (value[i] === 0) {
-        binary = true;
-        break;
-      }
+      if (value[i] === 0) { binary = true; break; }
     }
     if (binary) break;
-    if (textLength >= sizeLimit) {
-      truncated = true;
-      continue;
-    }
+    if (textLength >= sizeLimit) { truncated = true; continue; }
     const decoded = decoder.decode(value, { stream: true });
     const remaining = sizeLimit - textLength;
     if (decoded.length <= remaining) {
@@ -1106,106 +1046,68 @@ async function readWorkspaceBlobText(storage = {}, sizeBytes = 0) {
   }
 
   if (binary) {
-    return {
-      content: "[binary or unreadable]",
-      byteLength: totalBytes || Number(sizeBytes || 0),
-    };
+    return { content: "[binary or unreadable]", byteLength: totalBytes || Number(sizeBytes || 0) };
   }
 
   const tail = decoder.decode();
   if (tail && textLength < sizeLimit) {
     const remaining = sizeLimit - textLength;
-    if (tail.length <= remaining) {
-      content += tail;
-      textLength += tail.length;
-    } else {
-      content += tail.slice(0, remaining);
-      textLength += remaining;
-      truncated = true;
-    }
+    content += tail.length <= remaining ? tail : tail.slice(0, remaining);
+    textLength += Math.min(tail.length, remaining);
+    if (tail.length > remaining) truncated = true;
   }
 
   if (truncated) {
     content += `\n\n[mesh note] File truncated during indexing because it exceeded ${sizeLimit.toLocaleString()} characters.`;
   }
 
-  return {
-    content,
-    byteLength: totalBytes || Number(sizeBytes || 0),
-  };
+  return { content, byteLength: totalBytes || Number(sizeBytes || 0) };
 }
 
 async function writeWorkspaceBlobText(storage = {}, content = "") {
   const normalized = normalizeWorkspaceBlobStorage(storage);
-  if (!normalized) {
-    throw new Error("Azure blob storage reference missing.");
-  }
-  const uploadUrl = buildAzureBlobAbsoluteUrl(
-    workspaceOffloadConfig.azureBlob.baseUrl,
-    workspaceOffloadConfig.azureBlob.container,
-    normalized.blobPath,
-    workspaceOffloadConfig.azureBlob.uploadSasToken,
-  );
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "x-ms-blob-type": "BlockBlob",
-    },
-    body: String(content || ""),
-  });
-  if (!response.ok) {
-    throw new Error(`Azure blob upload failed (${response.status}).`);
-  }
+  if (!normalized) throw new Error("S3 storage reference missing.");
+
+  const s3 = workspaceOffloadConfig.s3;
+  const key = s3.prefix ? `${s3.prefix}/${normalized.blobPath}` : normalized.blobPath;
+
+  await getS3Client().send(new PutObjectCommand({
+    Bucket: s3.bucket,
+    Key: key,
+    Body: String(content || ""),
+    ContentType: "text/plain; charset=utf-8",
+  }));
   return normalized;
 }
 
 async function copyWorkspaceBlob(sourceStorage = {}, targetStorage = {}) {
   const normalizedSource = normalizeWorkspaceBlobStorage(sourceStorage);
   const normalizedTarget = normalizeWorkspaceBlobStorage(targetStorage);
-  if (!normalizedSource || !normalizedTarget) {
-    throw new Error("Azure blob copy references are invalid.");
-  }
-  const readResponse = await fetch(buildWorkspaceBlobReadUrl(normalizedSource));
-  if (!readResponse.ok || !readResponse.body) {
-    throw new Error(`Azure blob download failed (${readResponse.status || 0}).`);
-  }
-  const uploadUrl = buildAzureBlobAbsoluteUrl(
-    workspaceOffloadConfig.azureBlob.baseUrl,
-    workspaceOffloadConfig.azureBlob.container,
-    normalizedTarget.blobPath,
-    workspaceOffloadConfig.azureBlob.uploadSasToken,
-  );
-  const writeResponse = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "x-ms-blob-type": "BlockBlob",
-    },
-    body: readResponse.body,
-    duplex: "half",
-  });
-  if (!writeResponse.ok) {
-    throw new Error(`Azure blob upload failed (${writeResponse.status}).`);
-  }
+  if (!normalizedSource || !normalizedTarget) throw new Error("S3 copy references are invalid.");
+
+  const s3 = workspaceOffloadConfig.s3;
+  const sourceKey = s3.prefix ? `${s3.prefix}/${normalizedSource.blobPath}` : normalizedSource.blobPath;
+  const targetKey = s3.prefix ? `${s3.prefix}/${normalizedTarget.blobPath}` : normalizedTarget.blobPath;
+
+  await getS3Client().send(new CopyObjectCommand({
+    Bucket: s3.bucket,
+    CopySource: `${s3.bucket}/${sourceKey}`,
+    Key: targetKey,
+  }));
   return normalizedTarget;
 }
 
 async function deleteWorkspaceBlob(storage = {}) {
   const normalized = normalizeWorkspaceBlobStorage(storage);
-  if (!normalized) {
-    throw new Error("Azure blob storage reference missing.");
-  }
-  const deleteToken = normalizeSasToken(config.MESH_AZURE_BLOB_DELETE_SAS_TOKEN || workspaceOffloadConfig.azureBlob.uploadSasToken || "");
-  const deleteUrl = buildAzureBlobAbsoluteUrl(
-    workspaceOffloadConfig.azureBlob.baseUrl,
-    workspaceOffloadConfig.azureBlob.container,
-    normalized.blobPath,
-    deleteToken,
-  );
-  const response = await fetch(deleteUrl, { method: "DELETE" });
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`Azure blob delete failed (${response.status}).`);
+  if (!normalized) throw new Error("S3 storage reference missing.");
+
+  const s3 = workspaceOffloadConfig.s3;
+  const key = s3.prefix ? `${s3.prefix}/${normalized.blobPath}` : normalized.blobPath;
+
+  try {
+    await getS3Client().send(new DeleteObjectCommand({ Bucket: s3.bucket, Key: key }));
+  } catch (error) {
+    if (error?.name !== 'NoSuchKey') throw error;
   }
 }
 
@@ -1253,10 +1155,7 @@ module.exports = {
   shouldQueueWorkspaceSelectPayload,
   getWorkspaceSelectJobForUser,
   sortedLocalPaths,
-  buildAzureBlobAbsoluteUrl,
-  buildAzureBlobCanonicalUrl,
   normalizeWorkspaceBlobStorage,
-  buildWorkspaceBlobReadUrl,
   createWorkspaceOffloadConfig,
   workspaceOffloadConfig,
   workspaceOffloadClientConfig,
