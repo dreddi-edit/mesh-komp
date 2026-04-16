@@ -19,6 +19,8 @@ const config = require('../config');
 const logger = require('../logger');
 const { safeRouteError } = require('./route-utils');
 
+const STREAM_TIMEOUT_MS = Number(process.env.MESH_MODEL_TIMEOUT_MS) || 120_000;
+
 /**
  * Resolve capsule context, span recovery, and codec requirements for a chat request.
  * Extracted from the two near-identical pipelines in /api/assistant/chat and
@@ -52,6 +54,7 @@ async function resolveChatContext(core, normalizedMessages, activeFilePath, requ
     loadRecoveredSpanEntries,
     buildCapsuleContextBlock,
     injectCompressedContextIntoMessages,
+    createFileOpenCache,
   } = core;
 
   const lastUserMessage = normalizedMessages.filter((m) => m?.role === 'user').at(-1)?.content || '';
@@ -74,7 +77,8 @@ async function resolveChatContext(core, normalizedMessages, activeFilePath, requ
   const hasActiveFileFocus = Boolean(requestedActiveFile || taggedActiveFile);
   const adaptiveContextBudget = resolveAdaptiveCompressedContextBudget({ lastUserMessage, hasActiveFileFocus });
 
-  // Capsule loading and span recovery are independent — run them in parallel.
+  const fileOpenFn = typeof createFileOpenCache === 'function' ? createFileOpenCache() : undefined;
+
   const spanRecoveryPaths = contextPaths.slice(0, hasActiveFileFocus ? 2 : 1);
   const [capsuleContextResult, recoveredSpanEntries] = await Promise.all([
     loadCapsuleContextEntries(contextPaths, {
@@ -83,6 +87,7 @@ async function resolveChatContext(core, normalizedMessages, activeFilePath, requ
       firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
       query: lastUserMessage,
       disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
+      fileOpenFn,
     }),
     loadRecoveredSpanEntries(spanRecoveryPaths, lastUserMessage, {
       maxFiles: hasActiveFileFocus ? 2 : 1,
@@ -545,7 +550,9 @@ async function streamBedrockDirect({
     body: JSON.stringify(payload),
   });
 
-  const response = await client.send(cmd);
+  const streamAbort = new AbortController();
+  const streamTimer = setTimeout(() => streamAbort.abort(), STREAM_TIMEOUT_MS);
+  const response = await client.send(cmd, { abortSignal: streamAbort.signal }).finally(() => clearTimeout(streamTimer));
   let fullContent = '';
 
   for await (const chunk of response.body) {
@@ -590,7 +597,7 @@ async function streamAnthropicNative({
     method: 'POST',
     headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
     body: JSON.stringify(streamBody),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
   });
 
   if (!streamResponse.ok) {
@@ -671,7 +678,7 @@ async function streamOpenAICompatible({
     method: 'POST',
     headers,
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
   });
 
   if (!streamResponse.ok) {

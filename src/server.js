@@ -140,38 +140,65 @@ function buildViewRouteMap(repoRoot) {
 
 const VIEW_ROUTE_MAP = buildViewRouteMap(REPO_ROOT);
 
-// Serve root (/) from views/index.html
+// ── Asset content-hash map (built once at startup) ───────────────────────────
+const crypto = require('node:crypto');
+const ASSET_HASH_MAP = new Map();
+
+function buildAssetHashMap(assetsDir) {
+  const HASHABLE = /\.(js|css)$/;
+  let entries;
+  try { entries = fs.readdirSync(assetsDir, { withFileTypes: true, recursive: true }); } catch { return; }
+  for (const entry of entries) {
+    if (!entry.isFile() || !HASHABLE.test(entry.name)) continue;
+    const rel = path.relative(assetsDir, path.join(entry.parentPath || entry.path, entry.name)).replace(/\\/g, '/');
+    try {
+      const content = fs.readFileSync(path.join(assetsDir, rel));
+      const hash = crypto.createHash('md5').update(content).digest('hex').slice(0, 8);
+      ASSET_HASH_MAP.set(`/assets/${rel}`, hash);
+    } catch { /* skip unreadable */ }
+  }
+}
+buildAssetHashMap(path.join(REPO_ROOT, 'assets'));
+logger.info('Asset hash map built', { assets: ASSET_HASH_MAP.size });
+
+/**
+ * @param {string} html
+ * @returns {string}
+ */
+function injectAssetHashes(html) {
+  return html.replace(/(["'])(\/assets\/[^"'?]+)(\?[^"']*)?(["'])/g, (_match, open, assetPath, _existingQuery, close) => {
+    const hash = ASSET_HASH_MAP.get(assetPath);
+    if (!hash) return _match;
+    return `${open}${assetPath}?v=${hash}${close}`;
+  });
+}
+
+function sendHtmlWithHashes(res, filePath) {
+  const html = fs.readFileSync(filePath, 'utf8');
+  const rewritten = injectAssetHashes(html);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.send(rewritten);
+}
+
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(REPO_ROOT, 'views', 'index.html'));
+  sendHtmlWithHashes(res, path.join(REPO_ROOT, 'views', 'index.html'));
 });
 
-// Clean URL support — O(1) map lookup built once at startup.
 app.use((req, res, next) => {
   if (req.path === '/' || req.path.slice(1).includes('.')) return next();
   const filePath = VIEW_ROUTE_MAP.get(req.path);
-  if (filePath) return res.sendFile(filePath);
+  if (filePath) return sendHtmlWithHashes(res, filePath);
   next();
 });
 
-// Point static files to the root directory, not the /src directory!
-// Two-tier cache strategy:
-//   Hot assets (workbench core + voice): never cached — must reflect every deploy immediately.
-//   All other static assets: 1-day cache — eliminates conditional GET roundtrips on repeat visits.
-//   No content-hash in filenames, so 1 day is the right balance between freshness and efficiency.
-const HOT_ASSETS = /(\/assets\/app-workspace\.js|\/assets\/app-graph\.js|\/assets\/app-workspace\.css|\/assets\/features\/voice-chat\.js)$/;
+const IMMUTABLE_CACHE = { setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=31536000, immutable') };
+const STATIC_CACHE = { setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=86400') };
 
-app.use(express.static(path.join(__dirname, '..'), {
-  setHeaders(res, filePath) {
-    const normalized = String(filePath || '').replace(/\\/g, '/');
-    if (HOT_ASSETS.test(normalized)) {
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-    } else {
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-    }
-  },
-}));
+app.use('/assets', express.static(path.join(REPO_ROOT, 'assets'), IMMUTABLE_CACHE));
+app.use('/pitch', express.static(path.join(REPO_ROOT, 'pitch'), STATIC_CACHE));
+app.use('/ccmon-web', express.static(path.join(REPO_ROOT, 'ccmon-web'), STATIC_CACHE));
+app.use('/node_modules/animejs', express.static(path.join(REPO_ROOT, 'node_modules', 'animejs'), STATIC_CACHE));
 
 
 const { createAuthRouter } = require('./routes/auth.routes');

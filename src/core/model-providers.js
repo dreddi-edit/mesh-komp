@@ -21,6 +21,21 @@ try {
   InvokeModelCommand = bedrock.InvokeModelCommand;
 } catch { /* SDK not installed — Bedrock direct mode unavailable */ }
 
+const MODEL_PROVIDER_TIMEOUT_MS = Number(process.env.MESH_MODEL_TIMEOUT_MS) || 120_000;
+
+/**
+ * @param {string} url
+ * @param {RequestInit} options
+ * @param {number} [timeoutMs]
+ * @returns {Promise<Response>}
+ */
+function fetchWithTimeout(url, options, timeoutMs = MODEL_PROVIDER_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const merged = { ...options, signal: controller.signal };
+  return fetch(url, merged).finally(() => clearTimeout(timer));
+}
+
 // Inline path utility (avoids circular dep with index.js)
 function toSafePath(rawPath) {
   const input = String(rawPath || '').replace(/\\/g, '/').trim();
@@ -384,7 +399,7 @@ async function callOpenAIResponsesEndpoint({ apiKey, model, messages, baseUrl, o
     .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
     .join("\n\n");
 
-  const response = await fetch(joinPath(baseUrl, "responses"), {
+  const response = await fetchWithTimeout(joinPath(baseUrl, "responses"), {
     method: "POST",
     headers,
     body: JSON.stringify({
@@ -426,7 +441,7 @@ async function callOpenAICompatibleChat({ apiKey, model, messages, baseUrl, orgI
   }
 
   const endpoint = joinPath(targetBase, "chat/completions");
-  const response = await fetch(endpoint, {
+  const response = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers,
     body: JSON.stringify(buildOpenAIChatCompletionBody({
@@ -442,7 +457,7 @@ async function callOpenAICompatibleChat({ apiKey, model, messages, baseUrl, orgI
     const firstError = parseProviderError(payload, `${providerName} request failed (${response.status})`);
 
     if (providerWantsMaxCompletionTokens(firstError)) {
-      const retryResponse = await fetch(endpoint, {
+      const retryResponse = await fetchWithTimeout(endpoint, {
         method: "POST",
         headers,
         body: JSON.stringify(buildOpenAIChatCompletionBody({
@@ -522,7 +537,7 @@ async function callAzureOpenAIChat({ apiKey, model, messages, baseUrl, providerN
   }
 
   const endpoint = `${root}/openai/deployments/${encodeURIComponent(deploymentId)}/chat/completions?api-version=${encodeURIComponent(apiVersion)}`;
-  const response = await fetch(endpoint, {
+  const response = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: {
       "api-key": apiKey,
@@ -541,7 +556,7 @@ async function callAzureOpenAIChat({ apiKey, model, messages, baseUrl, providerN
   if (!response.ok) {
     const firstError = parseProviderError(payload, `${providerName} request failed (${response.status})`);
     if (providerWantsMaxCompletionTokens(firstError)) {
-      const retryResponse = await fetch(endpoint, {
+      const retryResponse = await fetchWithTimeout(endpoint, {
         method: "POST",
         headers: {
           "api-key": apiKey,
@@ -606,7 +621,7 @@ async function callByokProviderChat({ provider, model, messages, maxTokens = 512
 }
 
 async function callAnthropicChatWithMeta({ apiKey, model, messages, maxTokens = 1024 }) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
@@ -719,7 +734,9 @@ async function callBedrockDirect({ model, messages, maxTokens = 1024 }) {
     body: JSON.stringify(payload),
   });
 
-  const response = await client.send(cmd);
+  const bedrockAbort = new AbortController();
+  const bedrockTimer = setTimeout(() => bedrockAbort.abort(), MODEL_PROVIDER_TIMEOUT_MS);
+  const response = await client.send(cmd, { abortSignal: bedrockAbort.signal }).finally(() => clearTimeout(bedrockTimer));
   const decoded = JSON.parse(new TextDecoder().decode(response.body));
   const content = decoded.content?.map(c => c.text || '').join('') || '';
   const usage = {
@@ -734,7 +751,7 @@ async function callGeminiChat({ apiKey, model, messages }) {
   const normalizedModel = stripModelPrefix(model);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(normalizedModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -926,7 +943,7 @@ async function runModelChat({ model, messages, credentials = {} }) {
 }
 
 async function fetchAnthropicModels(apiKey) {
-  const response = await fetch("https://api.anthropic.com/v1/models", {
+  const response = await fetchWithTimeout("https://api.anthropic.com/v1/models", {
     method: "GET",
     headers: {
       "x-api-key": apiKey,
@@ -958,7 +975,7 @@ async function fetchOpenAICompatibleModels({ apiKey, baseUrl, providerName, orgI
     headers["X-Title"] = "Mesh";
   }
 
-  const response = await fetch(joinPath(targetBase, "models"), {
+  const response = await fetchWithTimeout(joinPath(targetBase, "models"), {
     method: "GET",
     headers,
   });
@@ -974,7 +991,7 @@ async function fetchOpenAICompatibleModels({ apiKey, baseUrl, providerName, orgI
 }
 
 async function fetchGeminiModels(apiKey) {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+  const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
   const payload = await readJsonResponse(response);
 
   if (!response.ok) {
@@ -1123,7 +1140,7 @@ async function validateProviderKey(payload = {}) {
     if (!baseUrl) throw new Error(`No base URL configured for BYOK provider "${providerName}".`);
 
     if (providerId === "openrouter") {
-      const authResponse = await fetch(joinPath(baseUrl, "auth/key"), {
+      const authResponse = await fetchWithTimeout(joinPath(baseUrl, "auth/key"), {
         method: "GET",
         headers: {
           Authorization: `Bearer ${apiKey}`,

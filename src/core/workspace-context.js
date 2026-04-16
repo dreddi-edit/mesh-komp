@@ -818,15 +818,15 @@ async function loadCapsuleContextEntries(paths = [], options = {}) {
   );
   const query = String(options.query || "").trim();
   const disableCodecDictionary = Boolean(options.disableCodecDictionary);
+  const fileOpenFn = typeof options.fileOpenFn === 'function' ? options.fileOpenFn : openWorkspaceFileWithFallback;
   const entries = [];
   const skippedOversizePaths = [];
 
-  // Fetch all files in parallel — preserving per-index budget assignments via indexed tuples.
   const dedupedPaths = dedupePaths(paths).slice(0, maxFiles);
   const fetchResults = await Promise.all(
     dedupedPaths.map(async (path, index) => {
       try {
-        const opened = await openWorkspaceFileWithFallback(path, query ? "focused" : "capsule", { query });
+        const opened = await fileOpenFn(path, query ? "focused" : "capsule", { query });
         return { path, index, opened, error: false };
       } catch {
         return { path, index, opened: null, error: true };
@@ -1091,7 +1091,22 @@ function looksLikeCodecProtocolRefusal(rawText) {
   return false;
 }
 
+/**
+ * @returns {(path: string, viewMode: string, options: object) => Promise<object>}
+ */
+function createFileOpenCache() {
+  const inflight = new Map();
+  return function cachedOpen(filePath, viewMode, options) {
+    const key = `${filePath}::${viewMode}::${options.query || ''}`;
+    if (!inflight.has(key)) {
+      inflight.set(key, openWorkspaceFileWithFallback(filePath, viewMode, options));
+    }
+    return inflight.get(key);
+  };
+}
+
 module.exports = {
+  createFileOpenCache,
   compressLocalWorkspaceChunkFiles,
   openWorkspaceFileWithFallback,
   recoverWorkspaceWithFallback,

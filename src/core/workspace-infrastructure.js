@@ -471,41 +471,54 @@ async function readLocalWorkspaceFileText(absolutePath) {
   }
 }
 
+const SCAN_DIR_CONCURRENCY = 8;
+
 async function scanLocalWorkspaceFiles(rootPath, folderName) {
-  const pending = [{ absolutePath: rootPath, relativePath: "" }];
+  let pending = [{ absolutePath: rootPath, relativePath: "" }];
   const discovered = [];
 
   while (pending.length) {
-    const current = pending.pop();
-    let dirents = [];
-    try {
-      dirents = await fs.promises.readdir(current.absolutePath, { withFileTypes: true });
-    } catch {
-      continue;
-    }
+    const batch = pending;
+    pending = [];
 
-    dirents.sort((a, b) => a.name.localeCompare(b.name));
-
-    for (const dirent of dirents) {
-      const relativePath = toSafePath(current.relativePath ? `${current.relativePath}/${dirent.name}` : dirent.name);
-      if (!relativePath) continue;
-
-      if (dirent.isDirectory()) {
-        if (LOCAL_WORKSPACE_SKIP_DIRS.test(relativePath)) continue;
-        pending.push({
-          absolutePath: path.join(current.absolutePath, dirent.name),
-          relativePath,
-        });
-        continue;
+    const results = await mapWithConcurrency(batch, SCAN_DIR_CONCURRENCY, async (current) => {
+      let dirents;
+      try {
+        dirents = await fs.promises.readdir(current.absolutePath, { withFileTypes: true });
+      } catch {
+        return { files: [], subdirs: [] };
       }
 
-      if (!dirent.isFile()) continue;
-      if (LOCAL_WORKSPACE_SKIP_DIRS.test(relativePath) || LOCAL_WORKSPACE_SKIP_EXTENSIONS.test(relativePath)) continue;
+      dirents.sort((a, b) => a.name.localeCompare(b.name));
+      const files = [];
+      const subdirs = [];
 
-      discovered.push({
-        workspacePath: toWorkspacePath(folderName, relativePath),
-        absolutePath: path.join(current.absolutePath, dirent.name),
-      });
+      for (const dirent of dirents) {
+        const relativePath = toSafePath(current.relativePath ? `${current.relativePath}/${dirent.name}` : dirent.name);
+        if (!relativePath) continue;
+
+        if (dirent.isDirectory()) {
+          if (!LOCAL_WORKSPACE_SKIP_DIRS.test(relativePath)) {
+            subdirs.push({ absolutePath: path.join(current.absolutePath, dirent.name), relativePath });
+          }
+          continue;
+        }
+
+        if (!dirent.isFile()) continue;
+        if (LOCAL_WORKSPACE_SKIP_DIRS.test(relativePath) || LOCAL_WORKSPACE_SKIP_EXTENSIONS.test(relativePath)) continue;
+
+        files.push({
+          workspacePath: toWorkspacePath(folderName, relativePath),
+          absolutePath: path.join(current.absolutePath, dirent.name),
+        });
+      }
+
+      return { files, subdirs };
+    });
+
+    for (const { files, subdirs } of results) {
+      discovered.push(...files);
+      pending.push(...subdirs);
     }
   }
 

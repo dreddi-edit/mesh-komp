@@ -179,6 +179,7 @@ const {
 
 // Bring workspace-context exports into scope
 const {
+  createFileOpenCache,
   compressLocalWorkspaceChunkFiles,
   openWorkspaceFileWithFallback,
   recoverWorkspaceWithFallback,
@@ -1065,6 +1066,7 @@ module.exports = {
   decodeCompressedModelResponse,
   escapeTagAttribute,
   dedupePaths,
+  createFileOpenCache,
   openWorkspaceFileWithFallback,
   recoverWorkspaceWithFallback,
   searchWorkspaceWithFallback,
