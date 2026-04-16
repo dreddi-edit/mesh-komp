@@ -1,22 +1,24 @@
+'use strict';
+
 /**
- * MESH — Dev server
- * Serves static files, proxies Anthropic AI, and provides WebSocket terminal via node-pty.
+ * MESH Core — wiring hub.
+ * Imports all domain sub-modules, initialises shared mutable state (globals),
+ * and re-exports everything so routes can require a single entry point.
  *
- * Start: node server.js
- * Needs: ANTHROPIC_API_KEY env var for AI (optional — falls back to mock)
+ * Global state (localAssistantWorkspace, assistantRuns, etc.) lives here and
+ * is injected into the global namespace via Object.assign(global, module.exports)
+ * so extracted sub-modules can access it without circular imports.
  */
 
-const express = require("express");
-const http    = require("http");
-const fs      = require("fs");
-const path    = require("path");
-const crypto  = require("crypto");
-const zlib    = require("zlib");
-const { execFile } = require("child_process");
-const { promisify } = require("util");
-const { WebSocketServer } = require("ws");
+const crypto = require('crypto');
+const fs     = require('fs');
+const path   = require('path');
+const zlib   = require('zlib');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const { LRUCache } = require('lru-cache');
-const config = require('../config');
+
+const config   = require('../config');
 const secureDb = require('../../secure-db');
 const {
   buildStructuralEditFallback,
@@ -47,8 +49,9 @@ const {
   suggestRecoverySpanIds,
 } = require('../../mesh-core/src/compression-core.cjs');
 const { createWorkspaceMetadataStore } = require('../../workspace-metadata-store.cjs');
+const { clampBrotliQuality, parseBooleanFlag, parseIntegerInRange, trimTrailingSlashes, normalizeSasToken } = require('../config/env-utils');
 
-// ── Extracted domain modules ──
+// ── Domain modules ──────────────────────────────────────────────────────────
 const auth = require('./auth');
 const mp   = require('./model-providers');
 const ar   = require('./assistant-runs');
@@ -57,253 +60,39 @@ const wc   = require('./workspace-context');
 const wo   = require('./workspace-ops');
 const dep  = require('./deployments');
 
-// Bring auth exports into scope (for use by remaining code + module.exports)
-const {
-  AUTH_STORE_FILE, AUTH_SESSION_TTL_MS, AUTH_SESSION_TOUCH_INTERVAL_MS,
-  AUTH_COOKIE_NAME, AUTH_COOKIE_PATH, AUTH_COOKIE_SAME_SITE, AUTH_COOKIE_SECURE,
-  DEMO_USER_EMAIL, DEMO_USER_EMAIL_ALIASES, DEMO_USER_PASSWORD,
-  USER_STORE_ALLOWED_KEYS, USER_STORE_MAX_JSON_BYTES,
-  normalizeEmail, hashPassword, verifyPassword, sanitizeAuthUser, reportAuthStoreError,
-  buildDemoUserSeed, ensureDemoUserRecord, loadAuthStore, issueAuthSession,
-  parseCookiesFromHeader, decodeCookieValue, readAuthCookieToken, normalizeSameSiteValue,
-  createCookieHeader, setAuthCookie, clearAuthCookie, readAuthTokenFromRequest,
-  resolveAuthUserFromRequest, requireAuth, pruneExpiredSessions,
-  normalizeUserStoreKey, normalizeRequestedStoreKeys, normalizeStoredByokProviders,
-  getStoredCredentialsForUser, mergeChatCredentials,
-  invalidateSessionCache, invalidateSessionCacheForUser, invalidateCredentialCache,
-} = auth;
-let lastAuthStoreErrorLogAt = 0; // retained for global export; internal tracking is in auth.js
-
-// Bring model-provider + codec exports into scope
-const {
-  Anthropic,
-  STATIC_MODELS, MESH_DEFAULT_MODEL, ALL_STATIC_MODELS,
-  DEFAULT_BYOK_BASE_URLS, DEFAULT_AZURE_API_VERSION,
-  MESH_MODEL_CODEC_VERSION, MESH_MODEL_CODEC_CONTEXT_MARKER,
-  MESH_MODEL_CODEC_RESPONSE_OPEN, MESH_MODEL_CODEC_RESPONSE_CLOSE,
-  MESH_MODEL_CODEC_PAYLOAD_PREFIX, MESH_MODEL_CODEC_PAYLOAD_SUFFIX,
-  MESH_MODEL_CODEC_TERMS, MESH_MODEL_CODEC_ESCAPE_PREFIX, MESH_MODEL_CODEC_ESCAPE_REPLACEMENT,
-  MESH_MODEL_CODEC_NEWLINE_TOKEN, MESH_MODEL_CODEC_TAB_TOKEN,
-  MESH_MODEL_CODEC_TABLE, MESH_MODEL_CODEC_ENCODE_TABLE, MESH_MODEL_CODEC_DECODE_TABLE,
-  meshCodecSessionState, injectMeshSystemPrompt,
-  stripModelPrefix, readMessageText, normalizeMessages, toOpenAiMessages, toAnthropicMessages,
-  toGeminiContents, trimTrailingSlash, joinPath, isAzureProvider, normalizeAzureBaseUrl,
-  modelDisplayLabel, parseProviderError, normalizeProviderUsage, readJsonResponse,
-  buildOpenAIChatCompletionBody, providerWantsMaxCompletionTokens, textFromMaybeContent,
-  extractAssistantTextFromChatPayload, callOpenAIResponsesEndpoint, callOpenAICompatibleChat,
-  callAzureOpenAIChat, callByokProviderChat, callAnthropicChatWithMeta, callAnthropicChat,
-  callGeminiChat, BEDROCK_MODEL_MAP, resolveBedrockModelId, getBedrockClient, callBedrockDirect,
-  normalizeByokProviders, resolveProviderForModel, runModelChat,
-  fetchAnthropicModels, fetchOpenAICompatibleModels, fetchGeminiModels,
-  dedupeModelIds, staticModelMatch, normalizeImportedModels, normalizeRequestedModelIds,
-  validateProviderKey, extractActiveFilePathFromMessages, replaceLiteralAll, escapeRegexLiteral,
-  rot47Transform, textCompositionStats, containsCodecSignals, isLikelyUnframedRot47,
-  decodedReadabilityScore, pickMostReadableDecoded, decodeCodecTokens, codecTokenShouldReplace,
-  encodeMeshModelCodec, decodeMeshModelCodec, buildMeshCodecContextDocument, hasCodecContextMarker,
-  normalizeChatSessionId, markCodecContextInitialized,
-  isCodecContextInitializedForSession, injectCodecContextIntoMessages,
-  extractCompressedModelPayload, decodeCompressedModelResponse, escapeTagAttribute, dedupePaths,
-} = mp;
-
-// Bring assistant-run exports into scope
-const {
-  cloneJsonValue, normalizeRunActionState, touchRunEntity, createAssistantRunRecord,
-  assistantRunSnapshot, extractExplicitPathReferences, ensureRunWorkspacePath,
-  extractExplicitCommandFromPrompt, hasEditIntent, hasSearchIntent, hasReadIntent, hasOpsIntent,
-  buildOpsContextSnippet, resolveAssistantCandidatePaths, buildHeuristicAssistantRunPlan,
-  planAssistantRunWithModel, planAssistantRun, normalizeDiffText, computeProposalLineDelta,
-  buildProposalDiff, extractFirstFencedCodeBlock, extractDirectProposalContent,
-  buildFallbackTemplateForTarget, extractProposalTargetPaths, generateAssistantWriteProposal,
-  generateAssistantWriteBatch, resolveRunBatch, resolveRunProposal, syncBatchStatusFromProposals,
-  ensureApplyBatchActionForRun, ensureApplyProposalActionsForBatch, buildActionResultSummary,
-  buildFallbackAssistantRunReply, summarizeAssistantRun, executeAssistantRunAction,
-  continueAssistantRun, createAssistantRun, applyAssistantRunDecision,
-} = ar;
-
-// Bring workspace-infrastructure exports into scope
-const {
-  meshTunnelRequest,
-  toSafePath,
-  basename,
-  ensureWorkspaceOwnedPath,
-  localWorkspaceSummary,
-  clearLocalWorkspaceState,
-  isLocalPathWorkspaceState,
-  isUploadWorkspaceState,
-  syncLocalUploadWorkspaceSummary,
-  toWorkspacePath,
-  toWorkspaceRelativePath,
-  normalizeAbsoluteRootPath,
-  resolveLocalWorkspaceAbsolutePath,
-  gitPathFromWorkspacePath,
-  workspacePathFromGitPath,
-  createWorkspacePerfTracker,
-  mapWithConcurrency,
-  isWorkspaceIndexablePath,
-  generateMeshWorkspaceTree,
-  generateMeshWorkspaceTreeFromManifest,
-  provisionMeshWorkspaceMetadata,
-  readLocalWorkspaceFileText,
-  scanLocalWorkspaceFiles,
-  packLocalWorkspaceContent,
-  localWorkspaceUploadBlobStorageForPath,
-  packLocalBlobBackedWorkspaceRecord,
-  writeLocalWorkspaceFileToDisk,
-  normalizeGitError,
-  getLocalGitCwd,
-  runLocalGit,
-  isMeshWorkerUnavailableError,
-  countPendingWorkspaceSelectJobs,
-  pruneWorkspaceSelectJobs,
-  estimateWorkspaceSelectPayload,
-  workspaceSelectScopeKey,
-  computeWorkspaceSelectQueuePosition,
-  snapshotWorkspaceSelectJob,
-  buildWorkspaceSelectAcceptedResponse,
-  executeWorkspaceSelectWithFallback,
-  enqueueWorkspaceSelectJob,
-  shouldQueueWorkspaceSelectPayload,
-  getWorkspaceSelectJobForUser,
-  sortedLocalPaths,
-  normalizeWorkspaceBlobStorage,
-  createWorkspaceOffloadConfig,
-  workspaceOffloadConfig,
-  workspaceOffloadClientConfig,
-  compressLocalWorkspaceText,
-  decompressLocalWorkspaceText,
-  normalizeIncomingWorkspacePreindexedFile,
-  readWorkspaceBlobText,
-  writeWorkspaceBlobText,
-  copyWorkspaceBlob,
-  deleteWorkspaceBlob,
-} = wi;
-
-// Bring workspace-context exports into scope
-const {
-  createFileOpenCache,
-  compressLocalWorkspaceChunkFiles,
-  openWorkspaceFileWithFallback,
-  recoverWorkspaceWithFallback,
-  searchWorkspaceWithFallback,
-  grepWorkspaceWithFallback,
-  renameWorkspaceFileWithFallback,
-  deleteWorkspaceFileWithFallback,
-  applyWorkspaceBatchWithFallback,
-  openLocalWorkspaceWithFallback,
-  runGitWithFallback,
-  sanitizeTerminalChunk,
-  makeAssistantTerminalEntry,
-  getAssistantTerminalSession,
-  createAssistantTerminalSession,
-  listAssistantTerminalOutput,
-  writeAssistantTerminalInput,
-  destroyAssistantTerminalSession,
-  createCompressedContextExcerpt,
-  normalizeContextExcerptText,
-  normalizeExcerptFocusTerms,
-  collectFocusedCharRanges,
-  mergeCharRanges,
-  buildExcerptFromCharRanges,
-  loadCompressedContextEntries,
-  loadPlainContextEntries,
-  buildPlainContextBlock,
-  buildCompressedContextBlock,
-  shouldPrefetchRecoveryForPrompt,
-  loadCapsuleContextEntries,
-  loadRecoveredSpanEntries,
-  buildCapsuleContextBlock,
-  injectCompressedContextIntoMessages,
-  buildModelResponseTransport,
-  buildServerCodecRecovery,
-  polishDecompressedAssistantText,
-  looksLikeCodecProtocolRefusal,
-} = wc;
-
-// Bring workspace-ops exports into scope
-const {
-  enqueueLocalWorkspaceEnrichment,
-  drainLocalWorkspaceEnrichmentQueue,
-  enrichLocalWorkspaceRecords,
-  localWorkspaceSelect,
-  localWorkspaceOpenLocal,
-  localWorkspaceFiles,
-  localWorkspaceGraph,
-  localWorkspaceFile,
-  localWorkspaceSave,
-  localWorkspaceCreate,
-  buildWorkspaceQueryContext,
-  localWorkspaceSearch,
-  findMatchesInText,
-  localWorkspaceGrep,
-  localWorkspaceRename,
-  localWorkspaceDelete,
-  localWorkspaceBatch,
-  localGitStatus,
-  ingestWorkspaceChunkFromOffload,
-  localResolveReferencedFiles,
-  QUERY_EXTENSION_HINTS,
-  SINGLE_FILE_LOOKUP_RE,
-  MULTI_FILE_LOOKUP_RE,
-  extractQueryExtensionHints,
-  pathHasExtensionHint,
-  selectReferenceMatchLimit,
-  BROAD_CHANGE_INTENT_RE,
-  resolveAdaptiveCompressedContextBudget,
-  FILE_QUERY_STOP_WORDS,
-  extractSearchTokens,
-  compactAlphaNumeric,
-  scorePathForQuery,
-  rankWorkspacePathsForQuery,
-  inferReferencedFilesFromWorkspace,
-  localAssistantReply,
-} = wo;
-
-// Bring deployments exports into scope
-const {
-  normalizeDeploymentRisk,
-  normalizePolicyMode,
-  normalizePolicyStatus,
-  normalizePolicyRegion,
-  parsePolicyScopeFromPayload,
-  stringifyPolicyScope,
-  uniqueDeploymentId,
-  queueDeployment,
-  settleDeploymentAction,
-  uniquePolicyId,
-  createPolicy,
-  updatePolicy,
-} = dep;
-
 let pty;
-try { pty = require("node-pty"); } catch { pty = null; }
+try { pty = require('node-pty'); } catch { pty = null; }
 
-
-// Moved server initialization to src/server.js
-const brotliCompress = promisify(zlib.brotliCompress);
+// ── Node util shortcuts ──────────────────────────────────────────────────────
+const brotliCompress   = promisify(zlib.brotliCompress);
 const brotliDecompress = promisify(zlib.brotliDecompress);
-const MESH_CORE_URL = config.MESH_CORE_URL;
-const LOCAL_WORKSPACE_CACHE_FILE = path.join(__dirname, ".mesh-workspace-cache.json");
-const OPERATIONS_STORE_FILE = path.join(__dirname, ".mesh-operations-store.json");
-// NOTE: AUTH_STORE_FILE is imported from ./auth (above)
-const WORKSPACE_BROTLI_QUALITY = config.WORKSPACE_BROTLI_QUALITY;
+const execFileAsync    = promisify(execFile);
+
+// ── Config constants ─────────────────────────────────────────────────────────
+const MESH_CORE_URL                    = config.MESH_CORE_URL;
+const LOCAL_WORKSPACE_CACHE_FILE       = path.join(__dirname, '.mesh-workspace-cache.json');
+const OPERATIONS_STORE_FILE            = path.join(__dirname, '.mesh-operations-store.json');
+const WORKSPACE_BROTLI_QUALITY         = config.WORKSPACE_BROTLI_QUALITY;
 const WORKSPACE_INITIAL_BROTLI_QUALITY = config.WORKSPACE_INITIAL_BROTLI_QUALITY;
-const MESH_TUNNEL_BROTLI_QUALITY = config.MESH_TUNNEL_BROTLI_QUALITY;
+const MESH_TUNNEL_BROTLI_QUALITY       = config.MESH_TUNNEL_BROTLI_QUALITY;
 const MESH_WORKSPACE_INDEX_PARALLELISM = config.MESH_WORKSPACE_INDEX_PARALLELISM;
-const MESH_WORKSPACE_READ_CONCURRENCY = config.MESH_WORKSPACE_READ_CONCURRENCY;
+const MESH_WORKSPACE_READ_CONCURRENCY  = config.MESH_WORKSPACE_READ_CONCURRENCY;
 const MESH_WORKSPACE_BUILD_CONCURRENCY = config.MESH_WORKSPACE_BUILD_CONCURRENCY;
 const MESH_WORKSPACE_ENRICH_CONCURRENCY = config.MESH_WORKSPACE_ENRICH_CONCURRENCY;
-const MESH_WORKSPACE_PERF_LOG = config.MESH_WORKSPACE_PERF_LOG;
-const WORKSPACE_SELECT_ASYNC_MODE = config.WORKSPACE_SELECT_ASYNC_MODE;
-const WORKSPACE_SELECT_ASYNC_ENABLED = config.WORKSPACE_SELECT_ASYNC_ENABLED;
-const WORKSPACE_SELECT_JOB_TTL_MS = config.WORKSPACE_SELECT_JOB_TTL_MS;
+const MESH_WORKSPACE_PERF_LOG          = config.MESH_WORKSPACE_PERF_LOG;
+const WORKSPACE_SELECT_ASYNC_MODE      = config.WORKSPACE_SELECT_ASYNC_MODE;
+const WORKSPACE_SELECT_ASYNC_ENABLED   = config.WORKSPACE_SELECT_ASYNC_ENABLED;
+const WORKSPACE_SELECT_JOB_TTL_MS      = config.WORKSPACE_SELECT_JOB_TTL_MS;
 const WORKSPACE_SELECT_MAX_JOB_HISTORY = config.WORKSPACE_SELECT_MAX_JOB_HISTORY;
-const WORKSPACE_SELECT_MAX_PENDING = config.WORKSPACE_SELECT_MAX_PENDING;
-const WORKSPACE_SOURCE_UPLOAD = "upload";
-const WORKSPACE_SOURCE_LOCAL_PATH = "local-path";
-const LOCAL_WORKSPACE_SKIP_EXTENSIONS = /(\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|mp4|mp3|wav|ogg|zip|gz|tar|wasm|map)|\.min\.(js|css))$/i;
-const LOCAL_WORKSPACE_SKIP_DIRS = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__)(\/|$)/;
-const LOCAL_WORKSPACE_MAX_FILE_CHARS = 1_000_000;
+const WORKSPACE_SELECT_MAX_PENDING     = config.WORKSPACE_SELECT_MAX_PENDING;
+const WORKSPACE_SOURCE_UPLOAD          = 'upload';
+const WORKSPACE_SOURCE_LOCAL_PATH      = 'local-path';
+const LOCAL_WORKSPACE_SKIP_EXTENSIONS  = /(\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|mp4|mp3|wav|ogg|zip|gz|tar|wasm|map)|\.min\.(js|css))$/i;
+const LOCAL_WORKSPACE_SKIP_DIRS        = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__)(\/|$)/;
+const LOCAL_WORKSPACE_MAX_FILE_CHARS   = 1_000_000;
+const MAX_OPERATION_LOGS               = 600;
 
+// ── Shared mutable state ─────────────────────────────────────────────────────
 const localAssistantWorkspace = {
   folderName: null,
   rootPath: null,
@@ -315,222 +104,195 @@ const localAssistantWorkspace = {
   fileCountCompleted: 0,
   fileCountFailed: 0,
   fileCountPending: 0,
-  status: "",
+  status: '',
   indexedAt: null,
 };
-const workspaceMetadataStore = createWorkspaceMetadataStore();
-
-const operationsStore = {
-  deployments: {
-    pending: [],
-    history: [],
-  },
-  policies: [],
-  logs: [],
-  updatedAt: null,
-};
-
-const MAX_OPERATION_LOGS = 600;
-const assistantRuns = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
+const workspaceMetadataStore    = createWorkspaceMetadataStore();
+const operationsStore           = { deployments: { pending: [], history: [] }, policies: [], logs: [], updatedAt: null };
+const assistantRuns             = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
 const assistantTerminalSessions = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
-const workspaceSelectJobs = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
-const workspaceSelectJobOrder = [];
-const workspaceSelectChains = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
-const execFileAsync = promisify(execFile);
+const workspaceSelectJobs       = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
+const workspaceSelectJobOrder   = [];
+const workspaceSelectChains     = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
+let   lastAuthStoreErrorLogAt   = 0;
 
-const { clampBrotliQuality, parseBooleanFlag, parseIntegerInRange, trimTrailingSlashes, normalizeSasToken } = require('../config/env-utils');
+// ── Utility functions ────────────────────────────────────────────────────────
+const { toSafePath, mapWithConcurrency } = wi;
+const { isWorkspaceIndexablePath, normalizeWorkspaceBlobStorage, createWorkspacePerfTracker, readWorkspaceBlobText } = wi;
+const { parsePolicyScopeFromPayload, stringifyPolicyScope, normalizePolicyMode, normalizePolicyStatus } = dep;
 
-function sanitizeBlobContainerName(rawValue) {
-  return String(rawValue || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "");
+/** @returns {string} */
+function toIsoNow() { return new Date().toISOString(); }
+
+/** @param {string} value @param {string} [fallback] @returns {string} */
+function toSafeSlug(value, fallback = 'item') {
+  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+  return normalized || fallback;
 }
 
+/** @param {string} rawValue @returns {string} */
+function normalizeWorkspaceSourceKind(rawValue) {
+  return String(rawValue || '').trim().toLowerCase() === WORKSPACE_SOURCE_LOCAL_PATH
+    ? WORKSPACE_SOURCE_LOCAL_PATH
+    : WORKSPACE_SOURCE_UPLOAD;
+}
+
+/** @param {string} rawValue @returns {string} */
+function sanitizeBlobContainerName(rawValue) {
+  return String(rawValue || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+}
+
+/**
+ * @param {string} filePath
+ * @param {*} fallbackValue
+ * @returns {*}
+ */
 function safeReadJsonFile(filePath, fallbackValue) {
   try {
-    const raw = fs.readFileSync(filePath, "utf8");
+    const raw = fs.readFileSync(filePath, 'utf8');
     if (!raw.trim()) return fallbackValue;
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return fallbackValue;
+    if (!parsed || typeof parsed !== 'object') return fallbackValue;
     return parsed;
   } catch {
     return fallbackValue;
   }
 }
 
+/**
+ * @param {string} filePath
+ * @param {*} value
+ */
 function safeWriteJsonFile(filePath, value) {
   try {
-    fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
+    fs.writeFileSync(filePath, JSON.stringify(value, null, 2), 'utf8');
   } catch {
     // Ignore persistence write failures in demo mode.
   }
 }
 
-function normalizeWorkspaceSourceKind(rawValue) {
-  return String(rawValue || "").trim().toLowerCase() === WORKSPACE_SOURCE_LOCAL_PATH
-    ? WORKSPACE_SOURCE_LOCAL_PATH
-    : WORKSPACE_SOURCE_UPLOAD;
-}
-
-function toIsoNow() {
-  return new Date().toISOString();
-}
-
-function toSafeSlug(value, fallback = "item") {
-  const normalized = String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return normalized || fallback;
-}
-
+/** @param {string} level @returns {string} */
 function normalizeOperationLevel(level) {
-  const normalized = String(level || "info").trim().toLowerCase();
-  if (["err", "warn", "info", "ok"].includes(normalized)) return normalized;
-  return "info";
+  const normalized = String(level || 'info').trim().toLowerCase();
+  return ['err', 'warn', 'info', 'ok'].includes(normalized) ? normalized : 'info';
 }
 
+/** @param {string} region @returns {string} */
 function normalizeOperationRegion(region) {
-  const normalized = String(region || "eu").trim().toLowerCase();
-  if (["eu", "us", "ap"].includes(normalized)) return normalized;
-  return "eu";
+  const normalized = String(region || 'eu').trim().toLowerCase();
+  return ['eu', 'us', 'ap'].includes(normalized) ? normalized : 'eu';
 }
 
-function defaultOperationPolicies() {
-  return [];
-}
+/** @returns {object[]} */
+function defaultOperationPolicies() { return []; }
 
+/** @returns {object} */
 function defaultOperationsStore() {
-  return {
-    deployments: { pending: [], history: [] },
-    policies: [],
-    logs: [],
-    updatedAt: toIsoNow(),
-  };
+  return { deployments: { pending: [], history: [] }, policies: [], logs: [], updatedAt: toIsoNow() };
 }
 
+/** @param {object[]} list @returns {object[]} */
 function sanitizeDeploymentList(list) {
   const input = Array.isArray(list) ? list : [];
-  return input
-    .map((entry) => {
-      const id = toSafeSlug(entry?.id, "deploy");
-      const title = String(entry?.title || "Untitled deployment").trim();
-      if (!id || !title) return null;
-      return {
-        id,
-        route: String(entry?.route || "workspace").trim() || "workspace",
-        region: String(entry?.region || "EU Central").trim() || "EU Central",
-        title,
-        risk: String(entry?.risk || "low").trim().toLowerCase() || "low",
-        description: String(entry?.description || "").trim(),
-        targetWindow: String(entry?.targetWindow || "Immediate").trim() || "Immediate",
-        rollback: String(entry?.rollback || "Manual rollback").trim() || "Manual rollback",
-        diff: String(entry?.diff || "").trim(),
-        requestedBy: String(entry?.requestedBy || "operator").trim() || "operator",
-        requestedAt: String(entry?.requestedAt || toIsoNow()),
-        resolvedBy: String(entry?.resolvedBy || "").trim(),
-        resolvedAt: String(entry?.resolvedAt || "").trim(),
-        outcome: String(entry?.outcome || "").trim().toLowerCase(),
-      };
-    })
-    .filter(Boolean);
+  return input.map((entry) => {
+    const id = toSafeSlug(entry?.id, 'deploy');
+    const title = String(entry?.title || 'Untitled deployment').trim();
+    if (!id || !title) return null;
+    return {
+      id,
+      route: String(entry?.route || 'workspace').trim() || 'workspace',
+      region: String(entry?.region || 'EU Central').trim() || 'EU Central',
+      title,
+      risk: String(entry?.risk || 'low').trim().toLowerCase() || 'low',
+      description: String(entry?.description || '').trim(),
+      targetWindow: String(entry?.targetWindow || 'Immediate').trim() || 'Immediate',
+      rollback: String(entry?.rollback || 'Manual rollback').trim() || 'Manual rollback',
+      diff: String(entry?.diff || '').trim(),
+      requestedBy: String(entry?.requestedBy || 'operator').trim() || 'operator',
+      requestedAt: String(entry?.requestedAt || toIsoNow()),
+      resolvedBy: String(entry?.resolvedBy || '').trim(),
+      resolvedAt: String(entry?.resolvedAt || '').trim(),
+      outcome: String(entry?.outcome || '').trim().toLowerCase(),
+    };
+  }).filter(Boolean);
 }
 
+/** @param {object[]} list @returns {object[]} */
 function sanitizePolicyList(list) {
   const input = Array.isArray(list) ? list : [];
-  return input
-    .map((entry) => {
-      const id = toSafeSlug(entry?.id, "policy");
-      if (!id) return null;
-
-      const scope = parsePolicyScopeFromPayload(entry, {
-        route: "workspace",
-        region: "global",
-      });
-
-      return {
-        id,
-        type: String(entry?.type || "Custom").trim() || "Custom",
-        mode: normalizePolicyMode(entry?.mode),
-        route: scope.route,
-        region: scope.region,
-        applied: String(entry?.applied || stringifyPolicyScope(scope.route, scope.region)).trim() || stringifyPolicyScope(scope.route, scope.region),
-        status: normalizePolicyStatus(entry?.status),
-        description: String(entry?.description || "").trim(),
-        modifiedAt: String(entry?.modifiedAt || entry?.updatedAt || toIsoNow()),
-      };
-    })
-    .filter(Boolean);
+  return input.map((entry) => {
+    const id = toSafeSlug(entry?.id, 'policy');
+    if (!id) return null;
+    const scope = parsePolicyScopeFromPayload(entry, { route: 'workspace', region: 'global' });
+    return {
+      id,
+      type: String(entry?.type || 'Custom').trim() || 'Custom',
+      mode: normalizePolicyMode(entry?.mode),
+      route: scope.route,
+      region: scope.region,
+      applied: String(entry?.applied || stringifyPolicyScope(scope.route, scope.region)).trim() || stringifyPolicyScope(scope.route, scope.region),
+      status: normalizePolicyStatus(entry?.status),
+      description: String(entry?.description || '').trim(),
+      modifiedAt: String(entry?.modifiedAt || entry?.updatedAt || toIsoNow()),
+    };
+  }).filter(Boolean);
 }
 
+/** @param {object[]} logs @returns {object[]} */
 function sanitizeOperationLogs(logs) {
   const input = Array.isArray(logs) ? logs : [];
-  return input
-    .map((entry) => {
-      const message = String(entry?.message || "").trim();
-      if (!message) return null;
-      return {
-        id: String(entry?.id || crypto.randomUUID()),
-        level: normalizeOperationLevel(entry?.level),
-        region: normalizeOperationRegion(entry?.region),
-        message,
-        source: String(entry?.source || "system").trim() || "system",
-        createdAt: String(entry?.createdAt || toIsoNow()),
-      };
-    })
-    .filter(Boolean)
-    .slice(-MAX_OPERATION_LOGS);
+  return input.map((entry) => {
+    const message = String(entry?.message || '').trim();
+    if (!message) return null;
+    return {
+      id: String(entry?.id || crypto.randomUUID()),
+      level: normalizeOperationLevel(entry?.level),
+      region: normalizeOperationRegion(entry?.region),
+      message,
+      source: String(entry?.source || 'system').trim() || 'system',
+      createdAt: String(entry?.createdAt || toIsoNow()),
+    };
+  }).filter(Boolean).slice(-MAX_OPERATION_LOGS);
 }
 
+/** @returns {void} */
 function persistOperationsStore() {
   operationsStore.updatedAt = toIsoNow();
   safeWriteJsonFile(OPERATIONS_STORE_FILE, operationsStore);
 }
 
+/** @returns {void} */
 function loadOperationsStore() {
   const defaults = defaultOperationsStore();
   const persisted = safeReadJsonFile(OPERATIONS_STORE_FILE, null);
-  const source = persisted && typeof persisted === "object" ? persisted : defaults;
-
+  const source = persisted && typeof persisted === 'object' ? persisted : defaults;
   operationsStore.deployments.pending = sanitizeDeploymentList(source?.deployments?.pending);
   operationsStore.deployments.history = sanitizeDeploymentList(source?.deployments?.history);
   operationsStore.policies = sanitizePolicyList(source?.policies);
   operationsStore.logs = sanitizeOperationLogs(source?.logs);
   operationsStore.updatedAt = String(source?.updatedAt || toIsoNow());
-
-  if (!operationsStore.policies.length) {
-    operationsStore.policies = defaultOperationPolicies();
-  }
-
+  if (!operationsStore.policies.length) operationsStore.policies = defaultOperationPolicies();
   if (!operationsStore.logs.length) {
-    operationsStore.logs = [
-      {
-        id: crypto.randomUUID(),
-        level: "info",
-        region: "eu",
-        message: "Operational data store initialized.",
-        source: "server",
-        createdAt: toIsoNow(),
-      },
-    ];
+    operationsStore.logs = [{ id: crypto.randomUUID(), level: 'info', region: 'eu', message: 'Operational data store initialized.', source: 'server', createdAt: toIsoNow() }];
   }
-
   persistOperationsStore();
 }
 
+/**
+ * @param {string} level
+ * @param {string} message
+ * @param {object} [options]
+ */
 function appendOperationLog(level, message, options = {}) {
   const payload = {
     id: crypto.randomUUID(),
     level: normalizeOperationLevel(level),
     region: normalizeOperationRegion(options.region),
-    message: String(message || "").trim(),
-    source: String(options.source || "system").trim() || "system",
+    message: String(message || '').trim(),
+    source: String(options.source || 'system').trim() || 'system',
     createdAt: toIsoNow(),
   };
   if (!payload.message) return;
-
   operationsStore.logs.push(payload);
   if (operationsStore.logs.length > MAX_OPERATION_LOGS) {
     operationsStore.logs = operationsStore.logs.slice(-MAX_OPERATION_LOGS);
@@ -538,31 +300,28 @@ function appendOperationLog(level, message, options = {}) {
   persistOperationsStore();
 }
 
+/** @param {string} name @returns {string} */
 function inferRegionFromRouteName(name) {
-  const normalized = String(name || "").toLowerCase();
-  if (normalized.includes("ap")) return "ap";
-  if (normalized.includes("us")) return "us";
-  return "eu";
+  const normalized = String(name || '').toLowerCase();
+  if (normalized.includes('ap')) return 'ap';
+  if (normalized.includes('us')) return 'us';
+  return 'eu';
 }
 
+/** @returns {object} */
 function snapshotOperationsPayload() {
-  const pending = operationsStore.deployments.pending;
-  const history = operationsStore.deployments.history;
-
   return {
     ok: true,
-    deployments: {
-      pending,
-      history,
-    },
-    pending,
-    history,
+    deployments: operationsStore.deployments,
+    pending: operationsStore.deployments.pending,
+    history: operationsStore.deployments.history,
     policies: operationsStore.policies,
     logs: operationsStore.logs.slice(-300),
     updatedAt: operationsStore.updatedAt,
   };
 }
 
+/** @returns {object} */
 function serializeLocalWorkspaceState() {
   return {
     folderName: localAssistantWorkspace.folderName,
@@ -580,12 +339,11 @@ function serializeLocalWorkspaceState() {
   };
 }
 
+/** @returns {void} */
 function persistLocalWorkspaceState() {
   safeWriteJsonFile(LOCAL_WORKSPACE_CACHE_FILE, serializeLocalWorkspaceState());
 }
 
-// Debounced variant — coalesces rapid consecutive syncs into a single disk write.
-// The in-memory state is always current; only the flush to disk is deferred.
 let _persistDebounceTimer = null;
 function debouncedPersistLocalWorkspaceState() {
   if (_persistDebounceTimer) clearTimeout(_persistDebounceTimer);
@@ -595,61 +353,64 @@ function debouncedPersistLocalWorkspaceState() {
   }, 200);
 }
 
+/** @returns {void} */
 function restoreLocalWorkspaceState() {
   const persisted = safeReadJsonFile(LOCAL_WORKSPACE_CACHE_FILE, null);
-  if (!persisted || typeof persisted !== "object") return;
-
+  if (!persisted || typeof persisted !== 'object') return;
   const restoredFiles = new Map();
   const files = Array.isArray(persisted.files) ? persisted.files : [];
   for (const file of files) {
     const pathValue = toSafePath(file?.path);
     if (!pathValue) continue;
-    restoredFiles.set(pathValue, {
-      ...file,
-      path: pathValue,
-    });
+    restoredFiles.set(pathValue, { ...file, path: pathValue });
   }
-
-  localAssistantWorkspace.folderName = String(persisted.folderName || "") || null;
-  localAssistantWorkspace.rootPath = String(persisted.rootPath || "") || null;
-  localAssistantWorkspace.workspaceId = String(persisted.workspaceId || "") || null;
-  localAssistantWorkspace.sessionId = String(persisted.sessionId || "") || null;
-  localAssistantWorkspace.sourceKind = normalizeWorkspaceSourceKind(persisted.sourceKind);
-  localAssistantWorkspace.fileCountTotal = Number(persisted.fileCountTotal || restoredFiles.size || 0);
+  localAssistantWorkspace.folderName         = String(persisted.folderName || '') || null;
+  localAssistantWorkspace.rootPath           = String(persisted.rootPath || '') || null;
+  localAssistantWorkspace.workspaceId        = String(persisted.workspaceId || '') || null;
+  localAssistantWorkspace.sessionId          = String(persisted.sessionId || '') || null;
+  localAssistantWorkspace.sourceKind         = normalizeWorkspaceSourceKind(persisted.sourceKind);
+  localAssistantWorkspace.fileCountTotal     = Number(persisted.fileCountTotal || restoredFiles.size || 0);
   localAssistantWorkspace.fileCountCompleted = Number(persisted.fileCountCompleted || restoredFiles.size || 0);
-  localAssistantWorkspace.fileCountFailed = Number(persisted.fileCountFailed || 0);
-  localAssistantWorkspace.fileCountPending = Number(persisted.fileCountPending || 0);
-  localAssistantWorkspace.status = String(persisted.status || "") || "";
-  localAssistantWorkspace.indexedAt = String(persisted.indexedAt || "") || null;
-  localAssistantWorkspace.files = restoredFiles;
+  localAssistantWorkspace.fileCountFailed    = Number(persisted.fileCountFailed || 0);
+  localAssistantWorkspace.fileCountPending   = Number(persisted.fileCountPending || 0);
+  localAssistantWorkspace.status             = String(persisted.status || '') || '';
+  localAssistantWorkspace.indexedAt          = String(persisted.indexedAt || '') || null;
+  localAssistantWorkspace.files              = restoredFiles;
 }
 
+/** @param {object} meta @returns {boolean} */
 function workspaceRecordIndexed(meta) {
-  return Boolean(
-    meta?.capsuleCache
-    && meta?.transportEnvelope
-    && (meta?.rawStorage || meta?.compressedBase64)
-  );
+  return Boolean(meta?.capsuleCache && meta?.transportEnvelope && (meta?.rawStorage || meta?.compressedBase64));
 }
 
-async function ensureLocalWorkspaceMeta(meta, pathHint = "") {
+/**
+ * @param {object} meta
+ * @param {string} [pathHint]
+ * @returns {Promise<object>}
+ */
+async function ensureLocalWorkspaceMeta(meta, pathHint = '') {
   return ensureWorkspaceFileRecord(meta, {
-    path: pathHint || meta?.path || "",
+    path: pathHint || meta?.path || '',
     legacyBrotliQuality: WORKSPACE_BROTLI_QUALITY,
   });
 }
 
-async function loadLocalWorkspaceRecordText(meta, requestedPath = "") {
-  const record = await ensureLocalWorkspaceMeta(meta, requestedPath || meta?.path || "");
-  if (record?.storage?.provider === "s3") {
+/**
+ * @param {object} meta
+ * @param {string} [requestedPath]
+ * @returns {Promise<string>}
+ */
+async function loadLocalWorkspaceRecordText(meta, requestedPath = '') {
+  const record = await ensureLocalWorkspaceMeta(meta, requestedPath || meta?.path || '');
+  if (record?.storage?.provider === 's3') {
     const blobText = await readWorkspaceBlobText(record.storage, record.originalSize);
     return blobText.content;
   }
   return decodeRawStorage(record.rawStorage);
 }
 
+/** @param {object} meta @returns {object} */
 function buildWorkspaceFileListingEntry(meta) {
-  // Records store raw/capsule sizes under rawStorage and capsuleCache, not a compressionStats sub-object.
   const rawBytes = Number(meta?.rawStorage?.rawBytes || meta?.originalSize || 0);
   const capsuleBytes = Number(meta?.capsuleCache?.capsule?.capsuleBytes || 0);
   const compressionRatio = rawBytes > 0 ? Math.max(0, 1 - capsuleBytes / rawBytes) : 0;
@@ -658,13 +419,13 @@ function buildWorkspaceFileListingEntry(meta) {
     originalSize: Number(meta.originalSize || 0),
     compressedSize: Number(meta.compressedSize || 0),
     indexed: workspaceRecordIndexed(meta),
-    kind: meta?.kind || (workspaceRecordIndexed(meta) ? "source" : "pending"),
-    fileType: String(meta?.fileType || ""),
-    parserFamily: String(meta?.parserFamily || ""),
+    kind: meta?.kind || (workspaceRecordIndexed(meta) ? 'source' : 'pending'),
+    fileType: String(meta?.fileType || ''),
+    parserFamily: String(meta?.parserFamily || ''),
     parseOk: Boolean(meta?.parseOk),
-    capsuleMode: String(meta?.capsuleMode || ""),
-    status: String(meta?.status || (workspaceRecordIndexed(meta) ? "completed" : "pending")),
-    error: String(meta?.error || ""),
+    capsuleMode: String(meta?.capsuleMode || ''),
+    status: String(meta?.status || (workspaceRecordIndexed(meta) ? 'completed' : 'pending')),
+    error: String(meta?.error || ''),
     compressionRatio,
     capsuleBytes,
     rawBytes,
@@ -672,37 +433,43 @@ function buildWorkspaceFileListingEntry(meta) {
   };
 }
 
-(async () => {
-  await loadAuthStore();
-})();
-restoreLocalWorkspaceState();
-loadOperationsStore();
-
+/** @returns {void} */
 function clearLocalWorkspaceFiles() {
   localAssistantWorkspace.files.clear();
-  localAssistantWorkspace.fileCountTotal = 0;
+  localAssistantWorkspace.fileCountTotal     = 0;
   localAssistantWorkspace.fileCountCompleted = 0;
-  localAssistantWorkspace.fileCountPending = 0;
-  localAssistantWorkspace.fileCountFailed = 0;
-  localAssistantWorkspace.rootPath = null;
-  localAssistantWorkspace.folderName = null;
-  localAssistantWorkspace.status = "cleared";
+  localAssistantWorkspace.fileCountPending   = 0;
+  localAssistantWorkspace.fileCountFailed    = 0;
+  localAssistantWorkspace.rootPath           = null;
+  localAssistantWorkspace.folderName         = null;
+  localAssistantWorkspace.status             = 'cleared';
 }
 
+/**
+ * @param {string} folderName
+ * @param {string} userId
+ * @returns {string}
+ */
 function canonicalWorkspaceId(folderName, userId) {
-  const folder = String(folderName || "workspace").trim() || "workspace";
-  const user = String(userId || "").trim();
+  const folder = String(folderName || 'workspace').trim() || 'workspace';
+  const user   = String(userId || '').trim();
   return user ? `${folder}-${user}` : folder;
 }
 
-async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deletedPaths, mode, scanEpoch, complete, userId = "" }) {
-  const normalizedFolderName = String(folderName || localAssistantWorkspace.folderName || "workspace").trim() || "workspace";
-  const clientWorkspaceId = String(workspaceId || "").trim();
+const { enqueueLocalWorkspaceEnrichment } = wo;
+
+/**
+ * @param {object} param0
+ * @returns {Promise<object>}
+ */
+async function syncWorkspaceFiles({ workspaceId = '', folderName, files, deletedPaths, mode, scanEpoch, complete, userId = '' }) {
+  const normalizedFolderName = String(folderName || localAssistantWorkspace.folderName || 'workspace').trim() || 'workspace';
+  const clientWorkspaceId = String(workspaceId || '').trim();
   const normalizedWorkspaceId = clientWorkspaceId
-    || String(localAssistantWorkspace.workspaceId || "").trim()
+    || String(localAssistantWorkspace.workspaceId || '').trim()
     || canonicalWorkspaceId(normalizedFolderName, userId);
-  const syncMode = String(mode || "background").trim().toLowerCase() || "background";
-  const perf = createWorkspacePerfTracker("server-sync", {
+  const syncMode = String(mode || 'background').trim().toLowerCase() || 'background';
+  const perf = createWorkspacePerfTracker('server-sync', {
     folderName: normalizedFolderName,
     mode: syncMode,
     scanEpoch: Number(scanEpoch || 0),
@@ -716,36 +483,29 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
   const removedPaths = Array.isArray(deletedPaths)
     ? deletedPaths.map((entry) => toSafePath(entry)).filter((filePath) => isWorkspaceIndexablePath(filePath))
     : [];
-  for (const filePath of removedPaths) {
-    localAssistantWorkspace.files.delete(filePath);
-  }
-  perf.mark("deletes-applied", { deleted: removedPaths.length });
+  for (const filePath of removedPaths) localAssistantWorkspace.files.delete(filePath);
+  perf.mark('deletes-applied', { deleted: removedPaths.length });
 
   const incomingFiles = Array.isArray(files) ? files : [];
   const normalizedFiles = incomingFiles
     .map((file) => {
-      const filePath = toSafePath(file?.path || file?.name || "");
+      const filePath = toSafePath(file?.path || file?.name || '');
       if (!filePath || !isWorkspaceIndexablePath(filePath)) return null;
-      return {
-        path: filePath,
-        content: typeof file?.content === "string" ? file.content : String(file?.content || ""),
-      };
+      return { path: filePath, content: typeof file?.content === 'string' ? file.content : String(file?.content || '') };
     })
     .filter(Boolean);
   const workspaceFilePaths = Array.from(new Set([
     ...Array.from(localAssistantWorkspace.files.keys()).filter((filePath) => isWorkspaceIndexablePath(filePath)),
     ...normalizedFiles.map((file) => file.path),
   ]));
-  // Skip Gate: for single-file saves, skip re-encoding if the content is identical
-  // to what's already stored. SHA-256 is ~0.1ms vs Brotli compression at ~2-10ms.
-  // Only applies to single-file mode — initial syncs always rebuild all records.
-  const filesToBuild = syncMode === "single-file"
+
+  const filesToBuild = syncMode === 'single-file'
     ? normalizedFiles.filter((file) => {
-        const existing = localAssistantWorkspace.files.get(file.path);
-        if (!existing?.rawStorage?.digest) return true;
-        const incomingDigest = crypto.createHash("sha256").update(file.content).digest("hex");
-        return incomingDigest !== existing.rawStorage.digest;
-      })
+      const existing = localAssistantWorkspace.files.get(file.path);
+      if (!existing?.rawStorage?.digest) return true;
+      const incomingDigest = crypto.createHash('sha256').update(file.content).digest('hex');
+      return incomingDigest !== existing.rawStorage.digest;
+    })
     : normalizedFiles;
 
   const packedEntries = await mapWithConcurrency(filesToBuild, MESH_WORKSPACE_BUILD_CONCURRENCY, async (file) => {
@@ -753,52 +513,37 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
       legacyBrotliQuality: WORKSPACE_BROTLI_QUALITY,
       initialBrotliQuality: WORKSPACE_INITIAL_BROTLI_QUALITY,
       workspaceFilePaths,
-      recordMode: syncMode === "single-file" ? "full" : "initial",
+      recordMode: syncMode === 'single-file' ? 'full' : 'initial',
     });
     return { path: file.path, record };
   });
-  perf.mark("records-built", { changed: packedEntries.length, skipped: normalizedFiles.length - filesToBuild.length });
+  perf.mark('records-built', { changed: packedEntries.length, skipped: normalizedFiles.length - filesToBuild.length });
 
   for (const entry of packedEntries) {
-    localAssistantWorkspace.files.set(entry.path, {
-      ...entry.record,
-      path: entry.path,
-      kind: "source",
-    });
+    localAssistantWorkspace.files.set(entry.path, { ...entry.record, path: entry.path, kind: 'source' });
   }
 
-  localAssistantWorkspace.folderName = normalizedFolderName;
-  localAssistantWorkspace.workspaceId = normalizedWorkspaceId;
-  localAssistantWorkspace.rootPath = "";
-  localAssistantWorkspace.sourceKind = WORKSPACE_SOURCE_UPLOAD;
-  localAssistantWorkspace.fileCountTotal = localAssistantWorkspace.files.size;
+  localAssistantWorkspace.folderName         = normalizedFolderName;
+  localAssistantWorkspace.workspaceId        = normalizedWorkspaceId;
+  localAssistantWorkspace.rootPath           = '';
+  localAssistantWorkspace.sourceKind         = WORKSPACE_SOURCE_UPLOAD;
+  localAssistantWorkspace.fileCountTotal     = localAssistantWorkspace.files.size;
   localAssistantWorkspace.fileCountCompleted = [...localAssistantWorkspace.files.values()].filter((meta) => workspaceRecordIndexed(meta)).length;
-  localAssistantWorkspace.fileCountPending = Math.max(0, localAssistantWorkspace.files.size - localAssistantWorkspace.fileCountCompleted);
-  localAssistantWorkspace.fileCountFailed = 0;
-  localAssistantWorkspace.status = complete === true
-    ? "background-complete"
-    : (syncMode === "initial" ? "initial-ready" : "processing");
-  localAssistantWorkspace.indexedAt = toIsoNow();
+  localAssistantWorkspace.fileCountPending   = Math.max(0, localAssistantWorkspace.files.size - localAssistantWorkspace.fileCountCompleted);
+  localAssistantWorkspace.fileCountFailed    = 0;
+  localAssistantWorkspace.status             = complete === true ? 'background-complete' : (syncMode === 'initial' ? 'initial-ready' : 'processing');
+  localAssistantWorkspace.indexedAt          = toIsoNow();
   debouncedPersistLocalWorkspaceState();
 
-  if (syncMode !== "single-file") {
-    enqueueLocalWorkspaceEnrichment({
-      workspaceId: normalizedWorkspaceId,
-      folderName: normalizedFolderName,
-    });
+  if (syncMode !== 'single-file') {
+    enqueueLocalWorkspaceEnrichment({ workspaceId: normalizedWorkspaceId, folderName: normalizedFolderName });
   }
-  perf.flush({
-    discovered: normalizedFiles.length,
-    deleted: removedPaths.length,
-    total: localAssistantWorkspace.files.size,
-  });
+  perf.flush({ discovered: normalizedFiles.length, deleted: removedPaths.length, total: localAssistantWorkspace.files.size });
 
-  // Build per-file compression stats for only the files processed in this batch.
-  // Clients use this to update their local compressionMap without a separate API call.
-  const compressionStats = packedEntries.map(({ path, record }) => {
+  const compressionStats = packedEntries.map(({ path: p, record }) => {
     const raw = Number(record.rawStorage?.rawBytes || record.originalSize || 0);
     const capsule = Number(record.capsuleCache?.capsule?.capsuleBytes || 0);
-    return { path, rawBytes: raw, capsuleBytes: capsule };
+    return { path: p, rawBytes: raw, capsuleBytes: capsule };
   }).filter((e) => e.rawBytes > 0);
 
   return {
@@ -816,31 +561,28 @@ async function syncWorkspaceFiles({ workspaceId = "", folderName, files, deleted
   };
 }
 
+// ── Startup initialization ───────────────────────────────────────────────────
+(async () => { await auth.loadAuthStore(); })();
+restoreLocalWorkspaceState();
+loadOperationsStore();
 
-
-
-
-
-
-
-// --- EXPORTS ---
+// ── Exports ──────────────────────────────────────────────────────────────────
 module.exports = {
+  // Node/infra shortcuts
   secureDb,
   brotliCompress,
   brotliDecompress,
+  execFileAsync,
+  clampBrotliQuality,
+  parseBooleanFlag,
+  parseIntegerInRange,
+  trimTrailingSlashes,
+  normalizeSasToken,
+
+  // Config constants
   MESH_CORE_URL,
   LOCAL_WORKSPACE_CACHE_FILE,
   OPERATIONS_STORE_FILE,
-  AUTH_STORE_FILE,
-  AUTH_SESSION_TTL_MS,
-  AUTH_SESSION_TOUCH_INTERVAL_MS,
-  AUTH_COOKIE_NAME,
-  AUTH_COOKIE_PATH,
-  AUTH_COOKIE_SAME_SITE,
-  AUTH_COOKIE_SECURE,
-  DEMO_USER_EMAIL,
-  DEMO_USER_EMAIL_ALIASES,
-  DEMO_USER_PASSWORD,
   WORKSPACE_BROTLI_QUALITY,
   WORKSPACE_INITIAL_BROTLI_QUALITY,
   MESH_TUNNEL_BROTLI_QUALITY,
@@ -859,30 +601,26 @@ module.exports = {
   LOCAL_WORKSPACE_SKIP_EXTENSIONS,
   LOCAL_WORKSPACE_SKIP_DIRS,
   LOCAL_WORKSPACE_MAX_FILE_CHARS,
-  USER_STORE_ALLOWED_KEYS,
-  USER_STORE_MAX_JSON_BYTES,
+  MAX_OPERATION_LOGS,
+
+  // Shared state
   localAssistantWorkspace,
   workspaceMetadataStore,
   operationsStore,
-  MAX_OPERATION_LOGS,
   assistantRuns,
   assistantTerminalSessions,
   workspaceSelectJobs,
   workspaceSelectJobOrder,
   workspaceSelectChains,
   lastAuthStoreErrorLogAt,
-  execFileAsync,
-  clampBrotliQuality,
-  parseBooleanFlag,
-  parseIntegerInRange,
-  trimTrailingSlashes,
-  normalizeSasToken,
+
+  // Wiring utilities
+  toIsoNow,
+  toSafeSlug,
+  normalizeWorkspaceSourceKind,
   sanitizeBlobContainerName,
   safeReadJsonFile,
   safeWriteJsonFile,
-  normalizeWorkspaceSourceKind,
-  toIsoNow,
-  toSafeSlug,
   normalizeOperationLevel,
   normalizeOperationRegion,
   defaultOperationPolicies,
@@ -895,306 +633,29 @@ module.exports = {
   appendOperationLog,
   inferRegionFromRouteName,
   snapshotOperationsPayload,
-  normalizeEmail,
-  hashPassword,
-  verifyPassword,
-  sanitizeAuthUser,
-  reportAuthStoreError,
-  buildDemoUserSeed,
-  ensureDemoUserRecord,
-  loadAuthStore,
-  issueAuthSession,
-  parseCookiesFromHeader,
-  decodeCookieValue,
-  readAuthCookieToken,
-  normalizeSameSiteValue,
-  createCookieHeader,
-  setAuthCookie,
-  clearAuthCookie,
-  readAuthTokenFromRequest,
-  resolveAuthUserFromRequest,
-  requireAuth,
-  pruneExpiredSessions,
-  normalizeUserStoreKey,
-  normalizeRequestedStoreKeys,
-  normalizeStoredByokProviders,
-  getStoredCredentialsForUser,
-  mergeChatCredentials,
-  invalidateSessionCache,
-  invalidateSessionCacheForUser,
-  invalidateCredentialCache,
   serializeLocalWorkspaceState,
   persistLocalWorkspaceState,
+  debouncedPersistLocalWorkspaceState,
   restoreLocalWorkspaceState,
   workspaceRecordIndexed,
   ensureLocalWorkspaceMeta,
   loadLocalWorkspaceRecordText,
   buildWorkspaceFileListingEntry,
-  meshTunnelRequest,
-  toSafePath,
-  basename,
-  ensureWorkspaceOwnedPath,
-  localWorkspaceSummary,
-  clearLocalWorkspaceState,
-  isLocalPathWorkspaceState,
-  isUploadWorkspaceState,
-  syncLocalUploadWorkspaceSummary,
-  toWorkspacePath,
-  toWorkspaceRelativePath,
-  syncWorkspaceFiles,
-  canonicalWorkspaceId,
   clearLocalWorkspaceFiles,
-  normalizeAbsoluteRootPath,
-  resolveLocalWorkspaceAbsolutePath,
-  gitPathFromWorkspacePath,
-  workspacePathFromGitPath,
-  readLocalWorkspaceFileText,
-  scanLocalWorkspaceFiles,
-  packLocalWorkspaceContent,
-  localWorkspaceUploadBlobStorageForPath,
-  packLocalBlobBackedWorkspaceRecord,
-  writeLocalWorkspaceFileToDisk,
-  normalizeGitError,
-  getLocalGitCwd,
-  runLocalGit,
-  isMeshWorkerUnavailableError,
-  countPendingWorkspaceSelectJobs,
-  pruneWorkspaceSelectJobs,
-  estimateWorkspaceSelectPayload,
-  workspaceSelectScopeKey,
-  computeWorkspaceSelectQueuePosition,
-  snapshotWorkspaceSelectJob,
-  buildWorkspaceSelectAcceptedResponse,
-  executeWorkspaceSelectWithFallback,
-  enqueueWorkspaceSelectJob,
-  shouldQueueWorkspaceSelectPayload,
-  getWorkspaceSelectJobForUser,
-  sortedLocalPaths,
-  normalizeWorkspaceBlobStorage,
-  createWorkspaceOffloadConfig,
-  workspaceOffloadConfig,
-  workspaceOffloadClientConfig,
-  STATIC_MODELS,
-  ALL_STATIC_MODELS,
-  MESH_DEFAULT_MODEL,
-  DEFAULT_BYOK_BASE_URLS,
-  DEFAULT_AZURE_API_VERSION,
-  MESH_MODEL_CODEC_VERSION,
-  MESH_MODEL_CODEC_CONTEXT_MARKER,
-  MESH_MODEL_CODEC_RESPONSE_OPEN,
-  MESH_MODEL_CODEC_RESPONSE_CLOSE,
-  MESH_MODEL_CODEC_PAYLOAD_PREFIX,
-  MESH_MODEL_CODEC_PAYLOAD_SUFFIX,
-  MESH_MODEL_CODEC_TERMS,
-  MESH_MODEL_CODEC_ESCAPE_PREFIX,
-  MESH_MODEL_CODEC_ESCAPE_REPLACEMENT,
-  MESH_MODEL_CODEC_NEWLINE_TOKEN,
-  MESH_MODEL_CODEC_TAB_TOKEN,
-  MESH_MODEL_CODEC_TABLE,
-  MESH_MODEL_CODEC_ENCODE_TABLE,
-  MESH_MODEL_CODEC_DECODE_TABLE,
-  meshCodecSessionState,
-  injectMeshSystemPrompt,
-  stripModelPrefix,
-  readMessageText,
-  normalizeMessages,
-  toOpenAiMessages,
-  toAnthropicMessages,
-  toGeminiContents,
-  trimTrailingSlash,
-  joinPath,
-  isAzureProvider,
-  normalizeAzureBaseUrl,
-  modelDisplayLabel,
-  parseProviderError,
-  normalizeProviderUsage,
-  readJsonResponse,
-  buildOpenAIChatCompletionBody,
-  providerWantsMaxCompletionTokens,
-  textFromMaybeContent,
-  extractAssistantTextFromChatPayload,
-  callOpenAIResponsesEndpoint,
-  callOpenAICompatibleChat,
-  callAzureOpenAIChat,
-  callByokProviderChat,
-  callAnthropicChatWithMeta,
-  callAnthropicChat,
-  callGeminiChat,
-  BEDROCK_MODEL_MAP,
-  resolveBedrockModelId,
-  getBedrockClient,
-  callBedrockDirect,
-  normalizeByokProviders,
-  resolveProviderForModel,
-  runModelChat,
-  fetchAnthropicModels,
-  fetchOpenAICompatibleModels,
-  fetchGeminiModels,
-  dedupeModelIds,
-  staticModelMatch,
-  normalizeImportedModels,
-  normalizeRequestedModelIds,
-  validateProviderKey,
-  compressLocalWorkspaceText,
-  decompressLocalWorkspaceText,
-  normalizeIncomingWorkspacePreindexedFile,
-  readWorkspaceBlobText,
-  writeWorkspaceBlobText,
-  copyWorkspaceBlob,
-  deleteWorkspaceBlob,
-  compressLocalWorkspaceChunkFiles,
-  extractActiveFilePathFromMessages,
-  replaceLiteralAll,
-  escapeRegexLiteral,
-  rot47Transform,
-  textCompositionStats,
-  containsCodecSignals,
-  isLikelyUnframedRot47,
-  decodedReadabilityScore,
-  pickMostReadableDecoded,
-  decodeCodecTokens,
-  codecTokenShouldReplace,
-  encodeMeshModelCodec,
-  decodeMeshModelCodec,
-  buildMeshCodecContextDocument,
-  hasCodecContextMarker,
-  normalizeChatSessionId,
-  markCodecContextInitialized,
-  isCodecContextInitializedForSession,
-  injectCodecContextIntoMessages,
-  extractCompressedModelPayload,
-  decodeCompressedModelResponse,
-  escapeTagAttribute,
-  dedupePaths,
-  createFileOpenCache,
-  openWorkspaceFileWithFallback,
-  recoverWorkspaceWithFallback,
-  searchWorkspaceWithFallback,
-  grepWorkspaceWithFallback,
-  renameWorkspaceFileWithFallback,
-  deleteWorkspaceFileWithFallback,
-  applyWorkspaceBatchWithFallback,
-  openLocalWorkspaceWithFallback,
-  runGitWithFallback,
-  sanitizeTerminalChunk,
-  makeAssistantTerminalEntry,
-  getAssistantTerminalSession,
-  createAssistantTerminalSession,
-  listAssistantTerminalOutput,
-  writeAssistantTerminalInput,
-  destroyAssistantTerminalSession,
-  createCompressedContextExcerpt,
-  normalizeContextExcerptText,
-  normalizeExcerptFocusTerms,
-  collectFocusedCharRanges,
-  mergeCharRanges,
-  buildExcerptFromCharRanges,
-  loadCompressedContextEntries,
-  loadPlainContextEntries,
-  buildPlainContextBlock,
-  buildCompressedContextBlock,
-  shouldPrefetchRecoveryForPrompt,
-  loadCapsuleContextEntries,
-  loadRecoveredSpanEntries,
-  buildCapsuleContextBlock,
-  injectCompressedContextIntoMessages,
-  buildModelResponseTransport,
-  buildServerCodecRecovery,
-  polishDecompressedAssistantText,
-  looksLikeCodecProtocolRefusal,
-  enqueueLocalWorkspaceEnrichment,
-  drainLocalWorkspaceEnrichmentQueue,
-  enrichLocalWorkspaceRecords,
-  localWorkspaceSelect,
-  localWorkspaceOpenLocal,
-  localWorkspaceFiles,
-  localWorkspaceGraph,
-  localWorkspaceFile,
-  localWorkspaceSave,
-  localWorkspaceCreate,
-  buildWorkspaceQueryContext,
-  localWorkspaceSearch,
-  findMatchesInText,
-  localWorkspaceGrep,
-  localWorkspaceRename,
-  localWorkspaceDelete,
-  localWorkspaceBatch,
-  localGitStatus,
-  ingestWorkspaceChunkFromOffload,
-  localResolveReferencedFiles,
-  QUERY_EXTENSION_HINTS,
-  SINGLE_FILE_LOOKUP_RE,
-  MULTI_FILE_LOOKUP_RE,
-  extractQueryExtensionHints,
-  pathHasExtensionHint,
-  selectReferenceMatchLimit,
-  BROAD_CHANGE_INTENT_RE,
-  resolveAdaptiveCompressedContextBudget,
-  FILE_QUERY_STOP_WORDS,
-  extractSearchTokens,
-  compactAlphaNumeric,
-  scorePathForQuery,
-  rankWorkspacePathsForQuery,
-  inferReferencedFilesFromWorkspace,
-  localAssistantReply,
-  normalizeDeploymentRisk,
-  normalizePolicyMode,
-  normalizePolicyStatus,
-  normalizePolicyRegion,
-  parsePolicyScopeFromPayload,
-  stringifyPolicyScope,
-  uniqueDeploymentId,
-  queueDeployment,
-  settleDeploymentAction,
-  uniquePolicyId,
-  createPolicy,
-  updatePolicy,
-  cloneJsonValue,
-  normalizeRunActionState,
-  touchRunEntity,
-  createAssistantRunRecord,
-  assistantRunSnapshot,
-  extractExplicitPathReferences,
-  ensureRunWorkspacePath,
-  extractExplicitCommandFromPrompt,
-  hasEditIntent,
-  hasSearchIntent,
-  hasReadIntent,
-  hasOpsIntent,
-  buildOpsContextSnippet,
-  resolveAssistantCandidatePaths,
-  buildHeuristicAssistantRunPlan,
-  planAssistantRunWithModel,
-  planAssistantRun,
-  normalizeDiffText,
-  computeProposalLineDelta,
-  buildProposalDiff,
-  extractFirstFencedCodeBlock,
-  extractDirectProposalContent,
-  buildFallbackTemplateForTarget,
-  extractProposalTargetPaths,
-  generateAssistantWriteProposal,
-  generateAssistantWriteBatch,
-  resolveRunBatch,
-  resolveRunProposal,
-  syncBatchStatusFromProposals,
-  ensureApplyBatchActionForRun,
-  ensureApplyProposalActionsForBatch,
-  buildActionResultSummary,
-  buildFallbackAssistantRunReply,
-  summarizeAssistantRun,
-  executeAssistantRunAction,
-  continueAssistantRun,
-  createAssistantRun,
-  applyAssistantRunDecision
+  canonicalWorkspaceId,
+  syncWorkspaceFiles,
+
+  // Domain modules — spread so callers get a flat namespace
+  ...auth,
+  ...mp,
+  ...ar,
+  ...wi,
+  ...wc,
+  ...wo,
+  ...dep,
 };
 
 // Inject shared runtime state into the global namespace so sub-modules
 // (workspace-ops, workspace-context, assistant-runs, etc.) can access it
-// without creating circular imports. This pattern is intentional: those
-// modules are extracted domain layers that read shared mutable state
-// (localAssistantWorkspace, workspaceMetadataStore, config constants) owned
-// by this module. The static utility symbols (mapWithConcurrency,
-// buildWorkspaceFileRecord, etc.) are now imported directly by each
-// sub-module and no longer need to be injected here.
+// without creating circular imports.
 Object.assign(global, module.exports);
