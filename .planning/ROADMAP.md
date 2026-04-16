@@ -1,259 +1,265 @@
-# Mesh. v2 IDE — Roadmap
+# Mesh. v2.0 — Full-Stack Quality Sweep Roadmap
 
-## Milestone: app-v2 Feature Parity + Antigravity Mashup
+## Milestone: v2.0 Full-Stack Quality Sweep
 
-**Goal:** Make `app-v2.html` a master mashup of all `app.html` features plus Antigravity IDE features, with Mesh branding, clean UI organization, and full interactivity.
+**Goal:** Harden security, improve code quality, expand test coverage, add CI/CD, polish UI/UX, and ship remaining performance optimizations across the entire Mesh platform.
 
-**Constraint:** Only `app-v2.html` may be edited. All other files are read-only.
-
----
-
-### Phase 1: Editor Chrome — Tabs, Breadcrumb, Explorer Actions
-**Goal:** Add editor tab bar (Welcome tab), breadcrumb navigation, and explorer header action buttons (New File, New Folder, Refresh, Collapse All, Open Folder) matching app.html.
-**Status:** completed
-**Scope:**
-- Editor tabs bar with Welcome tab above the center area
-- Breadcrumb bar below tabs
-- Explorer header action icons (5 buttons from app.html)
-- SCM badge count on activity bar icon
-
-### Phase 2: Source Control Panel — Full Git UI
-**Goal:** Replace placeholder SCM panel with full git UI: branch display, commit message input, commit/pull/push buttons, changes section with badge count.
-**Status:** completed
-**Scope:**
-- Branch name display with icon
-- Commit message input + commit button
-- Pull/Push action buttons
-- Changes section with count badge
-- Init repository fallback state
-
-### Phase 3: Chat Input & Agent Panel Upgrade
-**Goal:** Add full chat input area to agent panel: textarea with send button, attach file button, mode selector (Agent/Planning/Ask), matching app.html's chat panel UX.
-**Status:** completed
-**Scope:**
-- Chat message area (scrollable, empty state)
-- Chat input row: attach button, mode selector, model selector
-- Chat input box: textarea + send button
-- Richer agent panel header with Mesh logo
-
-### Phase 4: Surface Switcher — Editor / Terminal / Voice-Coding
-**Goal:** Add top bar surface switcher tabs and implement Terminal Surface and Voice-Coding Surface full-page views matching app.html.
-**Status:** completed
-**Scope:**
-- Surface switcher tabs in top bar center (Editor / Terminal / Voice-Coding)
-- Terminal Surface: full-page view with Single/Grid toggle, split panes (4 slots)
-- Voice-Coding Surface: intro state with orb, "Jetzt starten" button, live state with left (orb + controls) and right (viewer log) panels
-- Surface switching hides sidebar/panels when in Terminal or Voice mode
-
-### Phase 5: Context Menu, Auth Overlay & Status Bar Enrichment
-**Goal:** Add right-click context menu, auth login overlay, and full status bar matching app.html.
-**Status:** completed
-**Scope:**
-- Context menu: New File, New Folder, Copy Path, Delete (with separator lines)
-- Auth overlay: login form with email/password, Mesh logo, error display
-- Status bar left: Mesh Cloud, branch name (⑂ main), errors, terminal toggle button, indexing progress
-- Status bar right: cursor position (Ln/Col), Spaces, UTF-8, LF, language, Mesh AI brand
-
-### Phase 6: Resize Handles & Panel Polish
-**Goal:** Add draggable resize handles between sidebar/editor/chat panels and terminal panel. Final polish pass on spacing, transitions, and interaction details.
-**Status:** completed
-**Scope:**
-- Vertical resize handle between sidebar and editor
-- Vertical resize handle between editor and agent panel
-- Horizontal resize handle between editor and bottom panel
-- Smooth drag behavior with min/max constraints
-- Marketplace view (iframe placeholder)
-- Operations panel in sidebar
-- Transition animations for panel show/hide
-
-### Phase 7: Clean Transition — app-v2 becomes app.html + Light UI Default
-**Goal:** Promote app-v2.html to be the new app.html. Align DOM IDs/classes with what app-workspace.js expects, replace inline CSS/JS with external assets, set light theme as default. Delete old app.html, remove app-v2.html.
-**Status:** completed
-**Scope:**
-- Strip inline CSS, load app-workspace.css
-- Set data-theme="light" as default
-- Align ~50 DOM element IDs to match app-workspace.js selectors
-- Align class names to match app-workspace.css selectors
-- Add missing DOM elements (monaco, graphView, opsView, file tree, index progress, etc.)
-- Load all CDN libraries (d3, lottie, monaco, idb-keyval, xterm, xterm-addon-fit)
-- Load all local JS (app-workspace.js, app-graph.js, _bus.js, 20 feature scripts)
-- Strip inline JS (replaced by external scripts)
-- Copy app-v2.html → app.html, delete app-v2.html
-
-### Phase 8: Fix compression analytics showing real data + improve dependency graph animations and live updates when code changes
-
-**Goal:** Compression analytics show real per-file data from the live compression map. Dependency graph nodes animate in with stagger entrance, cross-fade on rebuild, and update live when code changes.
-**Status:** completed
-**Depends on:** Phase 7
+**Phases:** 9 (Phase 19–27, continuing from v1.0)
+**Requirements:** 37 mapped
 
 ---
 
-### Phase 9: Performance — In-Process Caching (Zero-Cost Quick Wins)
+### Phase 19: Foundation — Error Classes + Middleware Hardening
 
-**Goal:** Eliminate redundant DynamoDB round-trips on every API request by adding TTL-based in-process caches for session resolution and BYOK credential lookups.
-**Status:** completed
-**Depends on:** Phase 8
-**Scope:**
-- TTL cache for `resolveSession` (auth.js) — cache session + user lookup for 30s, saving 2 DynamoDB calls per authenticated request
-- TTL cache for `getStoredCredentialsForUser` (auth.js) — cache BYOK key bundle for 60s, saving 1 DynamoDB GSI query per `/api/assistant/chat` request
-- Cache invalidation on explicit logout and credential update
-- No external dependencies — pure in-process Maps with TTL, same pattern as `inferFilesCache`
+**Goal:** Add typed error hierarchy, wire up helmet/CORS/express-async-errors, replace unbounded Maps with LRU caches, add HTTP cache headers, and clean up empty directories. Zero-risk additive changes that everything else builds on.
+
+**Status:** planned
+**Depends on:** None (first phase)
+**Requirements:** QUAL-05, QUAL-06, QUAL-07, SEC-03, PERF-02, PERF-03, PERF-04
+**UI hint:** no
 
 **Success Criteria:**
-- Auth middleware makes 0 DynamoDB calls for requests within TTL window
-- Credential fetches hit cache on repeat requests within 60s
-- Logout immediately invalidates both caches
-- No observable behavior change for end users
+1. `src/errors/` directory contains AppError, ValidationError, NotFoundError, AuthError classes extending a common base
+2. `express-async-errors` is required in server.js; centralized error middleware returns structured JSON errors
+3. `helmet` replaces manual security headers in server.js (CSP nonces NOT yet enforced — that's Phase 20)
+4. `cors` package is imported and configured with explicit origin allowlist
+5. Rate limiter uses `lru-cache` with max 5,000 entries instead of plain Map
+6. Workspace file Map uses `lru-cache` with configurable maxSize
+7. Read-only API endpoints return Cache-Control headers
+8. Empty `src/services/` and `src/utils/` directories resolved (populated or removed)
+9. npm test passes with 0 failures
 
 ---
 
-### Phase 10: Performance — libuv Thread Pool + pm2 Cluster Mode
+### Phase 20: Security — Validation + CSRF + CSP
 
-**Goal:** Expand libuv's shared async I/O thread pool and configure pm2 cluster mode so all vCPUs are utilized, preventing thread pool saturation under concurrent S3 + Brotli workloads.
-**Status:** completed
-**Depends on:** Phase 9
-**Scope:**
-- `UV_THREADPOOL_SIZE=16` in `.env.example` and `ecosystem.config.js` (must be set before Node starts — pool is initialized at process boot, not in application code)
-- `ecosystem.config.js` with `exec_mode: cluster`, `instances: max`, graceful shutdown, CloudWatch agent log paths
-- Deploy workflow updated: `pm2 reload ecosystem.config.js` for zero-downtime reloads
+**Goal:** Replace hand-rolled validation with Zod schemas, add CSRF token protection to all mutating routes, and tighten CSP to remove unsafe-inline using per-request nonces.
+
+**Status:** planned
+**Depends on:** Phase 19 (needs error classes for Zod error mapping, helmet for CSP nonces)
+**Requirements:** SEC-01, SEC-02, SEC-04
+**UI hint:** no
 
 **Success Criteria:**
-- Concurrent S3 PutObject + Brotli compress calls don't starve each other's libuv threads
-- pm2 cluster mode active on multi-vCPU instances
-- Zero-downtime `pm2 reload` on deploy
+1. All route schemas in `src/schemas/` use Zod; hand-rolled validators deleted
+2. Zod validation errors map to existing `{ ok: false, error: "message" }` response format
+3. All mutating (POST/PUT/PATCH/DELETE) routes require valid CSRF token via csrf-csrf double-submit cookie
+4. CSP `script-src` and `style-src` no longer include `unsafe-inline`; nonces generated per request via helmet
+5. All 16 HTML pages function correctly with strict CSP (no console CSP violation errors)
+6. npm test passes with 0 failures
 
 ---
 
-### Phase 11: Performance — CloudFront + ALB + Auto Scaling (Infrastructure Scale)
+### Phase 21: Security — Frontend XSS Hardening
 
-**Goal:** Put CloudFront in front of S3 for workspace blob caching, add an Application Load Balancer, and configure Auto Scaling for the EC2 fleet — eliminating the single point of failure and enabling horizontal scale.
-**Status:** completed
-**Depends on:** Phase 10
-**Scope:**
-- CloudFront distribution pointing at S3 workspace bucket — cache workspace blobs at edge, TTL 1h
-- Application Load Balancer (ALB) in front of EC2, health check on `/api/health`
-- Launch Template + Auto Scaling Group (min 1, max 3, target 60% CPU)
-- pm2 cluster mode on each instance (use all vCPUs)
-- Update deploy pipeline: rsync → all instances via ASG lifecycle hook or SSM
-- S3 pre-signed URL flow updated to use CloudFront domain
+**Goal:** Eliminate raw innerHTML usage across frontend JS files. Replace user-content injection points with safe DOM APIs or DOMPurify.sanitize(). Highest-risk frontend change — done after CSP is strict.
+
+**Status:** planned
+**Depends on:** Phase 20 (strict CSP in place provides defense-in-depth)
+**Requirements:** SEC-05
+**UI hint:** yes
 
 **Success Criteria:**
-- EC2 instance termination causes zero downtime (ALB routes to healthy instance)
-- S3 GetObject latency drops >50% for repeat workspace loads (CloudFront hit)
-- Auto Scaling triggers correctly under CPU load test
-- Deploy pipeline updates all running instances without downtime
+1. All user-content innerHTML injection points replaced with safe DOM APIs (createElement/textContent) or DOMPurify.sanitize()
+2. Static HTML template construction via innerHTML is audited and tagged with nonces where needed
+3. No visual regressions across all 16 pages (screenshot comparison before/after)
+4. Browser console shows zero CSP violation errors
+5. Chat messages, file trees, terminal output, and graph labels render correctly
 
 ---
 
-### Phase 12: CloudWatch Observability
+### Phase 22: Testing & CI/CD
 
-**Goal:** Add structured JSON logging to the Node.js backend (replacing raw pm2 text output), create a CloudWatch dashboard with ALB 5xx rate, p50/p99 latency, EC2 CPU, DynamoDB consumed capacity, and enable ALB access logs to S3.
-**Status:** completed
-**Depends on:** Phase 11
+**Goal:** Set up GitHub Actions CI pipeline, add c8 code coverage, write dedicated tests for 6 untested core modules, create Playwright E2E suite, and add frontend smoke tests. Safety net for upcoming refactoring phases.
 
-**Scope:**
-- Replace `console.log`/`console.error` calls in `src/` with a structured JSON logger (winston or pino) — fields: `level`, `ts`, `requestId`, `userId`, `msg`, `err`
-- CloudWatch Log Group + metric filters for 5xx errors and slow requests (>2s)
-- CloudWatch Dashboard: ALB RequestCount, HTTPCode_ELB_5XX_Count, TargetResponseTime p50/p99, EC2 CPUUtilization, DynamoDB ConsumedReadCapacityUnits/ConsumedWriteCapacityUnits
-- ALB access logs enabled → S3 prefix `alb-logs/`
-- CloudFormation updates for the dashboard + log group resources
+**Status:** planned
+**Depends on:** Phase 19 (error classes make testing structured errors easier)
+**Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, INFRA-01, INFRA-04
+**UI hint:** no
 
 **Success Criteria:**
-- Structured JSON log lines appear in CloudWatch Logs (not raw pm2 text)
-- CloudWatch dashboard visible with all 6 widgets populated after a request
-- ALB access logs appear in S3 under `alb-logs/`
-- Zero regression in existing request handling
+1. `.github/workflows/ci.yml` runs lint → test → coverage on push and PR
+2. `npm audit` step fails CI on high/critical severity vulnerabilities
+3. c8 coverage reports generated; coverage badge or summary in CI output
+4. Dedicated test files exist for workspace-ops, workspace-infrastructure, workspace-context, assistant-runs, voice-agent, deployments — each with >60% line coverage
+5. Playwright E2E tests cover: login flow, workspace open, chat send, terminal launch, voice page load
+6. Frontend smoke tests verify all 16 pages load without JS console errors
+7. CI pipeline passes green on current codebase
 
 ---
 
-### Phase 13: Cold-Start Latency Fix
+### Phase 23: Performance — Prompt Caching + Remaining Optimizations
 
-**Goal:** Parallelize the serial DynamoDB calls on the first authenticated request. Session resolve + credential fetch currently happen sequentially; use Promise.all to cut cold-start by 100–200ms.
-**Status:** completed
-**Depends on:** Phase 12
+**Goal:** Ship the Phase 18 scope (Anthropic prompt caching, Bedrock singleton, maxTokens fix) plus async HTML serving and parallel workspace enrichment. Independent of refactoring work.
 
-**Scope:**
-- Audit `src/core/auth.js` and request handler path for sequential `await` calls that can be parallelized
-- Replace serial session-resolve + credential-fetch chain with `Promise.all` where safe
-- Ensure cache invalidation logic remains correct after parallelization
-- Benchmark before/after with local load test (autocannon or wrk)
+**Status:** planned
+**Depends on:** None (independent of Phases 19–22)
+**Requirements:** PERF-01, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09
+**UI hint:** no
 
 **Success Criteria:**
-- Cold-start authenticated request time drops ≥80ms measured locally
-- All 145 existing tests continue to pass
-- No race condition between session cache and credential cache writes
+1. Anthropic native stream requests include `anthropic-beta: prompt-caching-2024-07-31` header and `cache_control` blocks on system messages
+2. Bedrock streaming payload uses `cache_control` array on system block
+3. BedrockRuntimeClient is instantiated once per process (module-level singleton)
+4. `streamAnthropicNative` respects `storedCredentials.anthropic.maxTokens`, defaults to 4096
+5. HTML view serving uses async file read with in-memory cache; zero `fs.readFileSync` calls on request path
+6. Workspace enrichment uses bounded concurrency for parallel file processing
+7. npm test passes with 0 failures
 
 ---
 
-### Phase 14: Branded CloudFront Error Pages
+### Phase 24: Code Quality — Module Decomposition
 
-**Goal:** Create S3-hosted branded Mesh HTML error pages for 502/503/504 and wire them into the CloudFront distribution so users see a Mesh-branded page instead of a raw browser error when the origin is down.
-**Status:** completed
-**Depends on:** Phase 13
+**Goal:** Split 8 monolith files (>1,000 lines each) into focused modules under 400 lines. Deduplicate shared functions. Keep re-export facades for backward compatibility. Test suite from Phase 22 catches regressions.
 
-**Scope:**
-- Create `infra/error-pages/502.html`, `503.html`, `504.html` — Mesh-branded, dark theme matching app.html, human-readable message + retry button
-- Upload error pages to S3 workspace bucket under `/_errors/` prefix
-- CloudFormation update: add `CustomErrorResponses` to the CloudFront distribution (502 → `/_errors/502.html`, 503 → `/_errors/503.html`, 504 → `/_errors/504.html`), TTL 30s
-- Deploy script for uploading error pages as part of the standard deploy pipeline
+**Status:** planned
+**Depends on:** Phase 22 (need test coverage as safety net for splitting)
+**Requirements:** QUAL-01, QUAL-03, QUAL-08
+**UI hint:** no
 
 **Success Criteria:**
-- Simulated ALB outage (stop pm2) returns branded 503 page from CloudFront, not browser default
-- Error pages load in <200ms (served from CloudFront edge, not origin)
-- Error pages pass HTML validation (no inline JS, valid charset)
+1. `model-providers.js` (1,663 lines) split into `src/core/providers/` — anthropic.js, openai.js, gemini.js, bedrock.js, byok.js, codec.js, index.js (router)
+2. `workspace-ops.js` (1,723 lines) split into `src/core/workspace/` — files.js, search.js, git.js, batch.js, index.js
+3. `workspace-infrastructure.js` (1,191 lines) split into focused modules (path-safety.js, metadata.js, s3-ops.js, job-queue.js)
+4. `workspace-context.js` (1,146 lines) split into focused modules
+5. `assistant-runs.js` (1,130 lines) split into focused modules
+6. `compression-core.cjs` (2,568 lines) split into focused modules
+7. `workspace-operations.js` (2,326 lines) split into focused modules
+8. `src/core/index.js` (1,200 lines) reduced to minimal re-export facade
+9. `toSafePath`, `normalizeEmail`, path scoring exist in exactly one location
+10. All existing tests pass; no broken require() paths
 
 ---
 
-### Phase 15: Compression Engine — Full Language Coverage + Pipeline Quality
+### Phase 25: Code Quality — Service Layer + Global State Refactor
 
-**Goal:** Extend the capsule compression pipeline to produce rich structural capsules for all major programming languages (C++, C#, Rust, Java, Swift, Kotlin, Ruby, PHP), fix the `.wasm`/`.min.js` indexing bugs, and harden the heuristic fallback path so every file type delivers maximum useful signal to the LLM regardless of whether a tree-sitter grammar exists.
-**Status:** completed
-**Depends on:** Phase 14
+**Goal:** Introduce service layer between routes and core. Refactor global mutable state in src/core/index.js to explicit dependency passing. Add DTOs for request/response boundaries. Highest-risk refactor — done last with full test coverage.
 
-**Scope:**
-- Add tree-sitter grammars for: Rust (`tree-sitter-rust`), C++ (`tree-sitter-cpp`), C# (`tree-sitter-c-sharp`), Java (`tree-sitter-java`), Swift (`tree-sitter-swift`), Kotlin (`tree-sitter-kotlin`), Ruby (`tree-sitter-ruby`), PHP (`tree-sitter-php`)
-- Register all new languages in `CODE_LANGUAGE_MAP` in `mesh-core/src/compression-core.cjs`
-- Fix `LOCAL_WORKSPACE_SKIP_EXTENSIONS` in `src/core/index.js` to exclude `.wasm`, `*.min.js`, `*.min.css`
-- Improve heuristic fallback capsule: extract function/class/method signatures via regex for any language not in `CODE_LANGUAGE_MAP`, instead of producing a plain text outline
-- Add `*.min.js` / `*.min.css` to skip-extensions (minified files waste token budget)
-- Extend `test/compression-core.test.js` with fixture files for each new language
-- Update `mesh-core/package.json` with new grammar dependencies
+**Status:** planned
+**Depends on:** Phase 24 (needs decomposed modules to add service layer cleanly)
+**Requirements:** QUAL-02, QUAL-04
+**UI hint:** no
 
 **Success Criteria:**
-- `.rs`, `.cpp`, `.cs`, `.java`, `.swift`, `.kt`, `.rb`, `.php` files produce `capsuleType: "structure"` capsules with symbols extracted
-- `.wasm` files are excluded from indexing
-- `*.min.js` / `*.min.css` files are excluded from indexing
-- Heuristic fallback for unknown extensions produces at least function/class name extraction
-- All new grammars covered by at least one passing test in `test/compression-core.test.js`
-- Zero regressions in existing JS/TS/Python/Go capsule output
+1. `src/services/` contains service modules for each domain (workspace, assistant, auth, voice)
+2. Routes call service functions, not core functions directly
+3. `src/core/index.js` no longer assigns shared mutable state to module-level variables
+4. State is passed explicitly via function parameters or a context object
+5. No race conditions under concurrent requests (verified by concurrent test)
+6. All existing tests pass; CI pipeline green
 
 ---
 
-### Phase 16: Compression Pipeline — Deep Audit & Optimization
+### Phase 26: UI/UX — Design Tokens + Templates + Accessibility
 
-**Goal:** Perform a comprehensive audit of the entire compression pipeline — how files are compressed, where it happens, how the AI model accesses capsules, token cost per request — and implement targeted improvements for cost reduction, speed, quality, and security.
-**Status:** completed
-**Depends on:** Phase 15
+**Goal:** Extract CSS design tokens, convert 16 standalone HTML pages to nunjucks template inheritance, bundle frontend assets with esbuild, add accessibility (ARIA, keyboard nav), and implement responsive design.
 
-**Scope:**
-- Audit all compression-related source files end-to-end (mesh-core/src/compression-core.cjs, src/core/index.js, capsule access paths in AI chat routes)
-- Map the full data flow: file → capsule → context window → LLM
-- Identify optimization opportunities: token budget waste, redundant compression, unsafe inputs, slow paths
-- Implement approved improvements across cost, speed, quality, and security dimensions
+**Status:** planned
+**Depends on:** Phase 21 (frontend XSS hardening complete), Phase 24 (modules split for clean asset references)
+**Requirements:** UI-01, UI-02, UI-03, UI-04, UI-05, UI-06
+**UI hint:** yes
 
 **Success Criteria:**
-- Full audit document produced covering all compression code paths
-- Token cost per request measurably reduced (baseline vs. optimized comparison)
-- No compression-related security vulnerabilities (path traversal, unbounded input, etc.)
-- Compression throughput unchanged or improved
-- All existing compression tests continue to pass
+1. `:root` CSS custom properties define all colors, spacing, typography, shadows; no hardcoded values in stylesheets
+2. All 16 HTML pages use nunjucks template inheritance with shared base layout (head, nav, scripts, footer)
+3. Frontend JS and CSS bundled via esbuild; feature scripts lazy-loaded
+4. `animejs` vendored into the bundle, not served from `node_modules/`
+5. Custom UI chrome (tabs, panels, modals, context menus) has ARIA roles, keyboard navigation, and visible focus indicators
+6. All pages usable at 768px width minimum
+7. Content-hash cache busting still works through the build pipeline
+8. Zero 404s in browser network tab; all pages render correctly
 
 ---
 
-**Success Criteria (Milestone):**
-- Every visible feature in app.html is present in app-v2.html
-- All Antigravity IDE features (from screenshot) are preserved
-- All buttons are clickable with appropriate feedback
-- Mesh branding throughout (logo, colors, naming)
-- Clean, organized UI matching production quality
-- Keyboard shortcuts work (⌘B, ⌘`, ⌘⇧P, ⌘⇧F, ⌘⇧E, ⌘⇧G, ⌘,)
+### Phase 27: Infrastructure — Docs + Monitoring + Migrations
+
+**Goal:** Add OpenAPI documentation, structured error monitoring via CloudWatch, and DynamoDB schema documentation with migration strategy. Final polish phase.
+
+**Status:** planned
+**Depends on:** Phase 25 (needs typed errors for monitoring), Phase 20 (needs Zod schemas for OpenAPI generation)
+**Requirements:** INFRA-02, INFRA-03, INFRA-05
+**UI hint:** no
+
+**Success Criteria:**
+1. OpenAPI/Swagger specification covers all `/api/*` routes with request/response schemas
+2. CloudWatch metric filters configured for error codes from typed error class hierarchy
+3. DynamoDB schema fully documented (all tables, keys, GSIs, attributes)
+4. Migration strategy documented: how to add/modify DynamoDB attributes and tables safely
+5. Version tracking for schema changes (attribute in a config table or similar)
+
+---
+
+## Phase Dependency Graph
+
+```
+Phase 19 (Foundation)
+    ├──► Phase 20 (Security: Validation + CSRF + CSP)
+    │       └──► Phase 21 (Security: Frontend XSS)
+    │               └──► Phase 26 (UI/UX)
+    ├──► Phase 22 (Testing & CI/CD)
+    │       └──► Phase 24 (Code Quality: Module Splits)
+    │               └──► Phase 25 (Code Quality: Service Layer)
+    │                       └──► Phase 27 (Infrastructure: Docs + Monitoring)
+    └──► Phase 23 (Performance: Prompt Caching) [independent]
+```
+
+**Parallel execution opportunities:**
+- Phase 22 + Phase 20 can run in parallel (different domains)
+- Phase 23 can run anytime (fully independent)
+- Phase 26 + Phase 25 can run in parallel (frontend vs. backend)
+
+---
+
+## Requirement Coverage
+
+| Requirement | Phase | Category |
+|-------------|-------|----------|
+| SEC-01 | Phase 20 | Security |
+| SEC-02 | Phase 20 | Security |
+| SEC-03 | Phase 19 | Security |
+| SEC-04 | Phase 20 | Security |
+| SEC-05 | Phase 21 | Security |
+| PERF-01 | Phase 23 | Performance |
+| PERF-02 | Phase 19 | Performance |
+| PERF-03 | Phase 19 | Performance |
+| PERF-04 | Phase 19 | Performance |
+| PERF-05 | Phase 23 | Performance |
+| PERF-06 | Phase 23 | Performance |
+| PERF-07 | Phase 23 | Performance |
+| PERF-08 | Phase 23 | Performance |
+| PERF-09 | Phase 23 | Performance |
+| QUAL-01 | Phase 24 | Code Quality |
+| QUAL-02 | Phase 25 | Code Quality |
+| QUAL-03 | Phase 24 | Code Quality |
+| QUAL-04 | Phase 25 | Code Quality |
+| QUAL-05 | Phase 19 | Code Quality |
+| QUAL-06 | Phase 19 | Code Quality |
+| QUAL-07 | Phase 19 | Code Quality |
+| QUAL-08 | Phase 24 | Code Quality |
+| TEST-01 | Phase 22 | Testing |
+| TEST-02 | Phase 22 | Testing |
+| TEST-03 | Phase 22 | Testing |
+| TEST-04 | Phase 22 | Testing |
+| UI-01 | Phase 26 | UI/UX |
+| UI-02 | Phase 26 | UI/UX |
+| UI-03 | Phase 26 | UI/UX |
+| UI-04 | Phase 26 | UI/UX |
+| UI-05 | Phase 26 | UI/UX |
+| UI-06 | Phase 26 | UI/UX |
+| INFRA-01 | Phase 22 | Infrastructure |
+| INFRA-02 | Phase 27 | Infrastructure |
+| INFRA-03 | Phase 27 | Infrastructure |
+| INFRA-04 | Phase 22 | Infrastructure |
+| INFRA-05 | Phase 27 | Infrastructure |
+
+**Coverage:** 37/37 requirements mapped ✓
+
+---
+
+**Milestone Success Criteria:**
+- All 37 requirements verified complete
+- npm test passes with >60% coverage on all core modules
+- CI/CD pipeline green and enforcing quality gates
+- All 16 pages functional with strict CSP, no innerHTML XSS, ARIA accessibility
+- All core files under 400 lines with clean module boundaries
+- OpenAPI docs, error monitoring, and schema documentation in place
