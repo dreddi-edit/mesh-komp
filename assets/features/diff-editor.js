@@ -138,7 +138,10 @@ function showDiffEditor(filePath, before, after) {
     const tab = document.createElement('div');
     tab.className = 'tab is-active';
     tab.dataset.t = 'diff-' + filePath;
-    tab.innerHTML = '<span class="diff-tab-icon">↔</span><span>' + A.esc(name) + '</span><button class="tab-x">×</button>';
+    const dtIcon = document.createElement('span'); dtIcon.className = 'diff-tab-icon'; dtIcon.textContent = '↔';
+    const dtName = document.createElement('span'); dtName.textContent = String(name || '');
+    const dtX = document.createElement('button'); dtX.className = 'tab-x'; dtX.textContent = '×';
+    tab.appendChild(dtIcon); tab.appendChild(dtName); tab.appendChild(dtX);
     tab.querySelector('.tab-x').addEventListener('click', (e) => { e.stopPropagation(); closeDiffEditor(); tab.remove(); A.showView('editor'); });
     tabBar.appendChild(tab);
   }

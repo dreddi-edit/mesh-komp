@@ -75,20 +75,34 @@ function render() {
     return (order[a.severity] || 3) - (order[b.severity] || 3);
   });
 
-  let html = '<div class="pp-header"><span class="pp-header-title">' + problems.length + ' problems</span><button class="pp-clear" id="ppClear">Clear All</button></div><div class="pp-list">';
+  panel.textContent = '';
+
+  const header = document.createElement('div'); header.className = 'pp-header';
+  const headerTitle = document.createElement('span'); headerTitle.className = 'pp-header-title'; headerTitle.textContent = problems.length + ' problems';
+  const clearBtn = document.createElement('button'); clearBtn.className = 'pp-clear'; clearBtn.id = 'ppClear'; clearBtn.textContent = 'Clear All';
+  header.appendChild(headerTitle); header.appendChild(clearBtn);
+  panel.appendChild(header);
+
+  const list = document.createElement('div'); list.className = 'pp-list';
   for (let i = 0; i < sorted.length; i++) {
     const p = sorted[i];
     const icon = p.severity === 'error' ? '●' : (p.severity === 'warning' ? '▲' : 'ℹ');
-    html += '<div class="pp-item" data-idx="' + i + '">' +
-      '<span class="pp-icon ' + p.severity + '">' + icon + '</span>' +
-      '<div><div class="pp-msg">' + esc(p.message) + '</div>' +
-      '<div class="pp-loc">' + esc(p.file) + (p.line ? ':' + p.line : '') + (p.col ? ':' + p.col : '') + '</div></div>' +
-      '<span class="pp-src">' + esc(p.source) + '</span>' +
-      '<button class="pp-fix-btn" data-idx="' + i + '">AI Fix</button>' +
-      '</div>';
+    // severity is validated against known values; use a safe allowlist for the CSS class
+    const severityClass = ['error', 'warning', 'info'].includes(p.severity) ? p.severity : 'info';
+
+    const item = document.createElement('div'); item.className = 'pp-item'; item.dataset.idx = String(i);
+    const iconSpan = document.createElement('span'); iconSpan.className = 'pp-icon ' + severityClass; iconSpan.textContent = icon;
+    const inner = document.createElement('div');
+    const msgDiv = document.createElement('div'); msgDiv.className = 'pp-msg'; msgDiv.textContent = String(p.message || '');
+    const locDiv = document.createElement('div'); locDiv.className = 'pp-loc';
+    locDiv.textContent = String(p.file || '') + (p.line ? ':' + p.line : '') + (p.col ? ':' + p.col : '');
+    inner.appendChild(msgDiv); inner.appendChild(locDiv);
+    const srcSpan = document.createElement('span'); srcSpan.className = 'pp-src'; srcSpan.textContent = String(p.source || '');
+    const fixBtn = document.createElement('button'); fixBtn.className = 'pp-fix-btn'; fixBtn.dataset.idx = String(i); fixBtn.textContent = 'AI Fix';
+    item.appendChild(iconSpan); item.appendChild(inner); item.appendChild(srcSpan); item.appendChild(fixBtn);
+    list.appendChild(item);
   }
-  html += '</div>';
-  panel.innerHTML = html;
+  panel.appendChild(list);
 
   /* Bind clicks */
   panel.querySelectorAll('.pp-item').forEach(el => {

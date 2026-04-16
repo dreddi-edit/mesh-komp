@@ -196,7 +196,7 @@ async function doGenerate(instruction, sel, originalText) {
       document.addEventListener('keydown', handler, true);
     }
   } catch (e) {
-    if (widget) widget.innerHTML = '<div class="ik-status" style="color:#f66">Error: ' + (e.message || 'Failed') + '</div><button class="ik-btn ik-btn-cancel" onclick="this.parentElement.remove()">Close</button>';
+    if (widget) { widget.textContent = ''; const ikErr = document.createElement('div'); ikErr.className = 'ik-status'; ikErr.style.color = '#f66'; ikErr.textContent = 'Error: ' + String(e.message || 'Failed'); const ikClose = document.createElement('button'); ikClose.className = 'ik-btn ik-btn-cancel'; ikClose.textContent = 'Close'; ikClose.onclick = () => widget && widget.remove(); widget.appendChild(ikErr); widget.appendChild(ikClose); }
   }
 }
 

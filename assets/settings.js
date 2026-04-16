@@ -956,19 +956,21 @@ function renderKeys() {
 
   if (empty) empty.hidden = keys.length > 0;
 
-  list.innerHTML = keys.map((k, i) => `
-    <div class="api-key-entry">
-      <div class="api-key-info">
-        <div class="key-name">${k.name}</div>
-        <div class="key-meta">${k.region} · ${k.environment} · created ${k.created}</div>
-        <div class="api-key-token">${k.tokenPreview}</div>
-      </div>
-      <div class="api-key-actions">
-        <button class="btn-secondary" type="button" style="font-size:0.74rem;padding:5px 10px;" data-rotate-key="${i}">Rotate</button>
-        <button class="btn-danger" type="button" style="font-size:0.74rem;padding:5px 10px;" data-delete-key="${i}">Delete</button>
-      </div>
-    </div>
-  `).join("") || "";
+  list.textContent = "";
+  keys.forEach((k, i) => {
+    const entry = document.createElement("div"); entry.className = "api-key-entry";
+    const info = document.createElement("div"); info.className = "api-key-info";
+    const nameDiv = document.createElement("div"); nameDiv.className = "key-name"; nameDiv.textContent = String(k.name || "");
+    const metaDiv = document.createElement("div"); metaDiv.className = "key-meta"; metaDiv.textContent = String(k.region || "") + " · " + String(k.environment || "") + " · created " + String(k.created || "");
+    const tokenDiv = document.createElement("div"); tokenDiv.className = "api-key-token"; tokenDiv.textContent = String(k.tokenPreview || "");
+    info.appendChild(nameDiv); info.appendChild(metaDiv); info.appendChild(tokenDiv);
+    const actions = document.createElement("div"); actions.className = "api-key-actions";
+    const rotateBtn = document.createElement("button"); rotateBtn.className = "btn-secondary"; rotateBtn.type = "button"; rotateBtn.style.cssText = "font-size:0.74rem;padding:5px 10px;"; rotateBtn.dataset.rotateKey = String(i); rotateBtn.textContent = "Rotate";
+    const deleteBtn = document.createElement("button"); deleteBtn.className = "btn-danger"; deleteBtn.type = "button"; deleteBtn.style.cssText = "font-size:0.74rem;padding:5px 10px;"; deleteBtn.dataset.deleteKey = String(i); deleteBtn.textContent = "Delete";
+    actions.appendChild(rotateBtn); actions.appendChild(deleteBtn);
+    entry.appendChild(info); entry.appendChild(actions);
+    list.appendChild(entry);
+  });
 
   if (snippet && keys.length > 0) {
     const last = keys[keys.length - 1];

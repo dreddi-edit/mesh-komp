@@ -79,7 +79,9 @@ async function reindexFile(path) {
   const indicator = document.createElement('div');
   indicator.className = 'ri-indicator';
   indicator.id = 'riIndicator';
-  indicator.innerHTML = '<div class="ri-spinner"></div><span>Re-indexing' + (path ? ' ' + path.split('/').pop() : '') + '...</span>';
+  const riSpinner = document.createElement('div'); riSpinner.className = 'ri-spinner';
+  const riText = document.createElement('span'); riText.textContent = 'Re-indexing' + (path ? ' ' + path.split('/').pop() : '') + '...';
+  indicator.appendChild(riSpinner); indicator.appendChild(riText);
   document.body.appendChild(indicator);
 
   try {

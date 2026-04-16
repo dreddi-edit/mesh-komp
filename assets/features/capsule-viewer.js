@@ -128,7 +128,10 @@ function showCapsuleEditor(filePath, content, meta) {
     const tab = document.createElement('div');
     tab.className = 'tab is-active';
     tab.dataset.t = 'capsule-' + filePath;
-    tab.innerHTML = '<span style="margin-right:4px">🧊</span><span>' + A.esc(name) + ' [Capsule]</span><button class="tab-x">×</button>';
+    const cvIco = document.createElement('span'); cvIco.style.marginRight = '4px'; cvIco.textContent = '🧊';
+    const cvName = document.createElement('span'); cvName.textContent = String(name || '') + ' [Capsule]';
+    const cvX = document.createElement('button'); cvX.className = 'tab-x'; cvX.textContent = '×';
+    tab.appendChild(cvIco); tab.appendChild(cvName); tab.appendChild(cvX);
     tab.querySelector('.tab-x').addEventListener('click', (e) => { e.stopPropagation(); closeCapsuleEditor(); tab.remove(); A.showView('editor'); });
     tabBar.appendChild(tab);
   }

@@ -148,7 +148,14 @@ async function doSearch() {
 
         const hdr = document.createElement('div');
         hdr.className = 'cs-file-hdr';
-        hdr.innerHTML = '<span class="cs-chevron open">&#9654;</span>' + icon + ' ' + esc(filePath) + '<span class="cs-badge">' + hits.length + '</span>';
+        // icon is static SVG from fIcon() file-extension registry — not user data
+        const hdrChevron = document.createElement('span'); hdrChevron.className = 'cs-chevron open'; hdrChevron.textContent = '▶';
+        const hdrBadge = document.createElement('span'); hdrBadge.className = 'cs-badge'; hdrBadge.textContent = String(hits.length);
+        hdr.appendChild(hdrChevron);
+        hdr.appendChild(document.createTextNode(' '));
+        if (icon) { const ic = document.createElement('span'); ic.setAttribute('aria-hidden', 'true'); ic.innerHTML = icon; hdr.appendChild(ic); } // safe: static SVG registry
+        hdr.appendChild(document.createTextNode(filePath));
+        hdr.appendChild(hdrBadge);
 
         const matchList = document.createElement('div');
         matchList.className = 'cs-match-list';
@@ -159,7 +166,12 @@ async function doSearch() {
           const highlighted = highlightMatch(text, query);
           const el = document.createElement('div');
           el.className = 'cs-match';
-          el.innerHTML = '<span class="cs-ln">' + line + '</span>' + highlighted;
+          const lnSpan = document.createElement('span'); lnSpan.className = 'cs-ln'; lnSpan.textContent = String(line);
+          el.appendChild(lnSpan);
+          // highlighted is esc()-encoded text with <span class="cs-hl"> wrappers — use DomUtils to sanitize
+          const hlSpan = document.createElement('span');
+          if (window.DomUtils) { window.DomUtils.safeHtml(hlSpan, highlighted); } else { hlSpan.textContent = String(text); }
+          el.appendChild(hlSpan);
           el.addEventListener('click', () => openAtLine(filePath, line));
           matchList.appendChild(el);
         }
@@ -176,7 +188,7 @@ async function doSearch() {
       }
     }
   } catch (e) {
-    if (results) results.innerHTML = '<div class="cs-loading">Search error: ' + esc(e.message) + '</div>';
+    if (results) { results.textContent = ''; const errDiv = document.createElement('div'); errDiv.className = 'cs-loading'; errDiv.textContent = 'Search error: ' + String(e.message || ''); results.appendChild(errDiv); }
   }
 }
 
@@ -190,11 +202,21 @@ function doFilenameSearch(query, results, summary) {
 
   if (summary) summary.textContent = hits.length + ' files';
   if (results) {
-    results.innerHTML = hits.map(f => {
+    results.textContent = '';
+    hits.forEach(f => {
+      const el = document.createElement('div');
+      el.className = 'cs-match';
+      el.dataset.path = f.path;
+      el.style.paddingLeft = '8px';
       const name = f.name || f.path.split('/').pop();
       const icon = A.fIcon(name, false);
-      return '<div class="cs-match" data-path="' + esc(f.path) + '" style="padding-left:8px">' + icon + ' ' + highlightMatch(f.path, query) + '</div>';
-    }).join('');
+      if (icon) { const ic = document.createElement('span'); ic.setAttribute('aria-hidden', 'true'); ic.innerHTML = icon; el.appendChild(ic); } // safe: static SVG registry
+      el.appendChild(document.createTextNode(' '));
+      const hlSpan = document.createElement('span');
+      if (window.DomUtils) { window.DomUtils.safeHtml(hlSpan, highlightMatch(f.path, query)); } else { hlSpan.textContent = f.path; }
+      el.appendChild(hlSpan);
+      results.appendChild(el);
+    });
     results.querySelectorAll('.cs-match[data-path]').forEach(el => {
       el.addEventListener('click', () => {
         const item = A.findInTree(S.tree, el.dataset.path);
