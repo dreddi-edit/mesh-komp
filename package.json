@@ -7,6 +7,7 @@
     "monitor:web": "node --env-file .env ccmon-server.js",
     "bench:compression": "node benchmarks/compression-benchmark.js",
     "bench:compression:save": "node benchmarks/compression-benchmark.js --save",
+    "build:assets": "node scripts/build.js",
     "test": "node --test --test-force-exit --test-timeout=120000",
     "test:workspace-ops": "node --test test/workspace-ops.test.js",
     "lint": "eslint .",
@@ -47,6 +48,7 @@
     "neo-blessed": "^0.2.0",
     "node-pty": "^1.1.0",
     "node-sql-parser": "^5.4.0",
+    "nunjucks": "^3.2.4",
     "pptxgenjs": "^4.0.1",
     "terser": "^5.46.1",
     "toml": "^4.1.1",
@@ -63,6 +65,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "eslint": "^8.57.0",
     "puppeteer": "^24.41.0"
   }

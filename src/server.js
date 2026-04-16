@@ -18,9 +18,21 @@ const helmet = require('helmet');
 const cors = require('cors');
 
 const core = require('./core/index');
+const nunjucks = require('nunjucks');
 
 
 const app = express();
+
+const IS_DEV = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev';
+
+const REPO_ROOT = path.join(__dirname, '..');
+
+nunjucks.configure(path.join(REPO_ROOT, 'views'), {
+    autoescape: true,
+    express: app,
+    watch: IS_DEV
+});
+app.set('view engine', 'njk');
 
 // ── Request ID ────────────────────────────────────────────────────────────────
 // Attaches a unique ID to every request so log lines can be correlated.
@@ -102,11 +114,10 @@ app.use(compressionMiddleware);
 
 // ── Pre-computed clean-URL route map ─────────────────────────────────────────
 // Built once at startup — eliminates fs.existsSync() on every request.
-const REPO_ROOT = path.join(__dirname, '..');
 
 /**
- * Scans views/ and the repo root for .html files and maps clean URL paths to
- * their absolute file paths. views/ takes priority over root-level files.
+ * Scans views/ and the repo root for .njk files and maps clean URL paths to
+ * their relative template paths. views/ takes priority over root-level files.
  *
  * @param {string} repoRoot
  * @returns {Map<string, string>}
@@ -117,17 +128,17 @@ function buildViewRouteMap(repoRoot) {
 
   if (fs.existsSync(viewsDir)) {
     for (const file of fs.readdirSync(viewsDir)) {
-      if (file.endsWith('.html')) {
-        map.set('/' + file.slice(0, -5), path.join(viewsDir, file));
+      if (file.endsWith('.njk')) {
+        map.set('/' + file.slice(0, -4), file);
       }
     }
   }
 
   for (const file of fs.readdirSync(repoRoot)) {
-    if (file.endsWith('.html')) {
-      const route = '/' + file.slice(0, -5);
+    if (file.endsWith('.njk')) {
+      const route = '/' + file.slice(0, -4);
       if (!map.has(route)) {
-        map.set(route, path.join(repoRoot, file));
+        map.set(route, path.join('..', file));
       }
     }
   }
@@ -173,7 +184,6 @@ function injectAssetHashes(html) {
 // In-memory HTML cache — permanent in production, bypassed in dev.
 // Stores pre-hash-injected HTML without nonces (nonces are per-request).
 const htmlCache = new Map();
-const IS_DEV = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev';
 
 /**
  * Injects per-request CSP nonce attributes into all inline <script> and <style> tags.
@@ -189,12 +199,14 @@ function injectCspNonces(html, nonce) {
     .replace(/<style/g, `<style nonce="${nonce}"`);
 }
 
-async function sendHtmlWithHashes(res, filePath) {
-  let cached = htmlCache.get(filePath);
+async function sendHtmlWithHashes(res, templatePath) {
+  let cached = htmlCache.get(templatePath);
   if (!cached || IS_DEV) {
-    const html = await fs.promises.readFile(filePath, 'utf8');
+    const html = await new Promise((resolve, reject) => {
+        nunjucks.render(templatePath, {}, (err, res) => err ? reject(err) : resolve(res));
+    });
     cached = injectAssetHashes(html);
-    if (!IS_DEV) htmlCache.set(filePath, cached);
+    if (!IS_DEV) htmlCache.set(templatePath, cached);
   }
   const nonce = res.locals.cspNonce;
   const rewritten = nonce ? injectCspNonces(cached, nonce) : cached;
@@ -205,7 +217,7 @@ async function sendHtmlWithHashes(res, filePath) {
 
 app.get('/', async (_req, res, next) => {
   try {
-    await sendHtmlWithHashes(res, path.join(REPO_ROOT, 'views', 'index.html'));
+    await sendHtmlWithHashes(res, 'index.njk');
   } catch (err) { next(err); }
 });
 

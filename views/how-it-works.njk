@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>So funktioniert es - Mesh</title>
-  <link rel="icon" type="image/svg+xml" href="/assets/brand/icon-color.svg"/>
-  <link rel="apple-touch-icon" href="/assets/brand/icon-color.svg"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+{% extends "layouts/base.njk" %}
+
+{% block title %}So funktioniert es - Mesh{% endblock %}
+
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <script>
     (function() {
@@ -570,8 +567,11 @@
       * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
   </style>
-</head>
-<body>
+{% endblock %}
+
+
+{% block content %}
+
   <canvas id="bg-canvas"></canvas>
 
   <nav class="docs-nav" id="navbar">
@@ -799,5 +799,5 @@ query -> buildFocusedView() -> recoveryViaSpanId()</pre>
       document.querySelectorAll(".reveal").forEach(function(el) { observer.observe(el); });
     })();
   </script>
-</body>
-</html>
+
+{% endblock %}

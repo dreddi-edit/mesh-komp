@@ -1,11 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>Settings | Mesh</title>
-  <link rel="icon" type="image/svg+xml" href="/assets/brand/icon-color.svg"/>
-  <link rel="apple-touch-icon" href="/assets/brand/icon-color.svg"/>
+{% extends "layouts/base.njk" %}
+
+{% block title %}Settings | Mesh{% endblock %}
+
+{% block head %}
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  
+  
+  
   <script>
     (function() {
       var p = window.location.pathname;
@@ -23,8 +24,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link href="/assets/mesh-settings.css" rel="stylesheet"/>
-</head>
-<body data-settings-page="account">
+{% endblock %}
+
+{% block body_attrs %} data-settings-page="account"{% endblock %}
+{% block content %}
+
   <div class="settings-shell">
     <header class="settings-topbar">
       <a class="topbar-logo" href="app" aria-label="Mesh workspace">
@@ -1338,5 +1342,5 @@
       });
     });
   </script>
-</body>
-</html>
+
+{% endblock %}

@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mesh Marketplace</title>
-  <link rel="stylesheet" href="/assets/app-workspace.css?v=20260408b">
+{% extends "layouts/base.njk" %}
+
+{% block title %}Mesh Marketplace{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/assets/app-workspace.css?v=20260408b">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -105,8 +104,11 @@
     .prog-ctx { height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; display: none; margin-top: 8px; }
     .prog-bar { height: 100%; background: var(--ac); width: 0%; transition: width 0.3s; }
   </style>
-</head>
-<body>
+{% endblock %}
+
+
+{% block content %}
+
   <div class="mp-container">
     <header>
       <h1>Extensions Marketplace</h1>
@@ -246,5 +248,5 @@
     // Initial Load
     fetchExtensions();
   </script>
-</body>
-</html>
+
+{% endblock %}
