@@ -30,7 +30,9 @@
     "no-case-declarations": "warn",
     "no-useless-escape": "warn",
     "no-dupe-keys": "error",
-    "no-regex-spaces": "warn"
+    "no-regex-spaces": "warn",
+    "no-extra-boolean-cast": "warn",
+    "no-control-regex": "warn"
   },
   "overrides": [
     {
