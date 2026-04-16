@@ -13,6 +13,16 @@
 const path = require('path');
 const express = require('express');
 const { safeRouteError, cacheControl } = require('./route-utils');
+const { validate } = require('../middleware/validate');
+const {
+  gitCheckoutSchema,
+  gitStageSchema,
+  gitCommitSchema,
+  gitStashSchema,
+  gitCloneSchema,
+  gitCreateBranchSchema,
+  gitDeleteBranchSchema,
+} = require('../schemas');
 
 /** Validates git remote URL protocols. Allows https, git, and ssh — rejects local paths. */
 const SAFE_GIT_URL_PATTERN = /^(https?:\/\/|git:\/\/|ssh:\/\/|git@[\w.\-]+:)/;
@@ -69,13 +79,9 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/checkout', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/checkout', requireAuth, validate(gitCheckoutSchema), async (req, res) => {
     try {
-      const branch = String(req.body?.branch || '').trim();
-      if (!branch) {
-        res.status(400).json({ ok: false, error: 'Branch name required' });
-        return;
-      }
+      const branch = req.body.branch;
       const result = await runGitWithFallback('git.checkout', { branch, requestId: req.requestId }, async () => {
         await runLocalGit(['checkout', branch]);
         return { ok: true, branch };
@@ -86,9 +92,9 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/stage', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/stage', requireAuth, validate(gitStageSchema), async (req, res) => {
     try {
-      const files = Array.isArray(req.body?.files) ? req.body.files : [];
+      const files = req.body.files;
       const result = await runGitWithFallback('git.stage', { files, requestId: req.requestId }, async () => {
         const normalized = files.length ? files.map((f) => gitPathFromWorkspacePath(f)).filter(Boolean) : ['.'];
         await runLocalGit(['add', ...normalized]);
@@ -100,9 +106,9 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/unstage', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/unstage', requireAuth, validate(gitStageSchema), async (req, res) => {
     try {
-      const files = Array.isArray(req.body?.files) ? req.body.files : [];
+      const files = req.body.files;
       const result = await runGitWithFallback('git.unstage', { files, requestId: req.requestId }, async () => {
         const normalized = files.length ? files.map((f) => gitPathFromWorkspacePath(f)).filter(Boolean) : ['.'];
         await runLocalGit(['reset', 'HEAD', '--', ...normalized]);
@@ -114,14 +120,9 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/commit', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/commit', requireAuth, validate(gitCommitSchema), async (req, res) => {
     try {
-      const message = String(req.body?.message || '').trim();
-      const files = Array.isArray(req.body?.files) ? req.body.files : [];
-      if (!message) {
-        res.status(400).json({ ok: false, error: 'Commit message required' });
-        return;
-      }
+      const { message, files } = req.body;
       const result = await runGitWithFallback('git.commit', { message, files, requestId: req.requestId }, async () => {
         if (files.length) {
           const normalized = files.map((f) => gitPathFromWorkspacePath(f)).filter(Boolean);
@@ -216,10 +217,9 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/stash', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/stash', requireAuth, validate(gitStashSchema), async (req, res) => {
     try {
-      const action = String(req.body?.action || 'push').trim().toLowerCase();
-      const message = String(req.body?.message || 'Mesh stash');
+      const { action, message } = req.body;
       const result = await runGitWithFallback('git.stash', { action, message, requestId: req.requestId }, async () => {
         if (action === 'list') {
           const listed = await runLocalGit(['stash', 'list']);
@@ -238,14 +238,10 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/clone', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/clone', requireAuth, validate(gitCloneSchema), async (req, res) => {
     try {
-      const url = String(req.body?.url || '').trim();
-      const targetPath = String(req.body?.path || '').trim();
-      if (!url) {
-        res.status(400).json({ ok: false, error: 'Repository URL required' });
-        return;
-      }
+      const url = req.body.url;
+      const targetPath = req.body.path;
       if (!SAFE_GIT_URL_PATTERN.test(url)) {
         res.status(400).json({ ok: false, error: 'Invalid repository URL. Must use https, git, or ssh protocol.' });
         return;
@@ -289,14 +285,9 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/create-branch', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/create-branch', requireAuth, validate(gitCreateBranchSchema), async (req, res) => {
     try {
-      const name = String(req.body?.name || '').trim();
-      const startPoint = String(req.body?.startPoint || '').trim();
-      if (!name) {
-        res.status(400).json({ ok: false, error: 'Branch name required' });
-        return;
-      }
+      const { name, startPoint } = req.body;
       const result = await runGitWithFallback('git.create-branch', { name, startPoint, requestId: req.requestId }, async () => {
         const args = ['checkout', '-b', name];
         if (startPoint) args.push(startPoint);
@@ -309,13 +300,9 @@ function createGitRouter(core) {
     }
   });
 
-  router.post('/api/assistant/git/delete-branch', requireAuth, async (req, res) => {
+  router.post('/api/assistant/git/delete-branch', requireAuth, validate(gitDeleteBranchSchema), async (req, res) => {
     try {
-      const name = String(req.body?.name || '').trim();
-      if (!name) {
-        res.status(400).json({ ok: false, error: 'Branch name required' });
-        return;
-      }
+      const name = req.body.name;
       const result = await runGitWithFallback('git.delete-branch', { name, requestId: req.requestId }, async () => {
         await runLocalGit(['branch', '-d', name]);
         return { ok: true };

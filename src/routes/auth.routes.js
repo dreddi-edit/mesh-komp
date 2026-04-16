@@ -2,6 +2,8 @@
 
 const express = require('express');
 const { authLimiter, getClientIp } = require('../middleware/rate-limiter');
+const { validate } = require('../middleware/validate');
+const { loginSchema, sessionRevokeSchema } = require('../schemas');
 
 function readClientIp(req) {
   return getClientIp(req);
@@ -91,14 +93,9 @@ function createAuthRouter(core) {
 
   const router = express.Router();
 
-  router.post("/api/auth/login", authLimiter, async (req, res) => {
-    const email = normalizeEmail(req.body?.email);
-    const password = String(req.body?.password || "");
-
-    if (!email || !password) {
-      res.status(400).json({ ok: false, error: "Email and password are required." });
-      return;
-    }
+  router.post("/api/auth/login", authLimiter, validate(loginSchema), async (req, res) => {
+    const email = normalizeEmail(req.body.email);
+    const password = req.body.password;
 
     try {
       let isDemoLogin = false;
@@ -189,8 +186,8 @@ function createAuthRouter(core) {
     }
   });
 
-  router.post("/api/auth/sessions/revoke", requireAuth, async (req, res) => {
-    const mode     = String(req.body?.mode      || "single").trim().toLowerCase();
+  router.post("/api/auth/sessions/revoke", requireAuth, validate(sessionRevokeSchema), async (req, res) => {
+    const mode     = req.body.mode;
     const targetId = String(req.body?.sessionId || "").trim();
     const currentId = String(req.authSession?.id || "");
 
