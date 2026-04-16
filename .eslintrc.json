@@ -36,7 +36,7 @@
   },
   "overrides": [
     {
-      "files": ["mesh-core/src/*.js", "mesh-core/src/*.mjs"],
+      "files": ["mesh-core/src/*.js", "mesh-core/src/*.mjs", "ccmon-web/*.js", "ccmon-web/*.mjs", "ccmon-web/*.cjs"],
       "parserOptions": {
         "sourceType": "module"
       }
