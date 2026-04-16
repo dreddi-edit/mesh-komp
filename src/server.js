@@ -14,6 +14,9 @@ if (!validation.ok) {
   process.exit(1);
 }
 
+const helmet = require('helmet');
+const cors = require('cors');
+
 const core = require('./core/index');
 
 
@@ -26,35 +29,42 @@ app.use((req, _res, next) => {
   next();
 });
 
-// ── Security headers ──────────────────────────────────────────────────────────
+// ── Security headers (helmet) ────────────────────────────────────────────────
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      connectSrc: ["'self'", "ws:", "wss:"],
+      workerSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  frameguard: { action: 'deny' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  hsts: config.IS_PRODUCTION ? { maxAge: 31536000, includeSubDomains: true } : false,
+  permissionsPolicy: {
+    camera: [],
+    microphone: ['self'],
+    geolocation: [],
+    usb: [],
+    payment: [],
+  },
+}));
 
-app.use((_req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-      "img-src 'self' data: blob:",
-      "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' ws: wss:",
-      "worker-src 'self'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "frame-ancestors 'none'",
-    ].join('; ')
-  );
-  // microphone=(self) required for voice chat; camera/geolocation/usb not used
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), usb=(), payment=()');
-  // HSTS: only in production — prevents browser from caching HTTPS-only policy locally
-  if (config.IS_PRODUCTION) {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
-  next();
-});
+// ── CORS ─────────────────────────────────────────────────────────────────────
+app.use(cors({
+  origin: config.CORS_ORIGINS,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+}));
 
 // ── CSRF protection (Origin / Referer check for mutating requests) ────────────
 
