@@ -245,6 +245,10 @@ app.use('/ccmon-web', express.static(path.join(REPO_ROOT, 'ccmon-web'), STATIC_C
 app.use('/node_modules/animejs', express.static(path.join(REPO_ROOT, 'node_modules', 'animejs'), STATIC_CACHE));
 
 
+// ── API documentation (Swagger UI at /api/docs) ──────────────────────────────
+const { mountApiDocs } = require('./api-docs/serve');
+mountApiDocs(app);
+
 // ── CSRF token endpoint (exempt from CSRF protection — used to seed the token) ─
 app.get('/api/csrf-token', (req, res) => {
   res.json({ ok: true, token: generateToken(req, res) });

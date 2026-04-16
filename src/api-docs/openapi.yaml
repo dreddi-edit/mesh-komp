@@ -1,0 +1,1524 @@
+openapi: 3.0.3
+info:
+  title: Mesh API
+  description: >
+    Mesh AI-Native IDE gateway API. Covers authentication, workspace management,
+    AI chat and streaming, git operations, and assistant orchestration.
+  version: "1.0.0"
+  contact:
+    name: Mesh Engineering
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://your-mesh-domain.example.com
+    description: Production
+
+# ── Security Schemes ─────────────────────────────────────────────────────────
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: mesh_auth
+      description: >
+        Session token set as an httpOnly cookie on successful login.
+        Required for all protected endpoints.
+
+    csrfToken:
+      type: apiKey
+      in: header
+      name: x-csrf-token
+      description: >
+        CSRF protection token. Fetch from GET /api/csrf-token before
+        any state-mutating request (POST, PUT, DELETE).
+
+  # ── Reusable Schemas ──────────────────────────────────────────────────────
+
+  schemas:
+    OkTrue:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+
+    ErrorResponse:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+          description: Human-readable error message
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          example: operator
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        platform:
+          type: string
+        browser:
+          type: string
+        userAgent:
+          type: string
+        ipAddress:
+          type: string
+        current:
+          type: boolean
+        createdAt:
+          type: number
+          description: Unix timestamp (ms)
+        lastSeenAt:
+          type: number
+          description: Unix timestamp (ms)
+        expiresAt:
+          type: number
+          description: Unix timestamp (ms)
+        lastActiveLabel:
+          type: string
+          example: "5 min ago"
+
+    WorkspaceStatus:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        hasWorkspace:
+          type: boolean
+        workspaceId:
+          type: string
+        folderName:
+          type: string
+        fileCount:
+          type: number
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, ready, partial]
+
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+
+    GitStatus:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        branch:
+          type: string
+        modified:
+          type: array
+          items:
+            type: string
+        untracked:
+          type: array
+          items:
+            type: string
+        staged:
+          type: array
+          items:
+            type: string
+
+    ValidationFields:
+      type: object
+      additionalProperties:
+        type: string
+      description: Field-level validation errors keyed by field name
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+
+paths:
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+
+  /api/csrf-token:
+    get:
+      tags: [Auth]
+      summary: Get CSRF token
+      description: >
+        Returns a CSRF token to include as x-csrf-token header in all
+        state-mutating requests. Safe to call without authentication.
+      operationId: getCsrfToken
+      responses:
+        "200":
+          description: CSRF token issued
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      token:
+                        type: string
+                        example: abc123def456
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in
+      description: >
+        Authenticates with email + password. On success sets an httpOnly
+        session cookie and returns expiry metadata.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 1
+      responses:
+        "200":
+          description: Login successful
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                description: httpOnly session cookie
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      expiresAt:
+                        type: number
+                        description: Session expiry Unix timestamp (ms)
+                      expiresInMs:
+                        type: number
+                        description: Milliseconds until expiry
+                      user:
+                        $ref: "#/components/schemas/User"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - type: object
+                    properties:
+                      fields:
+                        $ref: "#/components/schemas/ValidationFields"
+        "503":
+          description: Auth store unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Log out
+      description: Invalidates the current session and clears the auth cookie.
+      operationId: logout
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/auth/session:
+    get:
+      tags: [Auth]
+      summary: Get current session
+      description: Returns the authenticated user and session expiry for the current cookie.
+      operationId: getSession
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Active session
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      expiresAt:
+                        type: number
+                      user:
+                        $ref: "#/components/schemas/User"
+        "401":
+          description: No active session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/sessions:
+    get:
+      tags: [Auth]
+      summary: List all active sessions for current user
+      operationId: listSessions
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      responses:
+        "200":
+          description: Session list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      sessions:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Session"
+
+  /api/auth/sessions/revoke:
+    post:
+      tags: [Auth]
+      summary: Revoke sessions
+      description: >
+        Revoke all sessions, other sessions (keep current), or a specific session.
+      operationId: revokeSessions
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode:
+                  type: string
+                  enum: [all, others, single]
+                sessionId:
+                  type: string
+                  description: Required when mode is "single"
+      responses:
+        "200":
+          description: Sessions revoked
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      deleted:
+                        type: number
+                      signedOut:
+                        type: boolean
+
+  # ── Workspace ───────────────────────────────────────────────────────────────
+
+  /api/assistant/status:
+    get:
+      tags: [Workspace]
+      summary: Get workspace status
+      description: Returns the current workspace indexing status, file count, and worker availability.
+      operationId: getWorkspaceStatus
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Workspace status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceStatus"
+        "503":
+          description: Workspace status unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/assistant/workspace/select:
+    post:
+      tags: [Workspace]
+      summary: Select and index a workspace
+      description: >
+        Triggers workspace indexing. Returns 200 when synchronously complete,
+        202 when queued for async processing. Poll /api/assistant/workspace/jobs/{jobId}
+        for async progress.
+      operationId: selectWorkspace
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  type: string
+                folderName:
+                  type: string
+                rootPath:
+                  type: string
+                  description: Local filesystem path (browser-opened folder)
+      responses:
+        "200":
+          description: Workspace selected synchronously
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      workspaceId:
+                        type: string
+                      fileCount:
+                        type: number
+        "202":
+          description: Workspace select queued for async processing
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      accepted:
+                        type: boolean
+                        enum: [true]
+                      jobId:
+                        type: string
+        "429":
+          description: Select queue is full
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/assistant/workspace/jobs/{jobId}:
+    get:
+      tags: [Workspace]
+      summary: Get workspace indexing job status
+      operationId: getWorkspaceJob
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      job:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          status:
+                            type: string
+                            enum: [pending, processing, completed, failed]
+                          progress:
+                            type: number
+                            minimum: 0
+                            maximum: 1
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/assistant/workspace/files:
+    get:
+      tags: [Workspace]
+      summary: List workspace files
+      operationId: getWorkspaceFiles
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: folderName
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      files:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            path:
+                              type: string
+                            size:
+                              type: number
+                            mimeType:
+                              type: string
+
+  /api/assistant/workspace/file:
+    get:
+      tags: [Workspace]
+      summary: Open a workspace file
+      operationId: getWorkspaceFile
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: view
+          in: query
+          schema:
+            type: string
+            enum: [original, compressed, capsule]
+            default: original
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: tier
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File content
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      path:
+                        type: string
+                      content:
+                        type: string
+                      size:
+                        type: number
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: File is currently being indexed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - type: object
+                    properties:
+                      indexing:
+                        type: boolean
+
+    post:
+      tags: [Workspace]
+      summary: Create a workspace file
+      operationId: createWorkspaceFile
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, content]
+              properties:
+                path:
+                  type: string
+                content:
+                  type: string
+                overwrite:
+                  type: boolean
+                  default: false
+                workspaceId:
+                  type: string
+                sessionId:
+                  type: string
+      responses:
+        "200":
+          description: File created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+        "400":
+          description: Create failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    put:
+      tags: [Workspace]
+      summary: Save a workspace file
+      operationId: saveWorkspaceFile
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path, content]
+              properties:
+                path:
+                  type: string
+                content:
+                  type: string
+                workspaceId:
+                  type: string
+                sessionId:
+                  type: string
+      responses:
+        "200":
+          description: File saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/workspace/graph:
+    get:
+      tags: [Workspace]
+      summary: Get workspace dependency graph
+      operationId: getWorkspaceGraph
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: workspaceId
+          in: query
+          schema:
+            type: string
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+        - name: folderName
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dependency graph
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      nodes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            path:
+                              type: string
+                      edges:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            from:
+                              type: string
+                            to:
+                              type: string
+
+  /api/assistant/workspace/sync:
+    post:
+      tags: [Workspace]
+      summary: Sync workspace file changes from browser
+      description: Pushes incremental file changes from the browser file system access API to the gateway workspace state.
+      operationId: syncWorkspace
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  type: string
+                folderName:
+                  type: string
+                files:
+                  type: array
+                  items:
+                    type: object
+                deletedPaths:
+                  type: array
+                  items:
+                    type: string
+                append:
+                  type: boolean
+                mode:
+                  type: string
+                scanEpoch:
+                  type: number
+                complete:
+                  type: boolean
+      responses:
+        "200":
+          description: Sync accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/workspace/rename:
+    post:
+      tags: [Workspace]
+      summary: Rename a workspace file
+      operationId: renameWorkspaceFile
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromPath, toPath]
+              properties:
+                fromPath:
+                  type: string
+                toPath:
+                  type: string
+                overwrite:
+                  type: boolean
+                workspaceId:
+                  type: string
+                sessionId:
+                  type: string
+      responses:
+        "200":
+          description: File renamed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/workspace/batch:
+    post:
+      tags: [Workspace]
+      summary: Apply batch file operations
+      operationId: batchWorkspaceOps
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                operations:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      op:
+                        type: string
+                        enum: [create, save, delete, rename]
+                      path:
+                        type: string
+                      content:
+                        type: string
+                stopOnError:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Batch complete
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      applied:
+                        type: number
+                      failed:
+                        type: number
+
+  /api/assistant/workspace/reindex:
+    post:
+      tags: [Workspace]
+      summary: Reindex specific files
+      operationId: reindexWorkspace
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Reindex queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/workspace/search:
+    get:
+      tags: [Workspace]
+      summary: Search workspace
+      operationId: searchWorkspace
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            default: all
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 12
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      results:
+                        type: array
+                        items:
+                          type: object
+
+  /api/assistant/workspace/grep:
+    post:
+      tags: [Workspace]
+      summary: Grep workspace files
+      operationId: grepWorkspace
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pattern:
+                  type: string
+                limit:
+                  type: integer
+                  maximum: 500
+                  default: 40
+                caseSensitive:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Grep results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      matches:
+                        type: array
+                        items:
+                          type: object
+
+  # ── Chat ───────────────────────────────────────────────────────────────────
+
+  /api/assistant/chat:
+    post:
+      tags: [Chat]
+      summary: Send a chat message (non-streaming)
+      description: >
+        Sends messages to the configured AI model and returns the complete response.
+        For streaming, use POST /api/assistant/chat/stream.
+      operationId: chat
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                messages:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ChatMessage"
+                model:
+                  type: string
+                  example: claude-sonnet-4-6
+                  description: Model ID. Defaults to MESH_DEFAULT_MODEL env var.
+                activeFilePath:
+                  type: string
+                  description: Currently focused file — used for context injection.
+                workspaceId:
+                  type: string
+                sessionId:
+                  type: string
+                credentials:
+                  type: object
+                  description: Optional BYOK credentials (provider-specific shape).
+      responses:
+        "200":
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      content:
+                        type: string
+                      model:
+                        type: string
+                      usage:
+                        type: object
+                        properties:
+                          inputTokens:
+                            type: number
+                          outputTokens:
+                            type: number
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/assistant/chat/stream:
+    post:
+      tags: [Chat]
+      summary: Send a chat message (streaming SSE)
+      description: >
+        Streams the AI response as Server-Sent Events. The client must handle
+        text/event-stream. Each SSE event is a JSON object with a `type` field.
+      operationId: chatStream
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                messages:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ChatMessage"
+                model:
+                  type: string
+                activeFilePath:
+                  type: string
+                workspaceId:
+                  type: string
+                sessionId:
+                  type: string
+                credentials:
+                  type: object
+      responses:
+        "200":
+          description: SSE stream of response chunks
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: >
+                  Newline-delimited SSE events. Each event data is JSON with
+                  `type: "delta" | "done" | "error"` and optionally `content`,
+                  `model`, and `usage` fields.
+
+  /api/assistant/codec/decode:
+    post:
+      tags: [Chat]
+      summary: Decode a codec-compressed response
+      description: Expands Mesh codec abbreviations in an assistant response back to full identifiers.
+      operationId: codecDecode
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                sessionId:
+                  type: string
+      responses:
+        "200":
+          description: Decoded content
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      content:
+                        type: string
+
+  /api/inline-complete:
+    post:
+      tags: [Chat]
+      summary: Inline code completion
+      description: Returns a short completion for the cursor position in the editor.
+      operationId: inlineComplete
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                messages:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ChatMessage"
+                model:
+                  type: string
+                activeFilePath:
+                  type: string
+      responses:
+        "200":
+          description: Completion result
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      content:
+                        type: string
+
+  # ── Git ────────────────────────────────────────────────────────────────────
+
+  /api/assistant/git/status:
+    get:
+      tags: [Git]
+      summary: Get git status
+      operationId: gitStatus
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Git status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitStatus"
+
+  /api/assistant/git/branches:
+    get:
+      tags: [Git]
+      summary: List git branches
+      operationId: gitBranches
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Branch list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      branches:
+                        type: array
+                        items:
+                          type: string
+                      current:
+                        type: string
+
+  /api/assistant/git/diff:
+    get:
+      tags: [Git]
+      summary: Get git diff
+      operationId: gitDiff
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+        - name: staged
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Diff output
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      diff:
+                        type: string
+
+  /api/assistant/git/log:
+    get:
+      tags: [Git]
+      summary: Get git log
+      operationId: gitLog
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: branch
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Commit log
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      commits:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            hash:
+                              type: string
+                            message:
+                              type: string
+                            author:
+                              type: string
+                            date:
+                              type: string
+
+  /api/assistant/git/checkout:
+    post:
+      tags: [Git]
+      summary: Checkout a branch
+      operationId: gitCheckout
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branch]
+              properties:
+                branch:
+                  type: string
+      responses:
+        "200":
+          description: Checkout successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/git/stage:
+    post:
+      tags: [Git]
+      summary: Stage files
+      operationId: gitStage
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paths:
+                  type: array
+                  items:
+                    type: string
+                all:
+                  type: boolean
+      responses:
+        "200":
+          description: Files staged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/git/commit:
+    post:
+      tags: [Git]
+      summary: Create a git commit
+      operationId: gitCommit
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+      responses:
+        "200":
+          description: Commit created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/OkTrue"
+                  - type: object
+                    properties:
+                      hash:
+                        type: string
+
+  /api/assistant/git/push:
+    post:
+      tags: [Git]
+      summary: Push to remote
+      operationId: gitPush
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remote:
+                  type: string
+                  default: origin
+                branch:
+                  type: string
+      responses:
+        "200":
+          description: Push successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/git/pull:
+    post:
+      tags: [Git]
+      summary: Pull from remote
+      operationId: gitPull
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      responses:
+        "200":
+          description: Pull successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/git/stash:
+    post:
+      tags: [Git]
+      summary: Stash or apply stash
+      operationId: gitStash
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [push, pop, apply, drop, list]
+                message:
+                  type: string
+      responses:
+        "200":
+          description: Stash operation complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/git/clone:
+    post:
+      tags: [Git]
+      summary: Clone a repository
+      operationId: gitClone
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  description: https://, git://, ssh://, or git@host: format only
+                targetPath:
+                  type: string
+      responses:
+        "200":
+          description: Clone successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/git/create-branch:
+    post:
+      tags: [Git]
+      summary: Create a new branch
+      operationId: gitCreateBranch
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                from:
+                  type: string
+                  description: Base branch or commit SHA
+      responses:
+        "200":
+          description: Branch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  /api/assistant/git/delete-branch:
+    post:
+      tags: [Git]
+      summary: Delete a branch
+      operationId: gitDeleteBranch
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                force:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Branch deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkTrue"
+
+  # ── Health ─────────────────────────────────────────────────────────────────
+
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns gateway health. Returns 200 (ok true) when healthy, 503 when degraded.
+      operationId: healthz
+      security: []
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  service:
+                    type: string
+                    example: mesh-gateway
+                  uptimeSec:
+                    type: number
+        "503":
+          description: Degraded — initializing or dependency unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [false]
+                  service:
+                    type: string
+
+tags:
+  - name: Auth
+    description: Authentication, sessions, and CSRF
+  - name: Workspace
+    description: Workspace selection, file CRUD, and indexing
+  - name: Chat
+    description: AI chat, streaming, codec, and inline completion
+  - name: Git
+    description: Git operations (status, commit, push, pull, branch)
+  - name: Health
+    description: Service health check

@@ -557,6 +557,86 @@ Resources:
 
   # ── CloudWatch Observability ─────────────────────────────────────────────────
 
+  # ── CloudWatch metric filters: typed error codes (Phase 19 error hierarchy) ──
+  # Filter patterns match the `code` field emitted by src/errors/index.js in
+  # structured JSON log lines. Each filter increments a metric in Mesh/Errors.
+
+  ValidationErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: AppLogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      FilterPattern: '{ $.code = "VALIDATION_ERROR" }'
+      MetricTransformations:
+        - MetricName: ValidationErrors
+          MetricNamespace: Mesh/Errors
+          MetricValue: "1"
+          DefaultValue: 0
+
+  NotFoundErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: AppLogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      FilterPattern: '{ $.code = "NOT_FOUND" }'
+      MetricTransformations:
+        - MetricName: NotFoundErrors
+          MetricNamespace: Mesh/Errors
+          MetricValue: "1"
+          DefaultValue: 0
+
+  AuthErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: AppLogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      FilterPattern: '{ $.code = "AUTH_ERROR" }'
+      MetricTransformations:
+        - MetricName: AuthErrors
+          MetricNamespace: Mesh/Errors
+          MetricValue: "1"
+          DefaultValue: 0
+
+  InternalErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: AppLogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      FilterPattern: '{ $.code = "INTERNAL_ERROR" }'
+      MetricTransformations:
+        - MetricName: InternalErrors
+          MetricNamespace: Mesh/Errors
+          MetricValue: "1"
+          DefaultValue: 0
+
+  ConflictErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: AppLogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      FilterPattern: '{ $.code = "CONFLICT" }'
+      MetricTransformations:
+        - MetricName: ConflictErrors
+          MetricNamespace: Mesh/Errors
+          MetricValue: "1"
+          DefaultValue: 0
+
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: mesh-high-error-rate
+      AlarmDescription: >
+        Fires when InternalErrors exceed 10 occurrences in two consecutive
+        5-minute windows. Indicates systemic backend failure — page on-call.
+      MetricName: InternalErrors
+      Namespace: Mesh/Errors
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+
   # Log group for structured app output (pm2 + CloudWatch agent ships logs here)
   AppLogGroup:
     Type: AWS::Logs::LogGroup

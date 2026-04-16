@@ -30,9 +30,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Code Quality
 
 - [ ] **QUAL-01**: All core files are under 400 lines; 8 monolith files (>1,000 lines each) are decomposed into focused modules
-- [ ] **QUAL-02**: `src/core/index.js` wiring hub is refactored; global mutable state is replaced with explicit dependency passing
+- [x] **QUAL-02**: `src/core/index.js` wiring hub is refactored; global mutable state is replaced with explicit dependency passing
 - [ ] **QUAL-03**: Duplicated functions (`toSafePath`, `normalizeEmail`, path scoring) exist in exactly one location and are imported from there
-- [ ] **QUAL-04**: Service layer exists between routes and core; routes do not call core functions directly
+- [x] **QUAL-04**: Service layer exists between routes and core; routes do not call core functions directly
 - [x] **QUAL-05**: Typed error class hierarchy (`AppError`, `ValidationError`, `NotFoundError`, etc.) replaces plain `Error` with string messages
 - [x] **QUAL-06**: Centralized async error handling middleware catches all unhandled route errors; no per-route try/catch required
 - [x] **QUAL-07**: Empty `src/services/` and `src/utils/` directories are either populated with extracted code or removed
@@ -114,9 +114,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | PERF-08 | Phase 23 | Pending |
 | PERF-09 | Phase 23 | Pending |
 | QUAL-01 | Phase 24 | Pending |
-| QUAL-02 | Phase 25 | Pending |
+| QUAL-02 | Phase 25 | Complete |
 | QUAL-03 | Phase 24 | Pending |
-| QUAL-04 | Phase 25 | Pending |
+| QUAL-04 | Phase 25 | Complete |
 | QUAL-05 | Phase 19 | Complete |
 | QUAL-06 | Phase 19 | Complete |
 | QUAL-07 | Phase 19 | Complete |

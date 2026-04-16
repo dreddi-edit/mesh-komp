@@ -9,6 +9,8 @@
     "bench:compression:save": "node benchmarks/compression-benchmark.js --save",
     "build:assets": "node scripts/build.js",
     "test": "node --test --test-force-exit --test-timeout=120000",
+    "test:coverage": "c8 --reporter=text --reporter=lcov node --test --test-force-exit --test-timeout=120000",
+    "test:ci": "c8 --reporter=text --reporter=lcov --check-coverage --lines 40 node --test --test-force-exit --test-timeout=120000",
     "test:workspace-ops": "node --test test/workspace-ops.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -51,6 +53,7 @@
     "node-sql-parser": "^5.4.0",
     "nunjucks": "^3.2.4",
     "pptxgenjs": "^4.0.1",
+    "swagger-ui-express": "^5.0.1",
     "terser": "^5.46.1",
     "toml": "^4.1.1",
     "tree-sitter": "^0.21.1",
@@ -63,9 +66,12 @@
     "tree-sitter-typescript": "^0.21.2",
     "ws": "^8.20.0",
     "yaml": "^2.8.3",
+    "yamljs": "^0.3.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "c8": "^11.0.0",
     "esbuild": "^0.28.0",
     "eslint": "^8.57.0",
     "puppeteer": "^24.41.0"
