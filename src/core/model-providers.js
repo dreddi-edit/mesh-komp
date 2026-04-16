@@ -621,19 +621,36 @@ async function callByokProviderChat({ provider, model, messages, maxTokens = 512
   });
 }
 
-async function callAnthropicChatWithMeta({ apiKey, model, messages, maxTokens = 1024 }) {
+async function callAnthropicChatWithMeta({ apiKey, model, messages, maxTokens = 4096 }) {
+  // Extract system prompt for cache_control placement
+  const normalizedMsgs = normalizeMessages(messages);
+  const systemMsg = normalizedMsgs.find(m => m.role === 'system');
+  const conversationMsgs = toAnthropicMessages(messages);
+
+  const requestBody = {
+    model,
+    max_tokens: Math.max(64, Number(maxTokens) || 4096),
+    messages: conversationMsgs,
+  };
+
+  // Add cache_control to system prompt for prompt caching
+  if (systemMsg) {
+    requestBody.system = [{
+      type: 'text',
+      text: systemMsg.content,
+      cache_control: { type: 'ephemeral' }
+    }];
+  }
+
   const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: Math.max(64, Number(maxTokens) || 1024),
-      messages: toAnthropicMessages(messages),
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   const payload = await readJsonResponse(response);
@@ -687,22 +704,28 @@ function resolveBedrockModelId(model) {
   return BEDROCK_MODEL_MAP[clean] || BEDROCK_MODEL_MAP['claude-sonnet-4-6'];
 }
 
+// Module-level singleton — avoids per-request TLS/credential overhead
+let bedrockClient = null;
+
 /**
- * Create a configured BedrockRuntimeClient.
+ * Get or create a configured BedrockRuntimeClient (singleton).
  * Uses explicit IAM credentials from config when set; otherwise falls back to
  * the default AWS credential chain (env, ~/.aws, instance metadata).
  *
  * @returns {import('@aws-sdk/client-bedrock-runtime').BedrockRuntimeClient}
  */
-function createBedrockClient() {
-  const opts = { region: config.AWS_REGION_BEDROCK || 'us-east-1' };
-  if (config.AWS_ACCESS_KEY_ID && config.AWS_SECRET_ACCESS_KEY) {
-    opts.credentials = {
-      accessKeyId: config.AWS_ACCESS_KEY_ID,
-      secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
-    };
+function getBedrockClient() {
+  if (!bedrockClient) {
+    const opts = { region: config.AWS_REGION_BEDROCK || 'us-east-1' };
+    if (config.AWS_ACCESS_KEY_ID && config.AWS_SECRET_ACCESS_KEY) {
+      opts.credentials = {
+        accessKeyId: config.AWS_ACCESS_KEY_ID,
+        secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
+      };
+    }
+    bedrockClient = new BedrockRuntimeClient(opts);
   }
-  return new BedrockRuntimeClient(opts);
+  return bedrockClient;
 }
 
 /**
@@ -712,13 +735,13 @@ function createBedrockClient() {
  * @returns {Promise<{ content: string, usage: object }>}
  * @throws {Error} If Bedrock SDK is unavailable or the API call fails
  */
-async function callBedrockDirect({ model, messages, maxTokens = 1024 }) {
+async function callBedrockDirect({ model, messages, maxTokens = 4096 }) {
   if (!BedrockRuntimeClient || !InvokeModelCommand) {
     throw new Error('AWS Bedrock SDK not available. Run: npm install @aws-sdk/client-bedrock-runtime');
   }
 
   const bedrockModelId = resolveBedrockModelId(model);
-  const client = createBedrockClient();
+  const client = getBedrockClient();
 
   const systemText = messages.filter(m => m.role === 'system').map(m => m.content).join('\n');
   const conversation = messages
@@ -726,7 +749,10 @@ async function callBedrockDirect({ model, messages, maxTokens = 1024 }) {
     .map(m => ({ role: m.role, content: String(m.content || '') }));
 
   const payload = { anthropic_version: 'bedrock-2023-05-31', max_tokens: maxTokens, messages: conversation };
-  if (systemText) payload.system = systemText;
+  // Add cache_control on system block for Bedrock prompt caching
+  if (systemText) {
+    payload.system = [{ text: systemText, cache_control: [{ type: 'default' }] }];
+  }
 
   const cmd = new InvokeModelCommand({
     modelId: bedrockModelId,
@@ -864,7 +890,7 @@ async function runModelChat({ model, messages, credentials = {} }) {
       const bedrockResult = await callBedrockDirect({
         model: resolved.model,
         messages: injectMeshSystemPrompt(messages),
-        maxTokens: Number(credentials?.anthropic?.maxTokens || 1024),
+        maxTokens: Number(credentials?.anthropic?.maxTokens || 4096),
       });
       return {
         provider: "mesh-bedrock",
@@ -883,7 +909,7 @@ async function runModelChat({ model, messages, credentials = {} }) {
       apiKey,
       model: resolved.model,
       messages,
-      maxTokens: Number(credentials?.anthropic?.maxTokens || 1024),
+      maxTokens: Number(credentials?.anthropic?.maxTokens || 4096),
     });
     return {
       provider: "anthropic",
