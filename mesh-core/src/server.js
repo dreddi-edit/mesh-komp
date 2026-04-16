@@ -77,6 +77,7 @@ async function sendCompressedJson(res, payload, statusCode = 200) {
     res.end(compressed.buffer);
 }
 
+app.post('/mesh/tunnel', async (req, res) => {
     const requestId = req.headers['x-request-id'] || null;
     const reqLogger = logger.child(requestId);
 
