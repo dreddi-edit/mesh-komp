@@ -34,6 +34,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1030.0",
     "animejs": "^4.3.6",
     "better-sqlite3": "^11.10.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csrf-csrf": "^4.0.3",
     "express": "^5.2.1",

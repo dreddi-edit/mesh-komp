@@ -85,6 +85,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
 }));
 
+// ── Cookie parsing (required by csrf-csrf double-submit pattern) ─────────────
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 // ── CSRF protection (double-submit cookie via csrf-csrf) ─────────────────────
 const { csrfProtection, generateToken } = require('./middleware/csrf');
 

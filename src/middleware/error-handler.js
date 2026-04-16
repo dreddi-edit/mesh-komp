@@ -17,8 +17,11 @@ const logger = require('../logger');
  */
 function errorHandler(err, req, res, _next) {
   const isAppError = err instanceof AppError;
-  const statusCode = isAppError ? err.statusCode : 500;
-  const code = isAppError ? err.code : 'INTERNAL_ERROR';
+  // http-errors (used by csrf-csrf, etc.) uses err.status; prefer that over the
+  // default 500 when it carries a 4xx code so CSRF rejections return 403.
+  const httpStatus = typeof err.status === 'number' && err.status >= 400 && err.status < 600 ? err.status : null;
+  const statusCode = isAppError ? err.statusCode : (httpStatus ?? 500);
+  const code = isAppError ? err.code : (err.code ?? 'INTERNAL_ERROR');
 
   logger.error('Request error', {
     requestId: req.requestId,
@@ -35,7 +38,9 @@ function errorHandler(err, req, res, _next) {
   }
 
   if (!isAppError) {
-    body.error = 'Internal server error';
+    // Pass through the message for known client errors (4xx) from trusted middleware
+    // (e.g. csrf-csrf throws http-errors 403); mask everything else as opaque 500.
+    body.error = httpStatus ? err.message : 'Internal server error';
   }
 
   res.status(statusCode).json(body);

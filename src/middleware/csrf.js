@@ -3,8 +3,9 @@
 const { doubleCsrf } = require('csrf-csrf');
 const config = require('../config');
 
-const { generateToken, doubleCsrfProtection } = doubleCsrf({
+const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
   getSecret: () => config.CSRF_SECRET,
+  getSessionIdentifier: (req) => req.ip ?? '',
   cookieName: '_csrf',
   cookieOptions: {
     httpOnly: true,
@@ -14,6 +15,7 @@ const { generateToken, doubleCsrfProtection } = doubleCsrf({
   },
   getTokenFromRequest: (req) => req.headers['x-csrf-token'],
   size: 64,
+  errorConfig: { statusCode: 403, message: 'Invalid CSRF token', code: 'EBADCSRFTOKEN' },
 });
 
-module.exports = { csrfProtection: doubleCsrfProtection, generateToken };
+module.exports = { csrfProtection: doubleCsrfProtection, generateToken: generateCsrfToken };

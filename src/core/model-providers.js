@@ -1639,7 +1639,7 @@ module.exports = {
   callGeminiChat,
   BEDROCK_MODEL_MAP,
   resolveBedrockModelId,
-  createBedrockClient,
+  getBedrockClient,
   callBedrockDirect,
   normalizeByokProviders,
   resolveProviderForModel,

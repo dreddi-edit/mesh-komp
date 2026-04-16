@@ -135,7 +135,7 @@ function createChatRouter(core) {
     runModelChat,
     resolveProviderForModel,
     resolveBedrockModelId,
-    createBedrockClient,
+    getBedrockClient,
     buildModelResponseTransport,
     encodeMeshModelCodec,
     decodeCompressedModelResponse,
@@ -423,7 +423,7 @@ function createChatRouter(core) {
             // codec helpers threaded in to avoid re-importing
             decodeCompressedModelResponse, buildServerCodecRecovery,
             polishDecompressedAssistantText, encodeMeshModelCodec, markCodecContextInitialized,
-            resolveBedrockModelId, createBedrockClient,
+            resolveBedrockModelId, getBedrockClient,
           });
           return;
         } else if (apiKey) {
@@ -529,10 +529,10 @@ async function streamBedrockDirect({
   injectedCodecContext, normalizedSessionId, requiresCodecDictionary,
   capsuleContextEntries, recoveredSpanEntries, adaptiveContextBudget, referencedFiles,
   decodeCompressedModelResponse, buildServerCodecRecovery, polishDecompressedAssistantText,
-  encodeMeshModelCodec, markCodecContextInitialized, resolveBedrockModelId, createBedrockClient,
+  encodeMeshModelCodec, markCodecContextInitialized, resolveBedrockModelId, getBedrockClient,
 }) {
   const { InvokeModelWithResponseStreamCommand } = require('@aws-sdk/client-bedrock-runtime');
-  const client = createBedrockClient();
+  const client = getBedrockClient();
   const bedrockModelId = resolveBedrockModelId(model);
 
   const systemText = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n');

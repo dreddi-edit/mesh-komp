@@ -224,21 +224,26 @@ test("security integration tests", { timeout: 90000 }, async (t) => {
       });
     }
 
-    await t.test("given no auth, POST /api/chat returns 401", async () => {
+    await t.test("given no auth and no CSRF token, POST /api/chat returns 403", async () => {
       const res = await requestJson(server.baseUrl, "/api/chat", {}, {
         method: "POST",
         headers: { "Content-Type": "application/json", Origin: server.baseUrl },
         body: JSON.stringify({ messages: [{ role: "user", content: "hello" }] }),
       });
-      assert.equal(res.status, 401);
+      // CSRF middleware fires before auth; missing token → 403
+      assert.equal(res.status, 403);
     });
 
     await t.test("given 16 rapid login attempts, rate limiter returns 429", async () => {
+      const csrfJar = {};
+      const tokenRes = await requestJson(server.baseUrl, "/api/csrf-token", csrfJar, {});
+      const csrfToken = tokenRes.json?.token ?? "";
+
       const results = [];
       for (let i = 0; i < 16; i++) {
-        const res = await requestJson(server.baseUrl, "/api/auth/login", {}, {
+        const res = await requestJson(server.baseUrl, "/api/auth/login", csrfJar, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Origin: server.baseUrl },
+          headers: { "Content-Type": "application/json", Origin: server.baseUrl, "X-CSRF-Token": csrfToken },
           body: JSON.stringify({ email: "brute@force.test", password: "wrong" }),
         });
         results.push(res.status);
