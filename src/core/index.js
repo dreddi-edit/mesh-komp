@@ -298,7 +298,7 @@ const WORKSPACE_SELECT_MAX_JOB_HISTORY = config.WORKSPACE_SELECT_MAX_JOB_HISTORY
 const WORKSPACE_SELECT_MAX_PENDING = config.WORKSPACE_SELECT_MAX_PENDING;
 const WORKSPACE_SOURCE_UPLOAD = "upload";
 const WORKSPACE_SOURCE_LOCAL_PATH = "local-path";
-const LOCAL_WORKSPACE_SKIP_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|mp4|mp3|zip|gz|tar|lock)$/i;
+const LOCAL_WORKSPACE_SKIP_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|mp4|mp3|wav|ogg|zip|gz|tar|wasm|map)$/i;
 const LOCAL_WORKSPACE_SKIP_DIRS = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__)(\/|$)/;
 const LOCAL_WORKSPACE_MAX_FILE_CHARS = 1_000_000;
 
@@ -1187,9 +1187,12 @@ module.exports = {
   applyAssistantRunDecision
 };
 
-Object.assign(global, module.exports, {
-  isWorkspaceIndexablePath, WORKSPACE_RECORD_VERSION,
-  mapWithConcurrency, createWorkspacePerfTracker,
-  buildWorkspaceFileRecord, ensureWorkspaceFileRecord,
-  decodeRawStorage, buildWorkspaceFileView,
-});
+// Inject shared runtime state into the global namespace so sub-modules
+// (workspace-ops, workspace-context, assistant-runs, etc.) can access it
+// without creating circular imports. This pattern is intentional: those
+// modules are extracted domain layers that read shared mutable state
+// (localAssistantWorkspace, workspaceMetadataStore, config constants) owned
+// by this module. The static utility symbols (mapWithConcurrency,
+// buildWorkspaceFileRecord, etc.) are now imported directly by each
+// sub-module and no longer need to be injected here.
+Object.assign(global, module.exports);

@@ -82,6 +82,8 @@ function isWorkspaceIndexablePath(pathInput = "") {
   if (LOCAL_WORKSPACE_SKIP_DIRS.test(normalized)) return false;
   if (LOCAL_WORKSPACE_SKIP_EXTENSIONS.test(normalized)) return false;
   if (/(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb|cargo\.lock)$/i.test(normalized)) return false;
+  // Minified bundles: no symbol value, wastes token budget
+  if (/\.min\.(js|css)$/.test(normalized)) return false;
   return true;
 }
 
