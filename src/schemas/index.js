@@ -1,30 +1,65 @@
 'use strict';
 
-const { z } = require('zod');
+// Vanilla JS schema validator to avoid Zod dependency issues
 
-/** Schema for creating an assistant run */
-const assistantRunSchema = z.object({
-  model: z.string().optional().default('claude-sonnet-4-6'),
-  mode: z.string().optional(),
-  autonomyMode: z.string().optional(),
-  prompt: z.string().min(1, 'Prompt is required'),
-  workspaceFolderName: z.string().optional(),
-  activeFilePath: z.string().optional(),
-  selectedPaths: z.array(z.string()).optional().default([]),
-  terminalSessionId: z.string().optional(),
-  opsSelection: z.record(z.unknown()).optional().default({}),
-  chatSessionId: z.string().optional(),
-});
+const assistantRunSchema = {
+  validate: (data) => {
+    if (!data || typeof data !== 'object') {
+      return { success: false, error: 'Request body must be an object' };
+    }
+    if (!data.prompt || typeof data.prompt !== 'string') {
+      return { success: false, error: 'Prompt is required and must be a string' };
+    }
+    
+    return {
+      success: true,
+      data: {
+        model: data.model || 'claude-sonnet-4-6',
+        mode: data.mode,
+        autonomyMode: data.autonomyMode,
+        prompt: data.prompt,
+        workspaceFolderName: data.workspaceFolderName,
+        activeFilePath: data.activeFilePath,
+        selectedPaths: Array.isArray(data.selectedPaths) ? data.selectedPaths : [],
+        terminalSessionId: data.terminalSessionId,
+        opsSelection: data.opsSelection && typeof data.opsSelection === 'object' && !Array.isArray(data.opsSelection) ? data.opsSelection : {},
+        chatSessionId: data.chatSessionId
+      }
+    };
+  }
+};
 
-/** Schema for terminal session creation */
-const terminalSessionSchema = z.object({
-  shell: z.string().optional(),
-});
+const terminalSessionSchema = {
+  validate: (data) => {
+    if (!data || typeof data !== 'object') {
+      return { success: false, error: 'Request body must be an object' };
+    }
+    return {
+      success: true,
+      data: {
+        shell: data.shell
+      }
+    };
+  }
+};
 
-/** Schema for terminal input */
-const terminalInputSchema = z.object({
-  input: z.string().min(1, 'Input is required'),
-});
+const terminalInputSchema = {
+  validate: (data) => {
+    if (!data || typeof data !== 'object') {
+      return { success: false, error: 'Request body must be an object' };
+    }
+    if (typeof data.input !== 'string') {
+      return { success: false, error: 'Input is required and must be a string' };
+    }
+    
+    return {
+      success: true,
+      data: {
+        input: data.input
+      }
+    };
+  }
+};
 
 module.exports = {
   assistantRunSchema,

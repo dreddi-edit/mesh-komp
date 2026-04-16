@@ -55,8 +55,7 @@
     "tree-sitter-python": "^0.21.0",
     "tree-sitter-typescript": "^0.21.2",
     "ws": "^8.20.0",
-    "yaml": "^2.8.3",
-    "zod": "^4.3.6"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
