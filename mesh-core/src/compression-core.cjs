@@ -38,6 +38,14 @@ const tsGo = safeRequire("tree-sitter-go");
 const tsHtml = safeRequire("tree-sitter-html");
 const tsCss = safeRequire("tree-sitter-css");
 const tsJson = safeRequire("tree-sitter-json");
+const tsRust = safeRequire("tree-sitter-rust");
+const tsCpp = safeRequire("tree-sitter-cpp");
+const tsCsharp = safeRequire("tree-sitter-c-sharp");
+const tsJava = safeRequire("tree-sitter-java");
+const tsRuby = safeRequire("tree-sitter-ruby");
+const tsPhp = safeRequire("tree-sitter-php");
+const tsKotlin = safeRequire("tree-sitter-kotlin");
+const tsSwift = safeRequire("tree-sitter-swift");
 const llmCompress = safeRequire("../../llm-compress.js");
 
 const WORKSPACE_RECORD_VERSION = 2;
@@ -247,6 +255,90 @@ const CODE_LANGUAGE_MAP = {
     parserFamily: "tree-sitter",
     parserKey: "json",
   },
+  rs: {
+    family: "code",
+    language: "rust",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "rust",
+  },
+  cpp: {
+    family: "code",
+    language: "cpp",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "cpp",
+  },
+  cc: {
+    family: "code",
+    language: "cpp",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "cpp",
+  },
+  h: {
+    family: "code",
+    language: "cpp",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "cpp",
+  },
+  hpp: {
+    family: "code",
+    language: "cpp",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "cpp",
+  },
+  cs: {
+    family: "code",
+    language: "csharp",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "csharp",
+  },
+  java: {
+    family: "code",
+    language: "java",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "java",
+  },
+  rb: {
+    family: "code",
+    language: "ruby",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "ruby",
+  },
+  php: {
+    family: "code",
+    language: "php",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "php",
+  },
+  kt: {
+    family: "code",
+    language: "kotlin",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "kotlin",
+  },
+  kts: {
+    family: "code",
+    language: "kotlin",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "kotlin",
+  },
+  swift: {
+    family: "code",
+    language: "swift",
+    capsuleType: "structure",
+    parserFamily: "tree-sitter",
+    parserKey: "swift",
+  },
 };
 
 const NON_TREE_FILE_TYPES = {
@@ -315,6 +407,15 @@ const treeSitterLanguages = {
   html: tsHtml,
   css: tsCss,
   json: tsJson,
+  rust: tsRust,
+  cpp: tsCpp,
+  csharp: tsCsharp,
+  java: tsJava,
+  ruby: tsRuby,
+  // tree-sitter-php exports { php, php_only } — use .php with fallback for forward compat
+  php: tsPhp?.php || tsPhp,
+  kotlin: tsKotlin,
+  swift: tsSwift,
 };
 
 const treeSitterParsers = new Map();
@@ -532,18 +633,52 @@ function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
 
       const type = String(node.type || "");
       const definitionLike = [
+        // JavaScript / TypeScript
         "function_declaration",
         "generator_function_declaration",
         "class_declaration",
         "method_definition",
+        "lexical_declaration",
+        "variable_declaration",
+        // Python / Go
         "function_definition",
         "class_definition",
         "method_declaration",
         "type_declaration",
         "interface_declaration",
         "enum_declaration",
-        "lexical_declaration",
-        "variable_declaration",
+        // Rust
+        "function_item",
+        "struct_item",
+        "enum_item",
+        "trait_item",
+        "impl_item",
+        "mod_item",
+        "const_item",
+        "type_item",
+        // C++ / C
+        "class_specifier",
+        "struct_specifier",
+        "namespace_definition",
+        "template_declaration",
+        // C#
+        "constructor_declaration",
+        "property_declaration",
+        "namespace_declaration",
+        // Ruby
+        "method",
+        "singleton_method",
+        "class",
+        "module",
+        // PHP
+        "trait_declaration",
+        // Kotlin
+        "object_declaration",
+        // Swift
+        "protocol_declaration",
+        "extension_declaration",
+        "init_declaration",
+        "computed_property",
       ].includes(type);
       if (!definitionLike) return true;
 
