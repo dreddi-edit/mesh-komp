@@ -148,7 +148,7 @@
 ### Phase 12: CloudWatch Observability
 
 **Goal:** Add structured JSON logging to the Node.js backend (replacing raw pm2 text output), create a CloudWatch dashboard with ALB 5xx rate, p50/p99 latency, EC2 CPU, DynamoDB consumed capacity, and enable ALB access logs to S3.
-**Status:** not started
+**Status:** completed
 **Depends on:** Phase 11
 
 **Scope:**
@@ -169,7 +169,7 @@
 ### Phase 13: Cold-Start Latency Fix
 
 **Goal:** Parallelize the serial DynamoDB calls on the first authenticated request. Session resolve + credential fetch currently happen sequentially; use Promise.all to cut cold-start by 100–200ms.
-**Status:** not started
+**Status:** completed
 **Depends on:** Phase 12
 
 **Scope:**
@@ -188,7 +188,7 @@
 ### Phase 14: Branded CloudFront Error Pages
 
 **Goal:** Create S3-hosted branded Mesh HTML error pages for 502/503/504 and wire them into the CloudFront distribution so users see a Mesh-branded page instead of a raw browser error when the origin is down.
-**Status:** not started
+**Status:** completed
 **Depends on:** Phase 13
 
 **Scope:**
@@ -207,7 +207,7 @@
 ### Phase 15: Compression Engine — Full Language Coverage + Pipeline Quality
 
 **Goal:** Extend the capsule compression pipeline to produce rich structural capsules for all major programming languages (C++, C#, Rust, Java, Swift, Kotlin, Ruby, PHP), fix the `.wasm`/`.min.js` indexing bugs, and harden the heuristic fallback path so every file type delivers maximum useful signal to the LLM regardless of whether a tree-sitter grammar exists.
-**Status:** not started
+**Status:** completed
 **Depends on:** Phase 14
 
 **Scope:**
