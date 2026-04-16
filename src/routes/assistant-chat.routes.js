@@ -79,14 +79,14 @@ function createChatRouter(core) {
     let referencedFiles = [];
     const lastUserMessage = normalizedMessages.filter((m) => m?.role === 'user').at(-1)?.content || '';
     try {
-      const context = await meshTunnelRequest('chat', { model, messages: normalizedMessages });
+      const context = await meshTunnelRequest('chat', { model, messages: normalizedMessages }, req.requestId);
       referencedFiles = Array.isArray(context?.referencedFiles) ? context.referencedFiles : [];
     } catch {
       referencedFiles = await localResolveReferencedFiles(lastUserMessage);
     }
 
     if (referencedFiles.length === 0) {
-      const inferred = await inferReferencedFilesFromWorkspace(lastUserMessage);
+      const inferred = await inferReferencedFilesFromWorkspace(lastUserMessage, req.requestId);
       if (inferred.length > 0) referencedFiles = inferred;
     }
 
@@ -316,14 +316,14 @@ function createChatRouter(core) {
       let referencedFiles = [];
       const lastUserMessage = normalizedMessages.filter((m) => m?.role === 'user').at(-1)?.content || '';
       try {
-        const context = await meshTunnelRequest('chat', { model, messages: normalizedMessages });
+        const context = await meshTunnelRequest('chat', { model, messages: normalizedMessages }, req.requestId);
         referencedFiles = Array.isArray(context?.referencedFiles) ? context.referencedFiles : [];
       } catch {
         referencedFiles = await localResolveReferencedFiles(lastUserMessage);
       }
 
       if (referencedFiles.length === 0) {
-        const inferred = await inferReferencedFilesFromWorkspace(lastUserMessage);
+        const inferred = await inferReferencedFilesFromWorkspace(lastUserMessage, req.requestId);
         if (inferred.length > 0) referencedFiles = inferred;
       }
 

@@ -7,8 +7,8 @@ tags: [development]
 ## npm Scripts (Root Package)
 
 ```bash
-npm start              # Start the gateway: node server.js
-npm run monitor        # Launch ccmon dashboard: node ccmon.js
+npm start              # Start the gateway: node --env-file .env src/server.js
+npm run monitor:web    # Launch ccmon dashboard: node ccmon-server.js
 npm run bench:compression  # Run compression benchmark
 npm test               # Run all tests: node --test
 npm run lint           # Lint all JS: eslint .
@@ -31,9 +31,9 @@ node mesh-core/src/server.js
 
 ### Watch ccmon (Claude Code cost monitor)
 ```bash
-npm run monitor
+npm run monitor:web
 # or
-node ccmon.js
+node ccmon-server.js
 ```
 
 ## Syntax Checks (Pre-Deploy)
@@ -66,23 +66,7 @@ node benchmarks/compression-benchmark.js
 
 ## Deploy Commands
 
-See [[Operations/Deploy Runbook]] for full deploy commands.
-
-Quick reference:
-
-```bash
-# Deploy gateway
-zip -rq -0 /tmp/mesh-gateway-deploy.zip . \
-  -x "node_modules/*" "mesh-core/node_modules/*" ".mesh*" "*.DS_Store"
-az webapp deploy -g mesh-rg -n mesh-gateway-303137 \
-  --src-path /tmp/mesh-gateway-deploy.zip --type zip --clean false --restart true
-
-# Restart gateway
-az webapp restart -g mesh-rg -n mesh-gateway-303137
-
-# Check app settings
-az webapp config appsettings list -g mesh-rg -n mesh-gateway-303137 -o table
-```
+See [[Operations/Deploy Runbook]] for full deploy commands (EC2 Rsync approach).
 
 ## LLM Compression CLI (`llm-compress.js`)
 

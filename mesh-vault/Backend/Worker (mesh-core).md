@@ -14,7 +14,8 @@ The worker is the main execution engine for workspace operations. It lives entir
 
 | File | Purpose |
 |------|---------|
-| `mesh-core/src/server.js` | Slim Express server, middleware, route mounting, listen |
+| `mesh-core/src/server.js` | Slim Express server, Auth validation, trace extraction, and route dispatch |
+| `mesh-core/src/logger.js` | Structured JSON Logger, supporting distributed trace correlation via `requestId` |
 | `mesh-core/src/mesh-state.js` | Shared mutable workspace state, constants, promisified utils |
 | `mesh-core/src/workspace-helpers.js` | ~50 helpers: state I/O, blob ops, git utils, indexing pipeline |
 | `mesh-core/src/workspace-operations.js` | ~31 high-level async operations |
@@ -26,9 +27,10 @@ The worker is the main execution engine for workspace operations. It lives entir
 
 ## Tunnel Endpoint
 
-The worker exposes a single `/mesh/tunnel` endpoint.
+The worker exposes a single `/mesh/tunnel` endpoint, which is protected via the `x-mesh-worker-secret` header.
+Authentication is validated against the `MESH_WORKER_SECRET` environment variable or bypassed if the gateway uses local fallback logic.
 
-The gateway calls `meshTunnelRequest(action, payload)` which dispatches here.
+The gateway calls `meshTunnelRequest(action, payload, requestId)` which dispatches here and propagates tracing.
 
 ### Supported Actions
 

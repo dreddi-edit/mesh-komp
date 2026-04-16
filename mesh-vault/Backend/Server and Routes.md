@@ -31,10 +31,12 @@ src/server.js       ← main Express/http server
 |------|--------|---------|
 | `src/routes/auth.routes.js` | `/api/auth` | Login, session, logout, revoke |
 | `src/routes/app.routes.js` | `/api/app`, `/api/user`, `/api/docs`, `/api/byok` | User store, billing, operations, logs, repo-docs, BYOK |
-| `src/routes/assistant.routes.js` | `/api/assistant` | Workspace, context, graph, sync, file ops |
+| `src/routes/assistant.routes.js` | `/api/assistant` | Core assistant routing |
+| `src/routes/assistant-workspace.routes.js` | `/api/assistant` | Workspace, context, graph, sync, file ops (extracted from assistant.routes.js) |
 | `src/routes/assistant-chat.routes.js` | `/api/assistant` | Chat and run endpoints (extracted from assistant.routes.js) |
 | `src/routes/assistant-git.routes.js` | `/api/assistant` | Git endpoints: status, diff, commit, push, pull (extracted from assistant.routes.js) |
 | `src/routes/realtime.routes.js` | `/api/realtime` | Voice WebSocket session |
+| `src/routes/terminal.routes.js` | `/api/terminal` | Local terminal session routing |
 
 ## Key API Endpoints
 
@@ -97,7 +99,8 @@ All security middleware runs before routes in `src/server.js`:
 
 | Middleware | Purpose |
 |-----------|---------|
-| Request ID | UUID per request for log correlation (`req.requestId`) |
+| Request ID | UUID per request for log correlation (`req.requestId`). Propagates to Worker via `X-Request-ID`. |
+| Zod Validation | Validates API request payloads against rigorous schemas (`src/schemas/index.js`) to prevent malformed data. |
 | Security headers | CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` |
 | CSRF guard | Rejects cross-origin `POST/PUT/PATCH/DELETE` via Origin/Referer check |
 | Rate limiter | `src/middleware/rate-limiter.js` — applied to auth and public endpoints |

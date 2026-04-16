@@ -55,7 +55,7 @@ function createWorkspaceRouter(core) {
 
   router.get('/api/assistant/status', requireAuth, async (_req, res) => {
     try {
-      const result = await meshTunnelRequest('status', {});
+      const result = await meshTunnelRequest('status', {}, req.requestId);
       res.json(result);
     } catch (error) {
       res.json({
@@ -99,7 +99,7 @@ function createWorkspaceRouter(core) {
         res.status(202).json(buildWorkspaceSelectAcceptedResponse(queuedJob));
         return;
       }
-      const result = await executeWorkspaceSelectWithFallback(selectPayload);
+      const result = await executeWorkspaceSelectWithFallback(selectPayload, req.requestId);
       res.json(result);
     } catch (error) {
       const isQueueFull = String(error?.message || '').toLowerCase().includes('queue is full');
@@ -118,6 +118,7 @@ function createWorkspaceRouter(core) {
     try {
       const result = await openLocalWorkspaceWithFallback(String(req.body?.rootPath || ''), {
         folderName: String(req.body?.folderName || ''),
+        requestId: req.requestId,
       });
       res.json(result);
     } catch (error) {
@@ -142,7 +143,7 @@ function createWorkspaceRouter(core) {
       folderName: String(req.query.folderName || '').trim(),
     };
     try {
-      const result = await meshTunnelRequest('workspace.files', payload);
+      const result = await meshTunnelRequest('workspace.files', payload, req.requestId);
       res.json(result);
     } catch (error) {
       const local = await localWorkspaceFiles(payload);
@@ -180,7 +181,7 @@ function createWorkspaceRouter(core) {
     }
 
     try {
-      const result = await meshTunnelRequest('workspace.graph', payload);
+      const result = await meshTunnelRequest('workspace.graph', payload, req.requestId);
       if (hasLocalWorkspace) {
         const local = await localWorkspaceGraph(payload);
         const remoteNodeCount = Array.isArray(result?.nodes) ? result.nodes.length : 0;
@@ -215,6 +216,7 @@ function createWorkspaceRouter(core) {
         tier: String(req.query.tier || req.query.capsuleTier || req.query.variant || '').trim(),
         query: String(req.query.q || req.query.query || req.query.focus || ''),
         focus: String(req.query.focus || req.query.q || req.query.query || ''),
+        requestId: req.requestId,
       });
       res.json(result);
     } catch (error) {
@@ -230,6 +232,7 @@ function createWorkspaceRouter(core) {
       const result = await syncWorkspaceFiles({
         workspaceId, folderName, files, deletedPaths, append, mode, scanEpoch, complete,
         userId: req.authUser?.id || '',
+        requestId: req.requestId,
       });
       res.json(result);
     } catch (error) {
@@ -254,10 +257,9 @@ function createWorkspaceRouter(core) {
 
   router.post('/api/assistant/workspace/recovery', requireAuth, async (req, res) => {
     try {
-      const result = await recoverWorkspaceWithFallback(String(req.body?.path || ''), {
-        query: req.body?.query || req.body?.q,
         spanIds: Array.isArray(req.body?.spanIds) ? req.body.spanIds : [],
         ranges: Array.isArray(req.body?.ranges) ? req.body.ranges : [],
+        requestId: req.requestId,
       });
       res.json(result);
     } catch (error) {
@@ -273,7 +275,7 @@ function createWorkspaceRouter(core) {
     const sessionId = String(req.body?.sessionId || '').trim();
 
     try {
-      const result = await meshTunnelRequest('workspace.file.create', { path: filePath, content, overwrite, workspaceId, sessionId });
+      const result = await meshTunnelRequest('workspace.file.create', { path: filePath, content, overwrite, workspaceId, sessionId }, req.requestId);
       res.json(result);
     } catch (error) {
       const shouldUseLocalFallback = isMeshWorkerUnavailableError(error) || isLocalPathWorkspaceState();
@@ -297,7 +299,7 @@ function createWorkspaceRouter(core) {
     const sessionId = String(req.body?.sessionId || '').trim();
 
     try {
-      const result = await meshTunnelRequest('workspace.file.save', { path: filePath, content, workspaceId, sessionId });
+      const result = await meshTunnelRequest('workspace.file.save', { path: filePath, content, workspaceId, sessionId }, req.requestId);
       res.json(result);
     } catch (error) {
       const shouldUseLocalFallback = isMeshWorkerUnavailableError(error) || isLocalPathWorkspaceState();
@@ -315,11 +317,10 @@ function createWorkspaceRouter(core) {
   });
 
   router.post('/api/assistant/workspace/purge', requireAuth, async (req, res) => {
-    try {
       const result = await meshTunnelRequest('workspace.purge', {
         workspaceId: String(req.body.workspaceId || '').trim(),
         sessionId: String(req.body.sessionId || '').trim(),
-      });
+      }, req.requestId);
       res.json(result);
     } catch (error) {
       safeRouteError(res, 400, 'Purge failed', error);
@@ -328,9 +329,9 @@ function createWorkspaceRouter(core) {
 
   router.delete('/api/assistant/workspace/file', requireAuth, async (req, res) => {
     try {
-      const result = await deleteWorkspaceFileWithFallback(String(req.query.path || ''), {
         workspaceId: String(req.query.workspaceId || '').trim(),
         sessionId: String(req.query.sessionId || '').trim(),
+        requestId: req.requestId,
       });
       res.json(result);
     } catch (error) {
@@ -340,9 +341,9 @@ function createWorkspaceRouter(core) {
 
   router.get('/api/assistant/workspace/search', requireAuth, async (req, res) => {
     try {
-      const result = await searchWorkspaceWithFallback(String(req.query.q || ''), {
         scope: String(req.query.scope || 'all'),
         limit: Math.min(Number(req.query.limit) || 12, 200),
+        requestId: req.requestId,
       });
       res.json(result);
     } catch (error) {
@@ -352,10 +353,9 @@ function createWorkspaceRouter(core) {
 
   router.post('/api/assistant/workspace/grep', requireAuth, async (req, res) => {
     try {
-      const result = await grepWorkspaceWithFallback(String(req.body?.q || req.body?.query || ''), {
-        scope: String(req.body?.scope || 'all'),
         limit: Math.min(Number(req.body?.limit) || 40, 500),
         caseSensitive: req.body?.caseSensitive === true,
+        requestId: req.requestId,
       });
       if (result.ok === false) {
         res.status(400).json(result);
@@ -376,6 +376,7 @@ function createWorkspaceRouter(core) {
           overwrite: Boolean(req.body?.overwrite),
           workspaceId: String(req.body?.workspaceId || '').trim(),
           sessionId: String(req.body?.sessionId || '').trim(),
+          requestId: req.requestId,
         },
       );
       res.json(result);
@@ -388,6 +389,7 @@ function createWorkspaceRouter(core) {
     try {
       const result = await applyWorkspaceBatchWithFallback(req.body?.operations || [], {
         stopOnError: req.body?.stopOnError !== false,
+        requestId: req.requestId,
       });
       if (result.ok === false) {
         res.status(400).json(result);
@@ -402,7 +404,7 @@ function createWorkspaceRouter(core) {
   router.post('/api/assistant/workspace/reindex', requireAuth, async (req, res) => {
     try {
       const { files } = req.body || {};
-      const result = await meshTunnelRequest('reindex', { files });
+      const result = await meshTunnelRequest('reindex', { files }, req.requestId);
       res.json({ ok: true, ...result });
     } catch (error) {
       if (localAssistantWorkspace.rootPath) {

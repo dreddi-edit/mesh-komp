@@ -54,8 +54,10 @@ What compresses, indexes, recovers, and reasons over files.
 
 ```
 Browser
-  └─► Gateway (/api/assistant/*)
-        └─► meshTunnelRequest → Worker (/mesh/tunnel)
+  ├─► Request Validation Middleware (Zod)
+  └─► Gateway (/api/assistant/*)  [RequestId Generated]
+        └─► meshTunnelRequest [header: x-mesh-worker-secret] → Worker (/mesh/tunnel)
+              ├─► Structured JSON Logger [Cross-Service Tracing]
               └─► workspace-operations.js
                     ├─► workspace-helpers.js
                     └─► compression-core.cjs

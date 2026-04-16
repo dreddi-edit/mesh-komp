@@ -22,12 +22,13 @@ const TERMINAL_UPLOAD_ROOT = config.MESH_TERMINAL_UPLOAD_ROOT
 /**
  * Strips sensitive environment variables before passing process.env to a spawned shell.
  * Preserves PATH, HOME, TERM and other runtime necessities.
- * NOTE: _KEY / _SECRET / _PASSWORD / _TOKEN / _CREDENTIAL patterns are blocked.
+ * Blocklist includes common secret identifiers (KEY, SECRET, TOKEN, etc) as well as
+ * cloud provider prefixes (AWS, GOOGLE, AZURE).
  *
  * @param {NodeJS.ProcessEnv} env
  * @returns {Record<string, string>}
  */
-const SENSITIVE_ENV_PATTERN = /(_KEY|_SECRET|_PASSWORD|_TOKEN|_CREDENTIAL|_PRIVATE)$/i;
+const SENSITIVE_ENV_PATTERN = /(KEY|SECRET|PASSWORD|TOKEN|CREDENTIAL|PRIVATE|AUTH|JWT|CERT|SIG|SIGNATURE|AKIA|ASIA|ASCA|APKA|BEDROCK|ANTHROPIC|OPENAI|GEMINI)/i;
 
 function sanitizeEnvForShell(env) {
   return Object.fromEntries(

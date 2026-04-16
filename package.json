@@ -4,7 +4,6 @@
   "main": "server.js",
   "scripts": {
     "start": "node --env-file .env src/server.js",
-    "monitor": "node ccmon.js",
     "monitor:web": "node --env-file .env ccmon-server.js",
     "bench:compression": "node benchmarks/compression-benchmark.js",
     "bench:compression:save": "node benchmarks/compression-benchmark.js --save",
@@ -56,7 +55,8 @@
     "tree-sitter-python": "^0.21.0",
     "tree-sitter-typescript": "^0.21.2",
     "ws": "^8.20.0",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

@@ -27,6 +27,13 @@ const { createChatRouter } = require('./assistant-chat.routes');
 /** Allowlist pattern for Open VSX publisher/extension identifiers and semver-like versions. */
 const EXT_IDENTIFIER_RE = /^[a-zA-Z0-9_.-]+$/;
 
+const { validate } = require('../middleware/validate');
+const {
+  assistantRunSchema,
+  terminalSessionSchema,
+  terminalInputSchema,
+} = require('../schemas');
+
 /**
  * @param {object} core  All exports from src/core/index.js
  * @returns {import('express').Router}
@@ -55,9 +62,9 @@ function createAssistantRouter(core) {
 
   // ── Terminal session REST API ──────────────────────────────────────────────
 
-  router.post('/api/assistant/terminal/session', requireAuth, (req, res) => {
+  router.post('/api/assistant/terminal/session', requireAuth, validate(terminalSessionSchema), (req, res) => {
     try {
-      const created = createAssistantTerminalSession({ shell: req.body?.shell });
+      const created = createAssistantTerminalSession({ shell: req.body.shell });
       res.status(201).json(created);
     } catch (error) {
       safeRouteError(res, 400, 'Terminal session failed', error);
@@ -73,9 +80,9 @@ function createAssistantRouter(core) {
     }
   });
 
-  router.post('/api/assistant/terminal/session/:id/input', requireAuth, (req, res) => {
+  router.post('/api/assistant/terminal/session/:id/input', requireAuth, validate(terminalInputSchema), (req, res) => {
     try {
-      const payload = writeAssistantTerminalInput(req.params.id, req.body?.input);
+      const payload = writeAssistantTerminalInput(req.params.id, req.body.input);
       res.json(payload);
     } catch (error) {
       safeRouteError(res, 400, 'Terminal input failed', error);
@@ -93,23 +100,12 @@ function createAssistantRouter(core) {
 
   // ── Assistant runs ─────────────────────────────────────────────────────────
 
-  router.post('/api/assistant/runs', requireAuth, async (req, res) => {
+  router.post('/api/assistant/runs', requireAuth, validate(assistantRunSchema), async (req, res) => {
     const storedCredentials = await getStoredCredentialsForUser(req.authUser?.id);
     const resolvedCredentials = mergeChatCredentials(storedCredentials);
 
     try {
-      const run = await createAssistantRun({
-        model: String(req.body?.model || 'claude-sonnet-4-6'),
-        mode: req.body?.mode,
-        autonomyMode: req.body?.autonomyMode,
-        prompt: req.body?.prompt,
-        workspaceFolderName: req.body?.workspaceFolderName,
-        activeFilePath: req.body?.activeFilePath,
-        selectedPaths: Array.isArray(req.body?.selectedPaths) ? req.body.selectedPaths : [],
-        terminalSessionId: req.body?.terminalSessionId,
-        opsSelection: req.body?.opsSelection || {},
-        chatSessionId: req.body?.chatSessionId,
-      }, resolvedCredentials);
+      const run = await createAssistantRun({ ...req.body, requestId: req.requestId }, resolvedCredentials);
 
       res.status(201).json({
         ok: true,
@@ -150,7 +146,7 @@ function createAssistantRouter(core) {
     const resolvedCredentials = mergeChatCredentials(storedCredentials);
 
     try {
-      await applyAssistantRunDecision(run, action, req.body?.decision || req.body?.action, resolvedCredentials);
+      await applyAssistantRunDecision(run, action, req.body?.decision || req.body?.action, { ...resolvedCredentials, requestId: req.requestId });
       res.json({
         ok: true,
         run: assistantRunSnapshot(run),

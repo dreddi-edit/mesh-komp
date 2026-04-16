@@ -19,3 +19,7 @@ mesh-secure-v2.db
 # Workspace
 .idea/
 .vscode/
+.env
+.planning/
+.superpowers/
+.playwright-mcp/

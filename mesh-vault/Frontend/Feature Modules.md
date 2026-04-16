@@ -27,6 +27,7 @@ All feature modules live in `assets/features/`. They are loaded by `views/app.ht
 | `checkpoints.js` | Checkpointing around edits and agent operations |
 | `reindex-on-save.js` | Single-file reindex hooks after file saves |
 | `diff-editor.js` | Monaco diff editor tab/view support |
+| `git-panel.js` | Git sidebar panel with tree and commit controls |
 | `split-editor.js` | Split-editor support for multiple panes |
 | `capsule-viewer.js` | Visualizer for compressed/capsule file representations |
 | `capsula-status.js` | Status display around capsule/compression state |

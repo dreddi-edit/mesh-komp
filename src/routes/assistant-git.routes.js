@@ -35,7 +35,7 @@ function createGitRouter(core) {
 
   router.get('/api/assistant/git/status', requireAuth, async (_req, res) => {
     try {
-      const result = await runGitWithFallback('git.status', {}, () => localGitStatus());
+      const result = await runGitWithFallback('git.status', { requestId: req.requestId }, () => localGitStatus());
       res.json(result);
     } catch (error) {
       safeRouteError(res, 400, 'Git status failed', error);
@@ -44,7 +44,7 @@ function createGitRouter(core) {
 
   router.get('/api/assistant/git/branches', requireAuth, async (_req, res) => {
     try {
-      const result = await runGitWithFallback('git.branches', {}, async () => {
+      const result = await runGitWithFallback('git.branches', { requestId: req.requestId }, async () => {
         const raw = (await runLocalGit(['branch', '-a', '--format=%(refname:short)\t%(HEAD)'])).stdout;
         const branches = [];
         let current = '';
@@ -76,7 +76,7 @@ function createGitRouter(core) {
         res.status(400).json({ ok: false, error: 'Branch name required' });
         return;
       }
-      const result = await runGitWithFallback('git.checkout', { branch }, async () => {
+      const result = await runGitWithFallback('git.checkout', { branch, requestId: req.requestId }, async () => {
         await runLocalGit(['checkout', branch]);
         return { ok: true, branch };
       });
@@ -89,7 +89,7 @@ function createGitRouter(core) {
   router.post('/api/assistant/git/stage', requireAuth, async (req, res) => {
     try {
       const files = Array.isArray(req.body?.files) ? req.body.files : [];
-      const result = await runGitWithFallback('git.stage', { files }, async () => {
+      const result = await runGitWithFallback('git.stage', { files, requestId: req.requestId }, async () => {
         const normalized = files.length ? files.map((f) => gitPathFromWorkspacePath(f)).filter(Boolean) : ['.'];
         await runLocalGit(['add', ...normalized]);
         return { ok: true };
@@ -103,7 +103,7 @@ function createGitRouter(core) {
   router.post('/api/assistant/git/unstage', requireAuth, async (req, res) => {
     try {
       const files = Array.isArray(req.body?.files) ? req.body.files : [];
-      const result = await runGitWithFallback('git.unstage', { files }, async () => {
+      const result = await runGitWithFallback('git.unstage', { files, requestId: req.requestId }, async () => {
         const normalized = files.length ? files.map((f) => gitPathFromWorkspacePath(f)).filter(Boolean) : ['.'];
         await runLocalGit(['reset', 'HEAD', '--', ...normalized]);
         return { ok: true };
@@ -122,7 +122,7 @@ function createGitRouter(core) {
         res.status(400).json({ ok: false, error: 'Commit message required' });
         return;
       }
-      const result = await runGitWithFallback('git.commit', { message, files }, async () => {
+      const result = await runGitWithFallback('git.commit', { message, files, requestId: req.requestId }, async () => {
         if (files.length) {
           const normalized = files.map((f) => gitPathFromWorkspacePath(f)).filter(Boolean);
           if (normalized.length) await runLocalGit(['add', ...normalized]);
@@ -138,7 +138,7 @@ function createGitRouter(core) {
 
   router.post('/api/assistant/git/push', requireAuth, async (_req, res) => {
     try {
-      const result = await runGitWithFallback('git.push', {}, async () => {
+      const result = await runGitWithFallback('git.push', { requestId: req.requestId }, async () => {
         const pushed = await runLocalGit(['push']);
         return { ok: true, output: pushed.stdout || pushed.stderr };
       });
@@ -150,7 +150,7 @@ function createGitRouter(core) {
 
   router.post('/api/assistant/git/pull', requireAuth, async (_req, res) => {
     try {
-      const result = await runGitWithFallback('git.pull', {}, async () => {
+      const result = await runGitWithFallback('git.pull', { requestId: req.requestId }, async () => {
         const pulled = await runLocalGit(['pull']);
         return { ok: true, output: pulled.stdout || pulled.stderr };
       });
@@ -163,7 +163,7 @@ function createGitRouter(core) {
   router.get('/api/assistant/git/diff', requireAuth, async (req, res) => {
     try {
       const filePath = String(req.query.path || '');
-      const result = await runGitWithFallback('git.diff', { path: filePath }, async () => {
+      const result = await runGitWithFallback('git.diff', { path: filePath, requestId: req.requestId }, async () => {
         const normalized = gitPathFromWorkspacePath(filePath);
         const diffArgs = ['diff'];
         const stagedArgs = ['diff', '--cached'];
@@ -202,7 +202,7 @@ function createGitRouter(core) {
   router.get('/api/assistant/git/log', requireAuth, async (req, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
-      const result = await runGitWithFallback('git.log', { limit }, async () => {
+      const result = await runGitWithFallback('git.log', { limit, requestId: req.requestId }, async () => {
         const raw = await runLocalGit(['log', `--max-count=${limit}`, '--format=%H\t%an\t%ae\t%aI\t%s']);
         const commits = (raw.stdout ? raw.stdout.split('\n') : []).filter(Boolean).map((line) => {
           const [hash, author, email, date, ...messageParts] = line.split('\t');
@@ -220,7 +220,7 @@ function createGitRouter(core) {
     try {
       const action = String(req.body?.action || 'push').trim().toLowerCase();
       const message = String(req.body?.message || 'Mesh stash');
-      const result = await runGitWithFallback('git.stash', { action, message }, async () => {
+      const result = await runGitWithFallback('git.stash', { action, message, requestId: req.requestId }, async () => {
         if (action === 'list') {
           const listed = await runLocalGit(['stash', 'list']);
           return { ok: true, stashes: listed.stdout ? listed.stdout.split('\n') : [] };
@@ -250,7 +250,7 @@ function createGitRouter(core) {
         res.status(400).json({ ok: false, error: 'Invalid repository URL. Must use https, git, or ssh protocol.' });
         return;
       }
-      const result = await runGitWithFallback('git.clone', { url, path: targetPath }, async () => {
+      const result = await runGitWithFallback('git.clone', { url, path: targetPath, requestId: req.requestId }, async () => {
         if (!targetPath && !isLocalPathWorkspaceState()) {
           return { ok: false, error: 'Target path required when no local workspace root is configured.' };
         }
@@ -279,7 +279,7 @@ function createGitRouter(core) {
 
   router.post('/api/assistant/git/init', requireAuth, async (_req, res) => {
     try {
-      const result = await runGitWithFallback('git.init', {}, async () => {
+      const result = await runGitWithFallback('git.init', { requestId: req.requestId }, async () => {
         const initialized = await runLocalGit(['init']);
         return { ok: true, output: initialized.stdout || initialized.stderr };
       });
@@ -297,7 +297,7 @@ function createGitRouter(core) {
         res.status(400).json({ ok: false, error: 'Branch name required' });
         return;
       }
-      const result = await runGitWithFallback('git.create-branch', { name, startPoint }, async () => {
+      const result = await runGitWithFallback('git.create-branch', { name, startPoint, requestId: req.requestId }, async () => {
         const args = ['checkout', '-b', name];
         if (startPoint) args.push(startPoint);
         await runLocalGit(args);
@@ -316,7 +316,7 @@ function createGitRouter(core) {
         res.status(400).json({ ok: false, error: 'Branch name required' });
         return;
       }
-      const result = await runGitWithFallback('git.delete-branch', { name }, async () => {
+      const result = await runGitWithFallback('git.delete-branch', { name, requestId: req.requestId }, async () => {
         await runLocalGit(['branch', '-d', name]);
         return { ok: true };
       });

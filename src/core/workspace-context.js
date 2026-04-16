@@ -99,7 +99,7 @@ async function openWorkspaceFileWithFallback(pathInput, viewMode = "original", v
       tier: String(viewOptions.tier || viewOptions.capsuleTier || viewOptions.variant || "").trim(),
       query: String(viewOptions.query || viewOptions.focus || "").trim(),
       focus: String(viewOptions.focus || viewOptions.query || "").trim(),
-    });
+    }, viewOptions.requestId);
     if (!result?.ok) {
       throw new Error(result?.error || "Workspace file open failed");
     }
@@ -129,7 +129,7 @@ async function recoverWorkspaceWithFallback(pathInput, request = {}) {
   };
 
   try {
-    const result = await meshTunnelRequest("workspace.recovery.fetch", payload);
+    const result = await meshTunnelRequest("workspace.recovery.fetch", payload, request.requestId);
     if (!result?.ok) throw new Error(result?.error || "Workspace recovery failed");
     return result;
   } catch (error) {
@@ -182,7 +182,7 @@ async function searchWorkspaceWithFallback(query, options = {}) {
   };
 
   try {
-    const result = await meshTunnelRequest("workspace.search", payload);
+    const result = await meshTunnelRequest("workspace.search", payload, options.requestId);
     if (!result?.ok) throw new Error(result?.error || "Workspace search failed");
     return result;
   } catch (error) {
@@ -206,7 +206,7 @@ async function grepWorkspaceWithFallback(query, options = {}) {
   };
 
   try {
-    const result = await meshTunnelRequest("workspace.grep", payload);
+    const result = await meshTunnelRequest("workspace.grep", payload, options.requestId);
     if (!result?.ok) throw new Error(result?.error || "Workspace grep failed");
     return result;
   } catch (error) {
@@ -231,7 +231,7 @@ async function renameWorkspaceFileWithFallback(fromPath, toPath, options = {}) {
   };
 
   try {
-    const result = await meshTunnelRequest("workspace.file.rename", payload);
+    const result = await meshTunnelRequest("workspace.file.rename", payload, options.requestId);
     if (!result?.ok) throw new Error(result?.error || "Workspace rename failed");
     return result;
   } catch (error) {
@@ -254,7 +254,7 @@ async function deleteWorkspaceFileWithFallback(pathInput, options = {}) {
   };
 
   try {
-    const result = await meshTunnelRequest("workspace.file.delete", payload);
+    const result = await meshTunnelRequest("workspace.file.delete", payload, options.requestId);
     if (!result?.ok) throw new Error(result?.error || "Workspace delete failed");
     return result;
   } catch (error) {
@@ -276,7 +276,7 @@ async function applyWorkspaceBatchWithFallback(operations, options = {}) {
   };
 
   try {
-    const result = await meshTunnelRequest("workspace.batch", payload);
+    const result = await meshTunnelRequest("workspace.batch", payload, options.requestId);
     if (!result?.ok) throw new Error(result?.error || "Workspace batch failed");
     return result;
   } catch (error) {
@@ -298,7 +298,7 @@ async function openLocalWorkspaceWithFallback(rootPath, options = {}) {
   };
 
   try {
-    const result = await meshTunnelRequest("workspace.open-local", payload);
+    const result = await meshTunnelRequest("workspace.open-local", payload, options.requestId);
     if (!result?.ok) throw new Error(result?.error || "Open local workspace failed");
     return result;
   } catch (error) {
@@ -314,7 +314,7 @@ async function openLocalWorkspaceWithFallback(rootPath, options = {}) {
 
 async function runGitWithFallback(action, data, fallback) {
   try {
-    const result = await meshTunnelRequest(action, data || {});
+    const result = await meshTunnelRequest(action, data || {}, data?.requestId);
     if (!result?.ok) throw new Error(result?.error || "Git request failed");
     return result;
   } catch (error) {

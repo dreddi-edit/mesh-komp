@@ -40,6 +40,7 @@ function createAssistantRunRecord(input = {}, planMeta = {}) {
     id: `run-${Date.now()}-${crypto.randomUUID()}`,
     createdAt: now,
     updatedAt: now,
+    requestId: String(input.requestId || ""),
     status: "queued",
     title: prompt.slice(0, 90) || "Assistant run",
     prompt,
@@ -185,16 +186,17 @@ function buildOpsContextSnippet(selection = {}) {
   return lines.join("\n");
 }
 
-async function resolveAssistantCandidatePaths(prompt, activeFilePath = "", selectedPaths = []) {
+async function resolveAssistantCandidatePaths(prompt, activeFilePath = "", selectedPaths = [], requestId = "") {
   const explicit = extractExplicitPathReferences(prompt);
-  const inferred = await inferReferencedFilesFromWorkspace(prompt);
+  const inferred = await inferReferencedFilesFromWorkspace(prompt, requestId);
   return dedupePaths([...explicit, activeFilePath, ...(Array.isArray(selectedPaths) ? selectedPaths : []), ...inferred]);
 }
 
 async function buildHeuristicAssistantRunPlan(input = {}) {
   const prompt = String(input.prompt || "").trim();
   const mode = normalizeRunMode(input.mode, "ask");
-  const candidatePaths = await resolveAssistantCandidatePaths(prompt, input.activeFilePath, input.selectedPaths);
+  const requestId = String(input.requestId || "");
+  const candidatePaths = await resolveAssistantCandidatePaths(prompt, input.activeFilePath, input.selectedPaths, requestId);
   const primaryPath = candidatePaths[0] || "";
   const editPaths = candidatePaths.slice(0, mode === "agent" ? 3 : 2);
   const actions = [];
@@ -809,7 +811,7 @@ async function executeAssistantRunAction(run, action, credentials = {}) {
 
   try {
     if (action.type === "search_workspace") {
-      const result = await searchWorkspaceWithFallback(action.payload.q, action.payload);
+      const result = await searchWorkspaceWithFallback(action.payload.q, { ...action.payload, requestId: run.requestId });
       action.result = result;
       run.artifacts.lastSearch = cloneJsonValue(result);
       run.artifacts.referencedFiles = Array.isArray(result?.matches) ? result.matches.map((entry) => entry.path) : [];
@@ -818,7 +820,7 @@ async function executeAssistantRunAction(run, action, credentials = {}) {
     }
 
     if (action.type === "read_file" || action.type === "open_file") {
-      const opened = await openWorkspaceFileWithFallback(action.payload.path, "original");
+      const opened = await openWorkspaceFileWithFallback(action.payload.path, "original", { requestId: run.requestId });
       action.result = {
         path: opened.path,
         excerpt: String(opened.content || "").slice(0, 12000),
@@ -832,6 +834,7 @@ async function executeAssistantRunAction(run, action, credentials = {}) {
     if (action.type === "read_capsule") {
       const opened = await openWorkspaceFileWithFallback(action.payload.path, action.payload.query ? "focused" : "capsule", {
         query: action.payload.query || run.prompt,
+        requestId: run.requestId,
       });
       action.result = {
         path: opened.path,
@@ -1014,8 +1017,9 @@ async function continueAssistantRun(run, credentials = {}) {
 }
 
 async function createAssistantRun(input = {}, credentials = {}) {
-  const planMeta = await planAssistantRun({ ...input, credentials });
-  const run = createAssistantRunRecord(input, planMeta);
+  const requestId = String(input.requestId || credentials.requestId || "");
+  const planMeta = await planAssistantRun({ ...input, credentials, requestId });
+  const run = createAssistantRunRecord({ ...input, requestId }, planMeta);
   assistantRuns.set(run.id, run);
 
   if (!run.actions.length) {

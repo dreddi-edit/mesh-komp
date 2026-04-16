@@ -4,28 +4,24 @@ tags: [development]
 
 # ccmon Dashboard
 
-A standalone monitoring suite for Claude Code API usage, costs, and session activity. Two complementary surfaces share the same core modules:
+A standalone monitoring suite for Claude Code API usage, costs, and session activity.
 
 | Surface | Entry Point | Interface |
 |---------|-------------|-----------|
-| Terminal TUI | `node ccmon.js` / `npm run monitor` | Full-screen neo-blessed dashboard |
 | Web dashboard | `node ccmon-server.js` + `ccmon-web/` | Browser React app at `localhost:3030` |
 
-Both read the same JSONL log files from `~/.claude/projects/` — no coupling to the mesh-komp gateway at runtime.
+Reads JSONL log files from `~/.claude/projects/` — no coupling to the mesh-komp gateway at runtime.
 
 ## File Map
 
 | File | Purpose |
 |------|---------|
-| `ccmon.js` | Terminal TUI entry point — screen setup, keyboard shortcuts, wires all modules |
 | `ccmon-server.js` | Express server (port 3030) exposing REST + SSE endpoints for the web dashboard |
 | `ccmon/pricing.js` | Per-model pricing constants and `calculateCost()` / `getContextLimit()` |
 | `ccmon/parser.js` | Parses JSONL session lines into normalized event objects |
 | `ccmon/state.js` | Immutable session state + `applyEvent()` accumulator |
 | `ccmon/history.js` | Loads all historical JSONL files, aggregates per-date stats |
-| `ccmon/render.js` | Pure functions producing neo-blessed panel content |
 | `ccmon/watcher.js` | Watches `~/.claude/projects/` for file changes |
-| `ccmon/layout.js` | Creates all neo-blessed dashboard boxes |
 
 ## ccmon-server.js — Web API Layer
 
@@ -58,44 +54,6 @@ cd ccmon-web && npm run build               # production build
 
 The app connects to `ccmon-server.js` at `http://localhost:3030`.
 
-## Dashboard Layout
-
-Full-screen terminal UI (neo-blessed):
-
-```
-┌─ titlebar ─────────────────────────────────────────┐
-│ Metric   Metric   Metric   Metric   Metric   Metric │
-│ Box      Box      Box      Box      Box      Box    │
-├─ context bar ───────────────────────────────────────┤
-│                                                     │
-│  middle row (current session stats)                 │
-│                                                     │
-├─ accumulated panel ─────────────────────────────────┤
-│                                                     │
-│  live feed (recent events)                          │
-│                                                     │
-├─ footer ────────────────────────────────────────────┘
-```
-
-Panels:
-- Sparklines (token rate over time)
-- Context bar (% of context window used)
-- Token breakdown (input/output/cache)
-- Performance (speed, latency)
-- Daily chart (cost by day)
-- Accumulated stats (daily/weekly/monthly/all-time)
-- Live feed (recent API calls)
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `q` | Quit |
-| `r` | Refresh/redraw |
-| `h` | Toggle historical view |
-| `c` | Clear screen |
-| `?` | Help |
-
 ## Data Sources
 
 - `~/.claude/projects/**/*.jsonl` — Claude Code session logs
@@ -117,10 +75,8 @@ Panels:
 
 ## Test Files
 
-```
 test/ccmon/parser.test.js
 test/ccmon/history.test.js
 test/ccmon/pricing.test.js
-test/ccmon/render.test.js
 test/ccmon/state.test.js
 ```

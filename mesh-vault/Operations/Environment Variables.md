@@ -15,6 +15,7 @@ All variables organized by component. Production env file: `/home/ec2-user/app/.
 | `NODE_ENV` | **Yes** | `production` in production |
 | `PORT` | No | HTTP port. Default: `8080` |
 | `MESH_CORE_URL` | No | Worker tunnel URL. Default: `http://localhost:8080/mesh/tunnel` |
+| `MESH_WORKER_SECRET` | **Yes** | Authentication secret for the Gateway-to-Worker tunnel communication |
 
 ### Auth / Encryption
 

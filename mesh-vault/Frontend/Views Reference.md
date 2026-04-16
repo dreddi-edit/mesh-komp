@@ -16,6 +16,7 @@ All HTML surfaces live in `views/`. `src/server.js` serves them at clean URLs.
 | `views/repo-docs.html` | `/repo-docs` | Live browsable repo docs surface |
 | `views/how-it-works.html` | `/how-it-works` | Architecture explainer page |
 | `views/marketplace.html` | `/marketplace` | Extension marketplace (embedded in workbench) |
+| `views/orb-preview.html` | `/orb-preview` | Standalone Voice Orb UI testing/preview |
 | `views/statistics.html` | `/statistics` | Compression metrics and product stats |
 | `views/terminal.html` | `/terminal` | Terminal and workflow story page |
 

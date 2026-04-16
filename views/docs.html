@@ -68,38 +68,63 @@
       top: 16px;
       left: 50%;
       transform: translateX(-50%);
+      right: auto;
       width: auto;
       max-width: 720px;
       height: auto;
       padding: 8px 8px 8px 20px;
-      background: rgba(255,255,255,0.82);
-      backdrop-filter: blur(20px) saturate(180%);
-      border: 1px solid rgba(0,0,0,0.06);
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(20px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 999px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
       z-index: 100;
       display: flex;
       align-items: center;
       gap: 4px;
+      transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
     }
 
-    .nav-logo img { height: 20px; }
-    .nav-divider { width: 1px; height: 16px; background: rgba(0,0,0,0.1); margin: 0 6px; }
-    .nav-links { display: flex; gap: 2px; }
+    .nav-logo img {
+      height: 20px;
+      filter: brightness(0) invert(1);
+      transition: filter 0.4s ease;
+    }
+
+    .nav-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 6px; transition: background 0.4s; }
+
+    .nav-links {
+      display: flex;
+      gap: 2px;
+    }
 
     .nav-links a {
       font-size: 0.76rem;
       font-weight: 500;
-      color: rgba(16,36,50,0.55);
+      color: rgba(255, 255, 255, 0.6);
       padding: 6px 12px;
       border-radius: 999px;
       text-decoration: none;
       transition: color 0.2s, background 0.2s;
     }
-    .nav-links a:hover { color: #102432; background: rgba(15,106,123,0.06); }
-    .nav-links a.active { color: #0f6a7b; background: rgba(15,106,123,0.08); }
 
-    .nav-actions { display: flex; align-items: center; gap: 6px; margin-left: 4px; }
+    .nav-links a:hover {
+      color: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .nav-links a.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 4px;
+    }
 
     .nav-btn-ghost {
       font-size: 0.76rem;
@@ -118,14 +143,53 @@
       color: #fff;
       padding: 7px 16px;
       border-radius: 999px;
-      background: linear-gradient(135deg, #0f6a7b, #123f5c);
+      background: rgba(15, 106, 123, 0.5);
       text-decoration: none;
-      transition: opacity 0.2s;
+      backdrop-filter: blur(10px);
+      transition: background 0.2s;
     }
-    .nav-btn-primary:hover { opacity: 0.88; }
+
+    .nav-btn-primary:hover {
+      background: rgba(15, 106, 123, 0.7);
+      opacity: 1;
+      transform: none;
+    }
+
+    .docs-nav.scrolled {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-color: rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .docs-nav.scrolled .nav-logo img {
+      filter: none;
+    }
+
+    .docs-nav.scrolled .nav-links a {
+      color: rgba(16, 36, 50, 0.55);
+    }
+
+    .docs-nav.scrolled .nav-links a:hover {
+      color: #102432;
+      background: rgba(15, 106, 123, 0.06);
+    }
+
+    .docs-nav.scrolled .nav-links a.active {
+      color: #0f6a7b;
+      background: rgba(15, 106, 123, 0.08);
+    }
+
+    .docs-nav.scrolled .nav-divider {
+      background: rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .docs-nav.scrolled .nav-btn-primary {
+      background: linear-gradient(135deg, #0f6a7b, #123f5c);
+    }
 
     /* ── Docs layout: two-column with sidebar ── */
-    main { position: relative; z-index: 2; padding-top: 88px; }
+    main { position: relative; z-index: 2; padding-top: 0; }
 
     .docs-layout {
       max-width: 1160px;
@@ -175,36 +239,112 @@
     /* ── Docs main ── */
     .docs-main { min-width: 0; }
 
-    /* ── Page hero ── */
-    .page-hero {
-      padding: 40px 0 48px;
-      border-bottom: 1px solid rgba(18,62,89,0.1);
-      margin-bottom: 56px;
+    /* ── Hero ── */
+    .hero {
+      padding: 160px 24px 100px;
+      margin-bottom: 64px;
+      background: linear-gradient(180deg, #070e14 0%, #0d1f2d 50%, #1a3a4a 75%, #f7fbfd 100%);
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
-    .eyebrow {
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 25%;
+      background: linear-gradient(180deg, transparent, #f7fbfd);
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .hero-aurora {
+      position: absolute;
+      inset: -40% -20%;
+      pointer-events: none;
+      z-index: 0;
+      filter: blur(70px);
+      opacity: 0.6;
+    }
+
+    .aurora-band { position: absolute; border-radius: 50%; }
+    .aurora-band-1 {
+      width: 120%; height: 45%; top: -10%; left: -10%;
+      background: radial-gradient(ellipse at 30% 50%, rgba(15,106,123,0.35) 0%, rgba(15,106,123,0.08) 40%, transparent 70%);
+      animation: aurora-flow-1 16s ease-in-out infinite;
+    }
+    .aurora-band-2 {
+      width: 90%; height: 50%; top: 20%; right: -15%;
+      background: radial-gradient(ellipse at 70% 40%, rgba(31,73,107,0.3) 0%, rgba(95,149,168,0.1) 45%, transparent 70%);
+      animation: aurora-flow-2 20s ease-in-out infinite;
+    }
+    .aurora-band-3 {
+      width: 100%; height: 55%; bottom: -15%; left: 5%;
+      background: radial-gradient(ellipse at 50% 60%, rgba(95,149,168,0.25) 0%, rgba(15,106,123,0.06) 50%, transparent 75%);
+      animation: aurora-flow-3 22s ease-in-out infinite;
+    }
+    .aurora-band-4 {
+      width: 70%; height: 35%; top: 30%; left: 15%;
+      background: radial-gradient(ellipse at 40% 50%, rgba(15,106,123,0.2) 0%, rgba(31,73,107,0.08) 50%, transparent 70%);
+      animation: aurora-flow-4 18s ease-in-out infinite;
+    }
+
+    @keyframes aurora-flow-1 {
+      0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+      33% { transform: translate(8%, 5%) scale(1.12) rotate(2deg); }
+      66% { transform: translate(-5%, -3%) scale(0.95) rotate(-1deg); }
+    }
+    @keyframes aurora-flow-2 {
+      0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+      25% { transform: translate(-10%, 6%) scale(1.08) rotate(-2deg); }
+      50% { transform: translate(5%, -4%) scale(0.92) rotate(1deg); }
+      75% { transform: translate(-3%, 8%) scale(1.05) rotate(-1deg); }
+    }
+    @keyframes aurora-flow-3 {
+      0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+      30% { transform: translate(6%, -5%) scale(1.1) rotate(1.5deg); }
+      60% { transform: translate(-8%, 3%) scale(0.93) rotate(-2deg); }
+    }
+    @keyframes aurora-flow-4 {
+      0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+      50% { transform: translate(12%, -8%) scale(1.15); opacity: 1; }
+    }
+
+    .hero .eyebrow {
       font-family: "Berkeley Mono", monospace;
       font-size: 0.62rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: var(--primary);
+      color: #72a9bf;
       margin-bottom: 16px;
+      position: relative;
+      z-index: 4;
     }
 
-    .page-hero h1 {
-      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    .hero h1 {
+      font-size: clamp(2.5rem, 5vw, 3.8rem);
       font-weight: 800;
       letter-spacing: -0.04em;
       line-height: 1.05;
-      color: var(--ink);
+      color: #fff;
       margin-bottom: 18px;
+      position: relative;
+      z-index: 4;
     }
 
-    .page-hero p {
-      font-size: 1rem;
-      color: var(--ink-soft);
+    .hero p {
+      font-size: 1.05rem;
+      color: rgba(255, 255, 255, 0.6);
       line-height: 1.7;
-      max-width: 580px;
+      max-width: 640px;
+      position: relative;
+      z-index: 4;
     }
 
     /* ── Section ── */
@@ -482,6 +622,18 @@
   </nav>
 
   <main>
+    <header class="hero reveal" id="ueberblick">
+      <div class="hero-aurora">
+        <div class="aurora-band aurora-band-1"></div>
+        <div class="aurora-band aurora-band-2"></div>
+        <div class="aurora-band aurora-band-3"></div>
+        <div class="aurora-band aurora-band-4"></div>
+      </div>
+      <div class="eyebrow">Mesh Produktdokumentation</div>
+      <h1>Infrastruktur für Engineering-Teams</h1>
+      <p>Verbindet Produktverständnis, Architektur und Betriebsleitfäden in einer klaren Struktur. Für Teams, die Mesh sicher skalieren wollen.</p>
+    </header>
+
     <div class="docs-layout">
       <aside class="docs-sidebar">
         <div class="side-title">Navigation</div>
@@ -495,13 +647,6 @@
       </aside>
 
       <div class="docs-main">
-
-        <header class="page-hero reveal" id="ueberblick">
-          <div class="eyebrow">Mesh Produktdokumentation</div>
-          <h1>Infrastruktur für Engineering-Teams</h1>
-          <p>Verbindet Produktverständnis, Architektur und Betriebsleitfäden in einer klaren Struktur. Für Teams, die Mesh sicher skalieren wollen.</p>
-        </header>
-
         <div class="section">
           <p class="section-label reveal">Kernbegriffe</p>
           <h2 class="section-title reveal reveal-delay-1">Die drei Säulen der Mesh-Interaktion</h2>

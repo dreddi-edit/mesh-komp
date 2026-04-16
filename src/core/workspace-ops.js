@@ -1600,7 +1600,7 @@ function pruneInferFilesCache() {
   }
 }
 
-async function inferReferencedFilesFromWorkspace(lastUserMessage) {
+async function inferReferencedFilesFromWorkspace(lastUserMessage, requestId = null) {
   const text = String(lastUserMessage || "").trim();
   if (!text) return [];
 
@@ -1614,7 +1614,7 @@ async function inferReferencedFilesFromWorkspace(lastUserMessage) {
 
   let files = [];
   try {
-    const result = await meshTunnelRequest("workspace.files", {});
+    const result = await meshTunnelRequest("workspace.files", {}, requestId);
     files = Array.isArray(result?.files) ? result.files : [];
   } catch {
     const local = await localWorkspaceFiles();

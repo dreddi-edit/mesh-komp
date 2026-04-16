@@ -9,6 +9,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { compressMeshPayload, decompressMeshPayload } from './MeshServer.js';
+import { logger } from './logger.js';
 
 import {
     workspaceState,
@@ -76,11 +77,21 @@ async function sendCompressedJson(res, payload, statusCode = 200) {
     res.end(compressed.buffer);
 }
 
-app.post('/mesh/tunnel', async (req, res) => {
+    const requestId = req.headers['x-request-id'] || null;
+    const reqLogger = logger.child(requestId);
+
+    const workerSecret = process.env.MESH_WORKER_SECRET;
+    if (workerSecret && req.headers['x-mesh-worker-secret'] !== workerSecret) {
+        reqLogger.warn('Unauthorized tunnel request blocked');
+        return res.status(401).json({ ok: false, error: 'Unauthorized: Missing or invalid worker secret.' });
+    }
+
     try {
         const envelope = await parseMeshEnvelope(req);
         const action = String(envelope?.action || '');
         const data = envelope?.data || {};
+
+        reqLogger.info('Mesh tunnel request', { action });
 
         let payload;
         if (action === 'status') {
@@ -290,7 +301,7 @@ app.post('/mesh/tunnel', async (req, res) => {
 
         await sendCompressedJson(res, payload, payload.ok === false ? 400 : 200);
     } catch (error) {
-        console.error('[Mesh Tunnel] Request failed:', error.message);
+        reqLogger.error('Mesh tunnel request failed', { error: error.message, stack: error.stack });
         await sendCompressedJson(res, { ok: false, error: error.message || 'Mesh request failed' }, 500);
     }
 });
@@ -309,6 +320,5 @@ app.post('/api/chat/mesh', async (req, res) => {
 const port = process.env.PORT || 8080;
 restoreWorkspaceState();
 app.listen(port, () => {
-    console.log(`[Mesh Tunnel Server] Listening on port ${port}`);
-    console.log('[Mesh Tunnel Server] Ready for compressed workspace + chat traffic.');
+    logger.info('Mesh tunnel server started', { port });
 });

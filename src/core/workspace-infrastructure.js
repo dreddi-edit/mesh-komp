@@ -87,7 +87,7 @@ function isWorkspaceIndexablePath(pathInput = "") {
   return true;
 }
 
-async function meshTunnelRequest(action, data = {}) {
+async function meshTunnelRequest(action, data = {}, requestId = null) {
   const envelope = JSON.stringify({ action, data });
   const compressed = await brotliCompress(Buffer.from(envelope, "utf8"), {
     params: {
@@ -96,12 +96,19 @@ async function meshTunnelRequest(action, data = {}) {
     },
   });
 
+  const headers = {
+    "Content-Type": "application/octet-stream",
+    "X-Mesh-Encoding": "brotli",
+    "X-Mesh-Worker-Secret": process.env.MESH_WORKER_SECRET || "",
+  };
+
+  if (requestId) {
+    headers["X-Request-ID"] = String(requestId);
+  }
+
   const response = await fetch(MESH_CORE_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "X-Mesh-Encoding": "brotli",
-    },
+    headers,
     body: compressed,
   });
 
@@ -789,9 +796,9 @@ function buildWorkspaceSelectAcceptedResponse(job) {
   };
 }
 
-async function executeWorkspaceSelectWithFallback(selectPayload = {}) {
+async function executeWorkspaceSelectWithFallback(selectPayload = {}, requestId = null) {
   try {
-    return await meshTunnelRequest("workspace.select", selectPayload);
+    return await meshTunnelRequest("workspace.select", selectPayload, requestId);
   } catch (error) {
     const local = await localWorkspaceSelect(selectPayload);
     return {
