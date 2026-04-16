@@ -46,7 +46,12 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
-        run: ./infra/deploy-error-pages.sh "$S3_BUCKET"
+        run: |
+          if [ -z "$S3_BUCKET" ]; then
+            echo "S3_BUCKET secret not set — skipping error page upload"
+            exit 0
+          fi
+          ./infra/deploy-error-pages.sh "$S3_BUCKET"
 
       - name: Install deps and reload
         uses: appleboy/ssh-action@v1.0.3
