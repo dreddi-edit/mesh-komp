@@ -78,3 +78,10 @@
   --z-toast: 300;
   --z-tooltip: 400;
 }
+
+/* Accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-accent-primary) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(0, 152, 255, 0.25) !important;
+}
