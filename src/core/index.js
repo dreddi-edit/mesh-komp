@@ -15,6 +15,7 @@ const zlib    = require("zlib");
 const { execFile } = require("child_process");
 const { promisify } = require("util");
 const { WebSocketServer } = require("ws");
+const { LRUCache } = require('lru-cache');
 const config = require('../config');
 const secureDb = require('../../secure-db');
 const {
@@ -309,7 +310,7 @@ const localAssistantWorkspace = {
   workspaceId: null,
   sessionId: null,
   sourceKind: WORKSPACE_SOURCE_UPLOAD,
-  files: new Map(),
+  files: new LRUCache({ max: config.WORKSPACE_FILE_CACHE_MAX }),
   fileCountTotal: 0,
   fileCountCompleted: 0,
   fileCountFailed: 0,
@@ -330,11 +331,11 @@ const operationsStore = {
 };
 
 const MAX_OPERATION_LOGS = 600;
-const assistantRuns = new Map();
-const assistantTerminalSessions = new Map();
-const workspaceSelectJobs = new Map();
+const assistantRuns = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
+const assistantTerminalSessions = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
+const workspaceSelectJobs = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
 const workspaceSelectJobOrder = [];
-const workspaceSelectChains = new Map();
+const workspaceSelectChains = new LRUCache({ max: config.ASSISTANT_RUNS_CACHE_MAX });
 const execFileAsync = promisify(execFile);
 
 const { clampBrotliQuality, parseBooleanFlag, parseIntegerInRange, trimTrailingSlashes, normalizeSasToken } = require('../config/env-utils');
