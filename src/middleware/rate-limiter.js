@@ -1,8 +1,8 @@
 'use strict';
 
-const config = require('../config');
+const { LRUCache } = require('lru-cache');
 
-const DEFAULT_STORE_CLEANUP_THRESHOLD = 10_000;
+const config = require('../config');
 
 // RFC-1918 and loopback ranges for trusted reverse-proxy detection.
 // X-Forwarded-For is only trusted when the direct connection comes from a
@@ -42,7 +42,10 @@ function createRateLimiter(options = {}) {
   const maxRequests = options.maxRequests || 100;
   const windowMs = options.windowMs || 60_000;
   const message = options.message || 'Too many requests. Please try again later.';
-  const store = new Map();
+  const store = new LRUCache({
+    max: config.RATE_LIMITER_MAX_ENTRIES,
+    ttl: windowMs,
+  });
 
   return function rateLimiter(req, res, next) {
     const ip = getClientIp(req);
@@ -65,12 +68,6 @@ function createRateLimiter(options = {}) {
 
     record.count += 1;
     store.set(ip, record);
-
-    if (store.size > DEFAULT_STORE_CLEANUP_THRESHOLD) {
-      for (const [key, val] of store) {
-        if (now > val.resetAt) store.delete(key);
-      }
-    }
 
     next();
   };
