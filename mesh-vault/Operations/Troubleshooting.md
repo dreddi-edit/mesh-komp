@@ -19,7 +19,7 @@ The healthz probe calls `getUserByEmail` against DynamoDB. If this fails, `authS
 
 ```bash
 # SSH into EC2
-ssh -i /path/to/key.pem ec2-user@35.175.88.93
+ssh -i /path/to/key.pem ec2-user@50.16.15.217
 
 # Check PM2 has env vars
 pm2 env 0 | grep -E 'MESH_DYNAMO|AWS_ACCESS'
@@ -44,7 +44,7 @@ AWS_ACCESS_KEY_ID=... aws dynamodb query \
 ## PM2 Process Stopped
 
 ```bash
-ssh -i /path/to/key.pem ec2-user@35.175.88.93
+ssh -i /path/to/key.pem ec2-user@50.16.15.217
 
 # Check status
 pm2 list
@@ -123,7 +123,7 @@ Wait and retry. Only escalate if 503 persists beyond 30 seconds.
 
 ## Emergency Recovery Checklist
 
-1. SSH into EC2: `ssh -i /path/to/key.pem ec2-user@35.175.88.93`
+1. SSH into EC2: `ssh -i /path/to/key.pem ec2-user@50.16.15.217`
 2. Check PM2: `pm2 list` — if stopped, `pm2 restart mesh-gateway --update-env`
 3. Check env file: `cat /home/ec2-user/app/.env | grep MESH_DYNAMO`
 4. Check healthz: `curl http://localhost:8080/healthz`

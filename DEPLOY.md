@@ -21,7 +21,7 @@ Two deployment methods are available:
 
 ## Production Targets
 
-- Gateway: EC2 t2.micro, `35.175.88.93` (us-east-1)
+- Gateway: EC2 t2.micro, `50.16.15.217` (us-east-1)
 - PM2 process: `mesh-gateway`
 - Domain: `try-mesh.com` (Cloudflare → EC2)
 - GitHub repo: `dreddi-edit/mesh-komp`
@@ -83,13 +83,13 @@ rsync -az --delete \
   --exclude='docs/benchmark-results' \
   -e "ssh -i /path/to/key.pem" \
   /Users/edgarbaumann/Downloads/mesh-komp/ \
-  ec2-user@35.175.88.93:/home/ec2-user/app/
+  ec2-user@50.16.15.217:/home/ec2-user/app/
 ```
 
 ### 3) Restart
 
 ```bash
-ssh -i /path/to/key.pem ec2-user@35.175.88.93 "
+ssh -i /path/to/key.pem ec2-user@50.16.15.217 "
   cd /home/ec2-user/app
   npm ci --ignore-scripts
   pm2 restart mesh-gateway --update-env
@@ -158,7 +158,7 @@ Expected: `loginStatus: 200`, `sessionStatus: 200`, `assistantStatus: 200`.
 
 ```bash
 # SSH into server
-ssh -i /path/to/key.pem ec2-user@35.175.88.93
+ssh -i /path/to/key.pem ec2-user@50.16.15.217
 
 # View process status
 pm2 list

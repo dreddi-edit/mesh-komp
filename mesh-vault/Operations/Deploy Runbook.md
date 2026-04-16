@@ -16,7 +16,7 @@ tags: [operations]
 
 | Resource | Details |
 |----------|---------|
-| EC2 Instance | `35.175.88.93` (us-east-1, t2.micro) |
+| EC2 Instance | `50.16.15.217` (us-east-1, t2.micro) |
 | SSH user | `ec2-user` |
 | App path | `/home/ec2-user/app/` |
 | PM2 process | `mesh-gateway` |
@@ -70,13 +70,13 @@ rsync -az --delete \
   --exclude='docs/benchmark-results' \
   -e "ssh -i /path/to/key.pem" \
   /Users/edgarbaumann/Downloads/mesh-komp/ \
-  ec2-user@35.175.88.93:/home/ec2-user/app/
+  ec2-user@50.16.15.217:/home/ec2-user/app/
 ```
 
 ### Step 3: Restart
 
 ```bash
-ssh -i /path/to/key.pem ec2-user@35.175.88.93 "
+ssh -i /path/to/key.pem ec2-user@50.16.15.217 "
   set -e
   cd /home/ec2-user/app
   npm ci --ignore-scripts

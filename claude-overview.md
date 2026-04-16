@@ -29,7 +29,7 @@ At runtime it is split into:
 
 ### 2.1 Apps
 
-- Gateway: EC2 t2.micro at `35.175.88.93`, managed by PM2
+- Gateway: EC2 t2.micro at `50.16.15.217`, managed by PM2
 - Public domain: `try-mesh.com` (DNS via Cloudflare → EC2)
 
 ### 2.2 Infrastructure

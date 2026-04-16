@@ -64,7 +64,7 @@ The product has three top-level surfaces:
 
 | Resource | AWS |
 |----------|-----|
-| Compute | EC2 t2.micro — `35.175.88.93` (us-east-1) |
+| Compute | EC2 t2.micro — `50.16.15.217` (us-east-1) |
 | Users/Sessions | DynamoDB `mesh-users`, `mesh-sessions`, `mesh-stores` |
 | AI | Bedrock — Claude Sonnet 4.6 via `mesh-bedrock-access` IAM user |
 | Voice STT | Amazon Transcribe Streaming |

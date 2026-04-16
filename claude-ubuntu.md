@@ -65,7 +65,7 @@ Mac (Edgar arbeitet hier)
   │
   └─► git push → main
             │
-            ├─► GitHub Actions → EC2 Gateway (35.175.88.93) → try-mesh.com
+            ├─► GitHub Actions → EC2 Gateway (50.16.15.217) → try-mesh.com
             │
             └─► Ubuntu (44.204.222.251) ~/mesh-komp
                   └─ Claude Code läuft hier (Handy-Zugriff)
@@ -82,7 +82,7 @@ Das Produktivsystem läuft **nicht** auf dieser Ubuntu-Maschine. Es läuft auf A
 
 | Resource | Details |
 |----------|---------|
-| Compute | EC2 t2.micro — `35.175.88.93` (us-east-1) |
+| Compute | EC2 t2.micro — `50.16.15.217` (us-east-1) |
 | Domain | `try-mesh.com` (Cloudflare → EC2) |
 | Datenbank | DynamoDB (`mesh-users`, `mesh-sessions`, `mesh-stores`) |
 | AI | AWS Bedrock (Claude Sonnet 4.6) |

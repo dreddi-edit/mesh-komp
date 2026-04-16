@@ -115,7 +115,7 @@ All variables organized by component. Production env file: `/home/ec2-user/app/.
 
 ```bash
 # SSH in
-ssh -i /path/to/key.pem ec2-user@35.175.88.93
+ssh -i /path/to/key.pem ec2-user@50.16.15.217
 
 # Check env vars are loaded in PM2
 pm2 env 0 | grep -E 'MESH_DYNAMO|NODE_ENV|MESH_DEFAULT'

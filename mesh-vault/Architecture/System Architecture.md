@@ -19,7 +19,7 @@ The gateway proxies most workspace requests to the worker via `meshTunnelRequest
 
 | Resource | Details |
 |----------|---------|
-| Compute | EC2 t2.micro — `35.175.88.93` (us-east-1), PM2 process manager |
+| Compute | EC2 t2.micro — `50.16.15.217` (us-east-1), PM2 process manager |
 | Auth/Sessions | DynamoDB (`mesh-users`, `mesh-sessions`, `mesh-stores`) |
 | AI | Bedrock — Claude Sonnet 4.6 via IAM user `mesh-bedrock-access` |
 | Voice STT | Amazon Transcribe Streaming |

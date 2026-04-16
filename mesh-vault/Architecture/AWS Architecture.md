@@ -35,11 +35,11 @@ Gateway + Worker (same process via MESH_CORE_URL)
 
 | Resource | Details |
 |----------|---------|
-| EC2 Instance | t2.micro, us-east-1, `35.175.88.93` |
+| EC2 Instance | t2.micro, us-east-1, `50.16.15.217` |
 | DynamoDB | `mesh-users`, `mesh-sessions`, `mesh-stores` (us-east-1) |
 | S3 Bucket | `mesh-workspace-offload-960583973825` |
 | IAM User | `mesh-bedrock-access` — Bedrock + DynamoDB + Transcribe + Polly |
-| DNS | Cloudflare → EC2 (A record: `try-mesh.com` → `35.175.88.93`) |
+| DNS | Cloudflare → EC2 (A record: `try-mesh.com` → `50.16.15.217`) |
 
 ## Component Roles
 
@@ -83,7 +83,7 @@ GitHub Actions workflow (`.github/workflows/deploy.yml`):
 4. SSH: `npm ci && pm2 restart mesh-gateway --update-env && pm2 save`
 5. Smoke check: `curl -sf http://localhost:8080/healthz | grep '"service"'`
 
-Secret required: `EC2_SSH_KEY` (RSA private key for `ec2-user@35.175.88.93`)
+Secret required: `EC2_SSH_KEY` (RSA private key for `ec2-user@50.16.15.217`)
 
 ## Environment Variables
 
