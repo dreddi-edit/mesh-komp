@@ -12,7 +12,7 @@
 
 const express = require('express');
 const logger = require('../logger');
-const { safeRouteError } = require('./route-utils');
+const { safeRouteError, cacheControl } = require('./route-utils');
 
 // Only the offload/ingest endpoint accepts large bodies (workspace file chunks).
 const largeJsonBody = express.json({ limit: '200mb' });
@@ -136,7 +136,7 @@ function createWorkspaceRouter(core) {
     res.json({ ok: true, job: snapshotWorkspaceSelectJob(job) });
   });
 
-  router.get('/api/assistant/workspace/files', requireAuth, async (req, res) => {
+  router.get('/api/assistant/workspace/files', requireAuth, cacheControl(30), async (req, res) => {
     const payload = {
       workspaceId: String(req.query.workspaceId || '').trim(),
       sessionId: String(req.query.sessionId || '').trim(),
@@ -151,7 +151,7 @@ function createWorkspaceRouter(core) {
     }
   });
 
-  router.get('/api/assistant/workspace/graph', requireAuth, async (req, res) => {
+  router.get('/api/assistant/workspace/graph', requireAuth, cacheControl(30), async (req, res) => {
     const payload = {
       workspaceId: String(req.query.workspaceId || '').trim(),
       sessionId: String(req.query.sessionId || '').trim(),
@@ -207,7 +207,7 @@ function createWorkspaceRouter(core) {
     }
   });
 
-  router.get('/api/assistant/workspace/file', requireAuth, async (req, res) => {
+  router.get('/api/assistant/workspace/file', requireAuth, cacheControl(30), async (req, res) => {
     const view = String(req.query.view || 'original');
     try {
       const result = await openWorkspaceFileWithFallback(String(req.query.path || ''), view, {

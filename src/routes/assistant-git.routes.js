@@ -12,7 +12,7 @@
 
 const path = require('path');
 const express = require('express');
-const { safeRouteError } = require('./route-utils');
+const { safeRouteError, cacheControl } = require('./route-utils');
 
 /** Validates git remote URL protocols. Allows https, git, and ssh — rejects local paths. */
 const SAFE_GIT_URL_PATTERN = /^(https?:\/\/|git:\/\/|ssh:\/\/|git@[\w.\-]+:)/;
@@ -33,7 +33,7 @@ function createGitRouter(core) {
 
   const router = express.Router();
 
-  router.get('/api/assistant/git/status', requireAuth, async (_req, res) => {
+  router.get('/api/assistant/git/status', requireAuth, cacheControl(10), async (_req, res) => {
     try {
       const result = await runGitWithFallback('git.status', { requestId: req.requestId }, () => localGitStatus());
       res.json(result);
@@ -42,7 +42,7 @@ function createGitRouter(core) {
     }
   });
 
-  router.get('/api/assistant/git/branches', requireAuth, async (_req, res) => {
+  router.get('/api/assistant/git/branches', requireAuth, cacheControl(10), async (_req, res) => {
     try {
       const result = await runGitWithFallback('git.branches', { requestId: req.requestId }, async () => {
         const raw = (await runLocalGit(['branch', '-a', '--format=%(refname:short)\t%(HEAD)'])).stdout;
@@ -160,7 +160,7 @@ function createGitRouter(core) {
     }
   });
 
-  router.get('/api/assistant/git/diff', requireAuth, async (req, res) => {
+  router.get('/api/assistant/git/diff', requireAuth, cacheControl(10), async (req, res) => {
     try {
       const filePath = String(req.query.path || '');
       const result = await runGitWithFallback('git.diff', { path: filePath, requestId: req.requestId }, async () => {
@@ -199,7 +199,7 @@ function createGitRouter(core) {
     }
   });
 
-  router.get('/api/assistant/git/log', requireAuth, async (req, res) => {
+  router.get('/api/assistant/git/log', requireAuth, cacheControl(10), async (req, res) => {
     try {
       const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
       const result = await runGitWithFallback('git.log', { limit, requestId: req.requestId }, async () => {

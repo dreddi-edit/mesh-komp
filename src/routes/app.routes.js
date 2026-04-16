@@ -7,6 +7,7 @@ const hljs = require('highlight.js');
 const { marked } = require('marked');
 const config = require('../config');
 const logger = require('../logger');
+const { cacheControl } = require('./route-utils');
 
 const markedRenderer = new marked.Renderer();
 markedRenderer.code = function(code, lang) {
@@ -286,7 +287,7 @@ function createAppRouter(core) {
     res.status(authStoreOk ? 200 : 503).json(payload);
   });
 
-  router.get("/api/docs/index", requireAuth, (_req, res) => {
+  router.get("/api/docs/index", requireAuth, cacheControl(60), (_req, res) => {
     try {
       const docs = listRepoMarkdownDocs();
       const tree = buildRepoTree(REPO_DOCS_ROOT);
@@ -303,7 +304,7 @@ function createAppRouter(core) {
     }
   });
 
-  router.get("/api/docs/file", requireAuth, (req, res) => {
+  router.get("/api/docs/file", requireAuth, cacheControl(60), (req, res) => {
     try {
       const relPath = normalizeRepoDocsPath(req.query.path || '');
       if (!relPath) {
@@ -391,11 +392,11 @@ function createAppRouter(core) {
     res.json({ ok: true, key, updatedAt: toIsoNow() });
   });
 
-  router.get("/api/app/ops", requireAuth, (_req, res) => {
+  router.get("/api/app/ops", requireAuth, cacheControl(60), (_req, res) => {
     res.json(snapshotOperationsPayload());
   });
 
-  router.get("/api/app/compression", requireAuth, (_req, res) => {
+  router.get("/api/app/compression", requireAuth, cacheControl(60), (_req, res) => {
     const folderName = localAssistantWorkspace.folderName || null;
     if (!folderName || !localAssistantWorkspace.files.size) {
       return res.json({ ok: true, folderName, files: [] });
