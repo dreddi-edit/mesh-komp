@@ -207,12 +207,11 @@ Resources:
           Value: 'true'
         - Key: deletion_protection.enabled
           Value: 'false'
-        - Key: access_logs.s3.enabled
-          Value: 'true'
-        - Key: access_logs.s3.bucket
-          Value: !Ref S3BucketName
-        - Key: access_logs.s3.prefix
-          Value: alb-logs
+        # NOTE: ALB access logs are enabled manually via CLI (already active).
+        # Managed out-of-band because CloudFormation's ELB handler re-validates
+        # the S3 bucket policy during every update even when logs are already
+        # enabled, causing false "Access Denied" failures during stack updates.
+        # Logs are writing to: s3://{S3BucketName}/alb-logs/AWSLogs/
       Tags:
         - Key: Name
           Value: !Sub mesh-alb-${AWS::StackName}
