@@ -192,12 +192,8 @@ Resources:
           Value: !Sub mesh-ec2-sg-${AWS::StackName}
 
   # ── Application Load Balancer ────────────────────────────────────────────────
-  # DependsOn S3BucketPolicy ensures the ALB log delivery permission is in place
-  # before CloudFormation activates access_logs.s3.enabled — ALB validates the
-  # bucket policy synchronously during the attribute update.
   Alb:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    DependsOn: S3BucketPolicy
     Properties:
       Name: !Sub mesh-alb-${AWS::StackName}
       Scheme: internet-facing
