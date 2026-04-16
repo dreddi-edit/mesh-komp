@@ -6,27 +6,474 @@
   <title>Dokumentation - Mesh</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
   <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/mesh-docs.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <script>
     (function() {
       var p = window.location.pathname;
-      if (p.endsWith('/index.html')) {
-        history.replaceState(null, '', p.replace('/index.html', '/') + window.location.search + window.location.hash);
+      if (p.endsWith('.html')) {
+        history.replaceState(null, '', p.replace(/\.html$/, '') + window.location.search + window.location.hash);
       }
     })();
   </script>
+  <style>
+    :root {
+      --primary: #0f6a7b;
+      --primary-deep: #123f5c;
+      --secondary: #5f95a8;
+      --tertiary: #1f496b;
+      --surface: #f7fbfd;
+      --surface-low: #ffffff;
+      --surface-mid: #eef5f8;
+      --ink: #102432;
+      --ink-soft: #607787;
+      --outline: #9bb0bc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--surface);
+      color: var(--ink);
+      font-family: "Inter", sans-serif;
+      overflow-x: hidden;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.02;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* ── Nav ── */
+    .docs-nav {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: auto;
+      max-width: 720px;
+      height: auto;
+      padding: 8px 8px 8px 20px;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 999px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nav-logo img { height: 20px; }
+    .nav-divider { width: 1px; height: 16px; background: rgba(0,0,0,0.1); margin: 0 6px; }
+    .nav-links { display: flex; gap: 2px; }
+
+    .nav-links a {
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: rgba(16,36,50,0.55);
+      padding: 6px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: #102432; background: rgba(15,106,123,0.06); }
+    .nav-links a.active { color: #0f6a7b; background: rgba(15,106,123,0.08); }
+
+    .nav-actions { display: flex; align-items: center; gap: 6px; margin-left: 4px; }
+
+    .nav-btn-ghost {
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: var(--ink-soft);
+      padding: 6px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-btn-ghost:hover { color: var(--ink); background: rgba(15,106,123,0.06); }
+
+    .nav-btn-primary {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #fff;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #0f6a7b, #123f5c);
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .nav-btn-primary:hover { opacity: 0.88; }
+
+    /* ── Docs layout: two-column with sidebar ── */
+    main { position: relative; z-index: 2; padding-top: 88px; }
+
+    .docs-layout {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 24px 100px;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 60px;
+      align-items: start;
+    }
+
+    /* ── Sidebar ── */
+    .docs-sidebar {
+      position: sticky;
+      top: 88px;
+    }
+
+    .side-title {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--outline);
+      margin-bottom: 14px;
+      padding: 0 10px;
+    }
+
+    .side-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .side-nav a {
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--ink-soft);
+      text-decoration: none;
+      padding: 8px 10px;
+      border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .side-nav a:hover { color: var(--ink); background: rgba(15,106,123,0.05); }
+    .side-nav a.active { color: var(--primary); background: rgba(15,106,123,0.08); font-weight: 600; }
+
+    /* ── Docs main ── */
+    .docs-main { min-width: 0; }
+
+    /* ── Page hero ── */
+    .page-hero {
+      padding: 40px 0 48px;
+      border-bottom: 1px solid rgba(18,62,89,0.1);
+      margin-bottom: 56px;
+    }
+
+    .eyebrow {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+
+    .page-hero h1 {
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      color: var(--ink);
+      margin-bottom: 18px;
+    }
+
+    .page-hero p {
+      font-size: 1rem;
+      color: var(--ink-soft);
+      line-height: 1.7;
+      max-width: 580px;
+    }
+
+    /* ── Section ── */
+    .section { margin-bottom: 56px; }
+
+    .section-label {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--outline);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: clamp(1.3rem, 2.2vw, 1.7rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 28px;
+      line-height: 1.2;
+    }
+
+    /* ── Cards ── */
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--surface-low);
+      border: 1px solid rgba(18,62,89,0.1);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: 0 4px 18px rgba(17,52,74,0.05);
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .card:hover { box-shadow: 0 8px 28px rgba(17,52,74,0.09); transform: translateY(-2px); }
+
+    .icon-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: rgba(15,106,123,0.08);
+      color: var(--primary);
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .card h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+      line-height: 1.65;
+    }
+
+    /* ── Timeline ── */
+    .timeline { display: flex; flex-direction: column; }
+
+    .step {
+      display: flex;
+      gap: 18px;
+      padding: 18px 0;
+      border-bottom: 1px solid rgba(18,62,89,0.08);
+    }
+    .step:last-child { border-bottom: none; }
+
+    .step-n {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(15,106,123,0.08);
+      border: 1.5px solid rgba(15,106,123,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 2px;
+    }
+
+    .step-t {
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+      line-height: 1.7;
+      padding-top: 5px;
+    }
+
+    .step-t code {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.82em;
+      background: rgba(15,106,123,0.08);
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── Matrix ── */
+    .matrix {
+      border: 1px solid rgba(18,62,89,0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--surface-low);
+    }
+
+    .matrix-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      padding: 13px 18px;
+      border-bottom: 1px solid rgba(18,62,89,0.08);
+      gap: 12px;
+    }
+    .matrix-row:last-child { border-bottom: none; }
+
+    .matrix-row.head {
+      background: rgba(15,106,123,0.04);
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.63rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--outline);
+    }
+
+    .matrix-row div {
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+
+    /* ── Code block ── */
+    .code-wrap {
+      background: #0d1f2d;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 56px;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .code-header span {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .code-copy {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      background: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .code-copy:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
+
+    .code-pre {
+      padding: 22px 18px;
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      color: #a8d8e8;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* ── Footer ── */
+    footer { position: relative; z-index: 2; border-top: 1px solid rgba(18,62,89,0.12); padding: 36px 28px; }
+
+    .footer-inner {
+      max-width: 1160px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .footer-logo img { height: 16px; }
+
+    .footer-links { display: flex; gap: 4px; flex-wrap: wrap; }
+
+    .footer-links a {
+      text-decoration: none;
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--outline);
+      padding: 5px 10px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .footer-links a:hover { color: var(--ink-soft); background: rgba(15,106,123,0.05); }
+
+    .footer-copy {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #91a6b3;
+    }
+
+    /* ── Reveal ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.08s; }
+    .reveal-delay-2 { transition-delay: 0.16s; }
+
+    @media (max-width: 860px) {
+      .docs-layout { grid-template-columns: 1fr; gap: 32px; }
+      .docs-sidebar { position: static; }
+    }
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .nav-btn-ghost { display: none; }
+      .grid-cards { grid-template-columns: 1fr; }
+      .matrix-row { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
 </head>
 <body>
-  <nav class="docs-nav">
+  <canvas id="bg-canvas"></canvas>
+
+  <nav class="docs-nav" id="navbar">
     <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="assets/brand/lockup-color.svg" alt="Mesh"/></a>
+    <div class="nav-divider"></div>
     <div class="nav-links">
       <a href="index">Start</a>
       <a href="how-it-works">So funktioniert es</a>
       <a href="statistics">Statistiken</a>
       <a class="active" href="docs">Dokumentation</a>
       <a href="terminal">Terminal</a>
-      <a href="repo-docs">Repo Docs</a>
     </div>
     <div class="nav-actions">
       <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
@@ -34,100 +481,97 @@
     </div>
   </nav>
 
-  <div class="docs-shell">
-    <aside class="docs-sidebar">
-      <div class="side-title">Navigation</div>
-      <nav class="side-nav">
-        <a class="active" href="#ueberblick">Überblick</a>
-        <a href="#architektur">Architekturfluss</a>
-        <a href="#api">API und SDK</a>
-        <a href="#betrieb">Betrieb</a>
-        <a href="#sicherheit">Sicherheit</a>
-        <a href="#integrationen">Integrationen</a>
-        <a href="#roadmap">Roadmap</a>
-      </nav>
-    </aside>
+  <main>
+    <div class="docs-layout">
+      <aside class="docs-sidebar">
+        <div class="side-title">Navigation</div>
+        <nav class="side-nav">
+          <a class="active" href="#ueberblick">Überblick</a>
+          <a href="#architektur">Architekturfluss</a>
+          <a href="#api">API und SDK</a>
+          <a href="#betrieb">Betrieb</a>
+          <a href="#sicherheit">Sicherheit</a>
+        </nav>
+      </aside>
 
-    <main class="docs-main">
-      <header class="hero animate" id="ueberblick">
-        <div class="eyebrow">Mesh Produktdokumentation</div>
-        <h1>Infrastruktur für Engineering-Teams</h1>
-        <p>Verbindet Produktverständnis, Architektur und Betriebsleitfäden in einer klaren Struktur. Für Teams, die Mesh sicher skalieren wollen.</p>
-      </header>
+      <div class="docs-main">
 
-      <div class="section-head animate">
-        <div class="section-label">Kernbegriffe</div>
-        <h2 class="section-title">Die drei Säulen der Mesh-Interaktion</h2>
-      </div>
+        <header class="page-hero reveal" id="ueberblick">
+          <div class="eyebrow">Mesh Produktdokumentation</div>
+          <h1>Infrastruktur für Engineering-Teams</h1>
+          <p>Verbindet Produktverständnis, Architektur und Betriebsleitfäden in einer klaren Struktur. Für Teams, die Mesh sicher skalieren wollen.</p>
+        </header>
 
-      <div class="grid-cards animate delay-1">
-        <div class="card">
-          <div class="icon-pill">C</div>
-          <h3>Capsule</h3>
-          <p>Die strukturierte Zusammenfassung einer Datei. Reduziert Rauschen, erhält aber die logische Verbindung zum Original.</p>
+        <div class="section">
+          <p class="section-label reveal">Kernbegriffe</p>
+          <h2 class="section-title reveal reveal-delay-1">Die drei Säulen der Mesh-Interaktion</h2>
+          <div class="grid-cards">
+            <div class="card reveal reveal-delay-1">
+              <div class="icon-pill">C</div>
+              <h3>Capsule</h3>
+              <p>Die strukturierte Zusammenfassung einer Datei. Reduziert Rauschen, erhält aber die logische Verbindung zum Original.</p>
+            </div>
+            <div class="card reveal reveal-delay-2">
+              <div class="icon-pill">F</div>
+              <h3>Focused</h3>
+              <p>Mesh zeigt nur die Stellen, die exakt zu deiner Frage passen. Retrieval auf höchstem Präzisionsniveau.</p>
+            </div>
+            <div class="card reveal reveal-delay-1">
+              <div class="icon-pill">R</div>
+              <h3>Recovery</h3>
+              <p>Lädt bei Bedarf die exakten Originalzeilen nach, um Beweise für jede Antwort zu liefern.</p>
+            </div>
+          </div>
         </div>
-        <div class="card">
-          <div class="icon-pill">F</div>
-          <h3>Focused</h3>
-          <p>Mesh zeigt nur die Stellen, die exakt zu deiner Frage passen. Retrieval auf höchstem Präzisionsniveau.</p>
-        </div>
-        <div class="card">
-          <div class="icon-pill">R</div>
-          <h3>Recovery</h3>
-          <p>Lädt bei Bedarf die exakten Originalzeilen nach, um Beweise für jede Antwort zu liefern.</p>
-        </div>
-      </div>
 
-      <div class="section-head animate" id="architektur">
-        <div class="section-label">Pipeline</div>
-        <h2 class="section-title">Architekturfluss von Ingest bis Antwort</h2>
-      </div>
+        <div class="section" id="architektur">
+          <p class="section-label reveal">Pipeline</p>
+          <h2 class="section-title reveal reveal-delay-1">Architekturfluss von Ingest bis Antwort</h2>
+          <div class="timeline reveal reveal-delay-1">
+            <div class="step">
+              <div class="step-n">01</div>
+              <div class="step-t">Workspace-Ingest erzeugt Manifest und setzt Dateien auf <code>pending</code>.</div>
+            </div>
+            <div class="step">
+              <div class="step-n">02</div>
+              <div class="step-t">Indexer und Parser erstellen strukturierte Capsules mit priorisierten Sektionen.</div>
+            </div>
+            <div class="step">
+              <div class="step-n">03</div>
+              <div class="step-t">Focused Retrieval reduziert den Kontext auf query-relevante Ausschnitte.</div>
+            </div>
+            <div class="step">
+              <div class="step-n">04</div>
+              <div class="step-t">Recovery lädt exakte Evidenz aus dem Original nach.</div>
+            </div>
+          </div>
+        </div>
 
-      <div class="timeline animate delay-1">
-        <div class="step">
-          <div class="step-n">01</div>
-          <div class="step-t">Workspace-Ingest erzeugt Manifest und setzt Dateien auf <code>pending</code>.</div>
+        <div class="section" id="api">
+          <p class="section-label reveal">Schnittstellen</p>
+          <h2 class="section-title reveal reveal-delay-1">API-Referenz im Überblick</h2>
+          <div class="matrix reveal reveal-delay-1">
+            <div class="matrix-row head">
+              <div>Endpunkt</div><div>Nutzen</div><div>Ergebnis</div>
+            </div>
+            <div class="matrix-row">
+              <div>GET /workspace/files</div><div>Gesundheit und Status</div><div>Dateiliste + Status</div>
+            </div>
+            <div class="matrix-row">
+              <div>GET /workspace/file</div><div>Spezifische Ansicht</div><div>original / focused / capsule</div>
+            </div>
+            <div class="matrix-row">
+              <div>POST /chat</div><div>Kontext-Antwort</div><div>Response + Belege</div>
+            </div>
+          </div>
         </div>
-        <div class="step">
-          <div class="step-n">02</div>
-          <div class="step-t">Indexer und Parser erstellen strukturierte Capsules mit priorisierten Sektionen.</div>
-        </div>
-        <div class="step">
-          <div class="step-n">03</div>
-          <div class="step-t">Focused Retrieval reduziert den Kontext auf query-relevante Ausschnitte.</div>
-        </div>
-        <div class="step">
-          <div class="step-n">04</div>
-          <div class="step-t">Recovery lädt exakte Evidenz aus dem Original nach.</div>
-        </div>
-      </div>
 
-      <div class="section-head animate" id="api">
-        <div class="section-label">Schnittstellen</div>
-        <h2 class="section-title">API-Referenz im Überblick</h2>
-      </div>
-
-      <div class="matrix animate delay-1">
-        <div class="matrix-row head">
-          <div>Endpunkt</div><div>Nutzen</div><div>Ergebnis</div>
-        </div>
-        <div class="matrix-row">
-          <div>GET /workspace/files</div><div>Gesundheit und Status</div><div>Dateiliste + Status</div>
-        </div>
-        <div class="matrix-row">
-          <div>GET /workspace/file</div><div>Spezifische Ansicht</div><div>original / focused / capsule</div>
-        </div>
-        <div class="matrix-row">
-          <div>POST /chat</div><div>Kontext-Antwort</div><div>Response + Belege</div>
-        </div>
-      </div>
-
-      <div class="code-wrap animate delay-2">
-        <div class="code-header">
-          <span>Dateivertrag (File Record)</span>
-          <button class="code-copy">Copy JSON</button>
-        </div>
-        <pre class="code-pre">{
+        <div class="code-wrap reveal">
+          <div class="code-header">
+            <span>Dateivertrag (File Record)</span>
+            <button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-wrap').querySelector('pre').textContent)">Copy JSON</button>
+          </div>
+          <pre class="code-pre">{
   "path": "src/routes/assistant.routes.js",
   "status": "completed",
   "views": {
@@ -139,51 +583,154 @@
     "spanMap": [{ "spanId": "auth:142", "lineStart": 142 }]
   }
 }</pre>
+        </div>
+
+        <div class="section" id="betrieb">
+          <p class="section-label reveal">Operationen</p>
+          <h2 class="section-title reveal reveal-delay-1">Runbooks für den stabilen Betrieb</h2>
+          <div class="grid-cards">
+            <div class="card reveal reveal-delay-1">
+              <h3>Queue-Health</h3>
+              <p>Wenn pending Dateien steigen: Prüfen der Event-Kette und Queue-Latenz in der Worker-Instanz.</p>
+            </div>
+            <div class="card reveal reveal-delay-2">
+              <h3>Fehlerklassen</h3>
+              <p>Wenn failed Dateien steigen: Gruppieren der Error-Logs und Durchführung eines selektiven Retrys.</p>
+            </div>
+            <div class="card reveal reveal-delay-1">
+              <h3>Genauigkeit</h3>
+              <p>Wenn Antworten unpräzise sind: Validierung des Focused-Scoring und der Recovery-Span Definitionen.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section" id="sicherheit">
+          <p class="section-label reveal">Compliance</p>
+          <h2 class="section-title reveal reveal-delay-1">Sicherheit und Audit-Fähigkeit</h2>
+          <div class="matrix reveal reveal-delay-1">
+            <div class="matrix-row head">
+              <div>Domäne</div><div>Ansatz</div><div>Vorteil</div>
+            </div>
+            <div class="matrix-row">
+              <div>Integrität</div><div>Digest-Ketten</div><div>Manipulationsschutz</div>
+            </div>
+            <div class="matrix-row">
+              <div>Isolation</div><div>Multi-Tenant Store</div><div>Kein Datenleck</div>
+            </div>
+          </div>
+        </div>
+
       </div>
+    </div>
+  </main>
 
-      <div class="section-head animate" id="betrieb">
-        <div class="section-label">Operationen</div>
-        <h2 class="section-title">Runbooks für den stabilen Betrieb</h2>
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-logo"><img src="assets/brand/wordmark-black.svg" alt="Mesh"/></div>
+      <div class="footer-links">
+        <a href="docs">Dokumentation</a>
+        <a href="how-it-works">So funktioniert es</a>
+        <a href="statistics">Statistiken</a>
+        <a href="app">Arbeitsbereich</a>
       </div>
+      <p class="footer-copy">2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.</p>
+    </div>
+  </footer>
 
-      <div class="grid-cards animate delay-1">
-        <div class="card">
-          <h3>Queue-Health</h3>
-          <p>Wenn pending Dateien steigen: Prüfen der Event-Kette und Queue-Latenz in der Worker-Instanz.</p>
-        </div>
-        <div class="card">
-          <h3>Fehlerklassen</h3>
-          <p>Wenn failed Dateien steigen: Gruppieren der Error-Logs und Durchführung eines selektiven Retrys.</p>
-        </div>
-        <div class="card">
-          <h3>Genauigkeit</h3>
-          <p>Wenn Antworten unpräzise sind: Validierung des Focused-Scoring und der Recovery-Span Definitionen.</p>
-        </div>
-      </div>
+  <script>
+    (function initBackground() {
+      const canvas = document.getElementById("bg-canvas");
+      const ctx = canvas.getContext("2d");
+      let width = 0, height = 0;
+      const CELL = 42, WAVE_SPEED = 0.0006, WAVE_AMP = 6, WAVE_LEN = 280;
+      const LINE_COLOR = "rgba(15,106,123,", DOT_COLOR = "rgba(95,149,168,";
+      const BASE_LINE_ALPHA = 0.055, BASE_DOT_ALPHA = 0.12, DOT_R = 1.2;
+      let cols = 0, rows = 0, offsetX = 0, offsetY = 0, mouseX = -1, mouseY = -1;
+      const MOUSE_RADIUS = 180, MOUSE_STRENGTH = 14;
 
-      <div class="section-head animate" id="sicherheit">
-        <div class="section-label">Compliance</div>
-        <h2 class="section-title">Sicherheit und Audit-Fähigkeit</h2>
-      </div>
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        cols = Math.ceil(width / CELL) + 2;
+        rows = Math.ceil(height / CELL) + 2;
+        offsetX = (width - (cols - 1) * CELL) * 0.5;
+        offsetY = (height - (rows - 1) * CELL) * 0.5;
+      }
+      resize();
 
-      <div class="matrix animate delay-1">
-        <div class="matrix-row head">
-          <div>Domäne</div><div>Ansatz</div><div>Vorteil</div>
-        </div>
-        <div class="matrix-row">
-          <div>Integrität</div><div>Digest-Ketten</div><div>Manipulationsschutz</div>
-        </div>
-        <div class="matrix-row">
-          <div>Isolation</div><div>Multi-Tenant Store</div><div>Kein Datenleck</div>
-        </div>
-      </div>
+      document.addEventListener("mousemove", function(e) { mouseX = e.clientX; mouseY = e.clientY; }, { passive: true });
+      document.addEventListener("mouseleave", function() { mouseX = -1; mouseY = -1; });
 
-      <footer class="animate delay-3">
-        &copy; 2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.
-      </footer>
-    </main>
-  </div>
+      function getDisplacement(baseX, baseY, time) {
+        var dx = Math.sin((baseX + baseY) / WAVE_LEN + time) * WAVE_AMP;
+        var dy = Math.cos((baseX - baseY * 0.7) / WAVE_LEN + time * 1.3) * WAVE_AMP;
+        if (mouseX >= 0) {
+          var mx = baseX + dx - mouseX, my = baseY + dy - mouseY;
+          var dist = Math.sqrt(mx * mx + my * my);
+          if (dist < MOUSE_RADIUS && dist > 0) {
+            var push = (1 - dist / MOUSE_RADIUS) * MOUSE_STRENGTH;
+            dx += (mx / dist) * push; dy += (my / dist) * push;
+          }
+        }
+        return { x: baseX + dx, y: baseY + dy };
+      }
 
-  <script src="assets/docs-shared.js"></script>
+      function frame(now) {
+        ctx.clearRect(0, 0, width, height);
+        var t = now * WAVE_SPEED;
+        ctx.lineWidth = 0.5;
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            var bx = offsetX + c * CELL, by = offsetY + r * CELL;
+            var p = getDisplacement(bx, by, t);
+            if (c < cols - 1) {
+              var np = getDisplacement(offsetX + (c + 1) * CELL, by, t);
+              ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(np.x, np.y);
+              ctx.strokeStyle = LINE_COLOR + BASE_LINE_ALPHA + ")"; ctx.stroke();
+            }
+            if (r < rows - 1) {
+              var np2 = getDisplacement(bx, offsetY + (r + 1) * CELL, t);
+              ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(np2.x, np2.y);
+              ctx.strokeStyle = LINE_COLOR + BASE_LINE_ALPHA + ")"; ctx.stroke();
+            }
+            ctx.beginPath(); ctx.arc(p.x, p.y, DOT_R, 0, Math.PI * 2);
+            ctx.fillStyle = DOT_COLOR + BASE_DOT_ALPHA + ")"; ctx.fill();
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+      window.addEventListener("resize", resize);
+      requestAnimationFrame(frame);
+    })();
+
+    (function() {
+      var nav = document.getElementById("navbar");
+      function update() { nav.classList.toggle("scrolled", window.scrollY > 20); }
+      window.addEventListener("scroll", update, { passive: true });
+
+      // Sidebar active link on scroll
+      var sections = document.querySelectorAll("[id]");
+      var sideLinks = document.querySelectorAll(".side-nav a");
+      window.addEventListener("scroll", function() {
+        var scrollY = window.scrollY + 120;
+        sections.forEach(function(sec) {
+          if (sec.offsetTop <= scrollY && (sec.offsetTop + sec.offsetHeight) > scrollY) {
+            sideLinks.forEach(function(a) {
+              a.classList.toggle("active", a.getAttribute("href") === "#" + sec.id);
+            });
+          }
+        });
+      }, { passive: true });
+    })();
+
+    (function() {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) { entry.target.classList.add("visible"); observer.unobserve(entry.target); }
+        });
+      }, { threshold: 0.1 });
+      document.querySelectorAll(".reveal").forEach(function(el) { observer.observe(el); });
+    })();
+  </script>
 </body>
 </html>

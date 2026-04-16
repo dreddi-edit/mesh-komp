@@ -6,28 +6,461 @@
   <title>So funktioniert es - Mesh</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
   <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="assets/mesh-docs.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <script>
     (function() {
       var p = window.location.pathname;
       if (p.endsWith('.html')) {
-        var newP = p.replace(/\.html$/, '');
-        history.replaceState(null, '', newP + window.location.search + window.location.hash);
+        history.replaceState(null, '', p.replace(/\.html$/, '') + window.location.search + window.location.hash);
       }
     })();
   </script>
+  <style>
+    :root {
+      --primary: #0f6a7b;
+      --primary-deep: #123f5c;
+      --secondary: #5f95a8;
+      --tertiary: #1f496b;
+      --surface: #f7fbfd;
+      --surface-low: #ffffff;
+      --surface-mid: #eef5f8;
+      --ink: #102432;
+      --ink-soft: #607787;
+      --outline: #9bb0bc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--surface);
+      color: var(--ink);
+      font-family: "Inter", sans-serif;
+      overflow-x: hidden;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.02;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* ── Nav ── */
+    .docs-nav {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: auto;
+      max-width: 720px;
+      height: auto;
+      padding: 8px 8px 8px 20px;
+      background: rgba(255,255,255,0.82);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 999px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .nav-logo img { height: 20px; }
+
+    .nav-divider { width: 1px; height: 16px; background: rgba(0,0,0,0.1); margin: 0 6px; }
+
+    .nav-links { display: flex; gap: 2px; }
+
+    .nav-links a {
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: rgba(16,36,50,0.55);
+      padding: 6px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: #102432;
+      background: rgba(15,106,123,0.06);
+    }
+
+    .nav-links a.active {
+      color: #0f6a7b;
+      background: rgba(15,106,123,0.08);
+    }
+
+    .nav-actions { display: flex; align-items: center; gap: 6px; margin-left: 4px; }
+
+    .nav-btn-ghost {
+      font-size: 0.76rem;
+      font-weight: 500;
+      color: var(--ink-soft);
+      padding: 6px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-btn-ghost:hover { color: var(--ink); background: rgba(15,106,123,0.06); }
+
+    .nav-btn-primary {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #fff;
+      padding: 7px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #0f6a7b, #123f5c);
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .nav-btn-primary:hover { opacity: 0.88; }
+
+    /* ── Page shell ── */
+    main {
+      position: relative;
+      z-index: 2;
+      padding-top: 96px;
+    }
+
+    .page-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px 100px;
+    }
+
+    /* ── Page hero ── */
+    .page-hero {
+      padding: 64px 0 56px;
+      border-bottom: 1px solid rgba(18,62,89,0.1);
+      margin-bottom: 64px;
+    }
+
+    .eyebrow {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--primary);
+      margin-bottom: 16px;
+    }
+
+    .page-hero h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      color: var(--ink);
+      margin-bottom: 18px;
+    }
+
+    .page-hero p {
+      font-size: 1.05rem;
+      color: var(--ink-soft);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    /* ── Section ── */
+    .section {
+      margin-bottom: 64px;
+    }
+
+    .section-label {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--outline);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: clamp(1.4rem, 2.5vw, 1.9rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 32px;
+      line-height: 1.2;
+    }
+
+    /* ── Cards ── */
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--surface-low);
+      border: 1px solid rgba(18,62,89,0.1);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(17,52,74,0.05);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 8px 32px rgba(17,52,74,0.1);
+      transform: translateY(-2px);
+    }
+
+    .icon-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(15,106,123,0.08);
+      color: var(--primary);
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 0.84rem;
+      color: var(--ink-soft);
+      line-height: 1.65;
+    }
+
+    .card code {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.78em;
+      background: rgba(15,106,123,0.08);
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── Code block ── */
+    .code-wrap {
+      background: #0d1f2d;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 64px;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .code-header span {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .code-pre {
+      padding: 24px 20px;
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.82rem;
+      line-height: 1.8;
+      color: #a8d8e8;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* ── Timeline ── */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .step {
+      display: flex;
+      gap: 20px;
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(18,62,89,0.08);
+    }
+
+    .step:last-child { border-bottom: none; }
+
+    .step-n {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(15,106,123,0.08);
+      border: 1.5px solid rgba(15,106,123,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 2px;
+    }
+
+    .step-t {
+      font-size: 0.92rem;
+      color: var(--ink-soft);
+      line-height: 1.7;
+      padding-top: 6px;
+    }
+
+    .step-t code {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.82em;
+      background: rgba(15,106,123,0.08);
+      color: var(--primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── Matrix table ── */
+    .matrix {
+      border: 1px solid rgba(18,62,89,0.1);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface-low);
+    }
+
+    .matrix-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(18,62,89,0.08);
+      gap: 12px;
+    }
+
+    .matrix-row:last-child { border-bottom: none; }
+
+    .matrix-row.head {
+      background: rgba(15,106,123,0.04);
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--outline);
+    }
+
+    .matrix-row div {
+      font-size: 0.87rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+
+    /* ── Footer ── */
+    footer {
+      position: relative;
+      z-index: 2;
+      border-top: 1px solid rgba(18,62,89,0.12);
+      padding: 36px 28px;
+    }
+
+    .footer-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .footer-logo img { height: 16px; }
+
+    .footer-links {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      text-decoration: none;
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--outline);
+      padding: 5px 10px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--ink-soft); background: rgba(15,106,123,0.05); }
+
+    .footer-copy {
+      font-family: "Berkeley Mono", monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #91a6b3;
+    }
+
+    /* ── Reveal ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.08s; }
+    .reveal-delay-2 { transition-delay: 0.16s; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .nav-btn-ghost { display: none; }
+      .grid-cards { grid-template-columns: 1fr; }
+      .matrix-row { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
 </head>
 <body>
-  <nav class="docs-nav">
+  <canvas id="bg-canvas"></canvas>
+
+  <nav class="docs-nav" id="navbar">
     <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="assets/brand/lockup-color.svg" alt="Mesh"/></a>
+    <div class="nav-divider"></div>
     <div class="nav-links">
       <a href="index">Start</a>
       <a class="active" href="how-it-works">So funktioniert es</a>
       <a href="statistics">Statistiken</a>
       <a href="docs">Dokumentation</a>
       <a href="terminal">Terminal</a>
-      <a href="repo-docs">Repo Docs</a>
     </div>
     <div class="nav-actions">
       <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
@@ -35,73 +468,62 @@
     </div>
   </nav>
 
-  <div class="docs-shell">
-    <aside class="docs-sidebar">
-      <div class="side-title">Überblick</div>
-      <nav class="side-nav">
-        <a class="active" href="#pipeline">Kernpipeline</a>
-        <a href="#status">Statusmodell</a>
-        <a href="#details">Technikdetails</a>
-        <a href="#strategie">Recovery-Strategie</a>
-      </nav>
-    </aside>
+  <main>
+    <div class="page-inner">
 
-    <main class="docs-main">
-      <header class="hero animate" id="pipeline">
-        <div class="eyebrow">Methodik & Ablauf</div>
+      <header class="page-hero reveal" id="pipeline">
+        <div class="eyebrow">Methodik &amp; Ablauf</div>
         <h1>Vom Upload zur verifizierbaren Antwort</h1>
         <p>Mesh verarbeitet jede Datei in klaren Schritten: Sichtbarkeit schaffen, automatisch verdichten und bei Bedarf Originalzeilen nachladen.</p>
       </header>
 
-      <div class="section-head animate">
-        <div class="section-label">Ablauf</div>
-        <h2 class="section-title">Die vier Kernstufen der Mesh-Engine</h2>
-      </div>
-
-      <div class="grid-cards animate delay-1">
-        <div class="card">
-          <div class="icon-pill">01</div>
-          <h3>Manifest</h3>
-          <p>Dateien erscheinen sofort als <code>pending</code>. Du siehst die Struktur, bevor die Verarbeitung abgeschlossen ist.</p>
-        </div>
-        <div class="card">
-          <div class="icon-pill">02</div>
-          <h3>Blob Processing</h3>
-          <p>Hintergrundverarbeitung erkennt Typen und übergibt an Parser, um Rohtext in Wissen umzuwandeln.</p>
-        </div>
-        <div class="card">
-          <div class="icon-pill">03</div>
-          <h3>Capsule Sync</h3>
-          <p>Strukturierte Kurzfassung mit Verweisen auf die Originalstellen. Kontext bleibt klein, Bezug bleibt da.</p>
-        </div>
-        <div class="card">
-          <div class="icon-pill">04</div>
-          <h3>Answer Logic</h3>
-          <p>Focused Ansichten zeigen nur Relevantes. Recovery lädt exakte Quellzeilen für Belege nach.</p>
-        </div>
-      </div>
-
-      <div class="section-head animate" id="status">
-        <div class="section-label">Dateilebenszyklus</div>
-        <h2 class="section-title">Statusmodell und Fehlersicherheit</h2>
-      </div>
-
-      <div class="grid-cards animate delay-1">
-        <div class="card">
-          <h3>Pending</h3>
-          <p>Manifest-Eintrag vorhanden, Inhalt wird noch verarbeitet oder wartet auf Worker.</p>
-        </div>
-        <div class="card">
-          <h3>Completed</h3>
-          <p>Vollständig indexiert. Capsule, focused-Ansichten und Recovery-Spans sind bereit.</p>
-        </div>
-        <div class="card">
-          <h3>Failed</h3>
-          <p>Verarbeitung abgebrochen. Der Fehlergrund wird für das Team im Log persistiert.</p>
+      <div class="section">
+        <p class="section-label reveal">Ablauf</p>
+        <h2 class="section-title reveal reveal-delay-1">Die vier Kernstufen der Mesh-Engine</h2>
+        <div class="grid-cards">
+          <div class="card reveal reveal-delay-1">
+            <div class="icon-pill">01</div>
+            <h3>Manifest</h3>
+            <p>Dateien erscheinen sofort als <code>pending</code>. Du siehst die Struktur, bevor die Verarbeitung abgeschlossen ist.</p>
+          </div>
+          <div class="card reveal reveal-delay-2">
+            <div class="icon-pill">02</div>
+            <h3>Blob Processing</h3>
+            <p>Hintergrundverarbeitung erkennt Typen und übergibt an Parser, um Rohtext in Wissen umzuwandeln.</p>
+          </div>
+          <div class="card reveal reveal-delay-1">
+            <div class="icon-pill">03</div>
+            <h3>Capsule Sync</h3>
+            <p>Strukturierte Kurzfassung mit Verweisen auf die Originalstellen. Kontext bleibt klein, Bezug bleibt da.</p>
+          </div>
+          <div class="card reveal reveal-delay-2">
+            <div class="icon-pill">04</div>
+            <h3>Answer Logic</h3>
+            <p>Focused Ansichten zeigen nur Relevantes. Recovery lädt exakte Quellzeilen für Belege nach.</p>
+          </div>
         </div>
       </div>
 
-      <div class="code-wrap animate delay-2">
+      <div class="section" id="status">
+        <p class="section-label reveal">Dateilebenszyklus</p>
+        <h2 class="section-title reveal reveal-delay-1">Statusmodell und Fehlersicherheit</h2>
+        <div class="grid-cards">
+          <div class="card reveal reveal-delay-1">
+            <h3>Pending</h3>
+            <p>Manifest-Eintrag vorhanden, Inhalt wird noch verarbeitet oder wartet auf Worker.</p>
+          </div>
+          <div class="card reveal reveal-delay-2">
+            <h3>Completed</h3>
+            <p>Vollständig indexiert. Capsule, focused-Ansichten und Recovery-Spans sind bereit.</p>
+          </div>
+          <div class="card reveal reveal-delay-1">
+            <h3>Failed</h3>
+            <p>Verarbeitung abgebrochen. Der Fehlergrund wird für das Team im Log persistiert.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-wrap reveal" id="details">
         <div class="code-header">
           <span>Hintergrund-Flow (Pseudo)</span>
         </div>
@@ -112,49 +534,142 @@ upsertWorkspaceFileRecord(status=completed)
 query -> buildFocusedView() -> recoveryIfNecessary()</pre>
       </div>
 
-      <div class="section-head animate" id="details">
-        <div class="section-label">Deep Dive</div>
-        <h2 class="section-title">Capsule-Erstellung im Detail</h2>
-      </div>
-
-      <div class="timeline animate delay-1">
-        <div class="step">
-          <div class="step-n">A</div>
-          <div class="step-t">Erkennung von Dateitypen (Code, Config, SQL, Markdown etc.).</div>
-        </div>
-        <div class="step">
-          <div class="step-n">B</div>
-          <div class="step-t">Strukturierte Extraktion mit AST-basierten Parsern für Code-Präzision.</div>
-        </div>
-        <div class="step">
-          <div class="step-n">C</div>
-          <div class="step-t">Sektions-Building mit Priorisierung basierend auf Importen & Funktionsköpfen.</div>
-        </div>
-      </div>
-
-      <div class="section-head animate" id="strategie">
-        <div class="section-label">Evidenz</div>
-        <h2 class="section-title">Recovery und Belegführung</h2>
-      </div>
-
-      <div class="matrix animate delay-1">
-        <div class="matrix-row head">
-          <div>Ansicht</div><div>Trigger</div><div>Ausgabe</div>
-        </div>
-        <div class="matrix-row">
-          <div>Kurzfassung</div><div>Übersicht</div><div>Capsule-Text</div>
-        </div>
-        <div class="matrix-row">
-          <div>Quellansicht</div><div>Exakter Beleg</div><div>Original-Text (Zeilen/Bytes)</div>
+      <div class="section">
+        <p class="section-label reveal">Deep Dive</p>
+        <h2 class="section-title reveal reveal-delay-1">Capsule-Erstellung im Detail</h2>
+        <div class="timeline reveal reveal-delay-1">
+          <div class="step">
+            <div class="step-n">A</div>
+            <div class="step-t">Erkennung von Dateitypen (Code, Config, SQL, Markdown etc.).</div>
+          </div>
+          <div class="step">
+            <div class="step-n">B</div>
+            <div class="step-t">Strukturierte Extraktion mit AST-basierten Parsern für Code-Präzision.</div>
+          </div>
+          <div class="step">
+            <div class="step-n">C</div>
+            <div class="step-t">Sektions-Building mit Priorisierung basierend auf Importen &amp; Funktionsköpfen.</div>
+          </div>
         </div>
       </div>
 
-      <footer class="animate delay-3">
-        &copy; 2026 Mesh. Engineering Intelligence.
-      </footer>
-    </main>
-  </div>
+      <div class="section" id="strategie">
+        <p class="section-label reveal">Evidenz</p>
+        <h2 class="section-title reveal reveal-delay-1">Recovery und Belegführung</h2>
+        <div class="matrix reveal reveal-delay-1">
+          <div class="matrix-row head">
+            <div>Ansicht</div><div>Trigger</div><div>Ausgabe</div>
+          </div>
+          <div class="matrix-row">
+            <div>Kurzfassung</div><div>Übersicht</div><div>Capsule-Text</div>
+          </div>
+          <div class="matrix-row">
+            <div>Quellansicht</div><div>Exakter Beleg</div><div>Original-Text (Zeilen/Bytes)</div>
+          </div>
+        </div>
+      </div>
 
-  <script src="assets/docs-shared.js"></script>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-logo"><img src="assets/brand/wordmark-black.svg" alt="Mesh"/></div>
+      <div class="footer-links">
+        <a href="docs">Dokumentation</a>
+        <a href="how-it-works">So funktioniert es</a>
+        <a href="statistics">Statistiken</a>
+        <a href="app">Arbeitsbereich</a>
+      </div>
+      <p class="footer-copy">2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function initBackground() {
+      const canvas = document.getElementById("bg-canvas");
+      const ctx = canvas.getContext("2d");
+      let width = 0, height = 0;
+      const CELL = 42, WAVE_SPEED = 0.0006, WAVE_AMP = 6, WAVE_LEN = 280;
+      const LINE_COLOR = "rgba(15,106,123,", DOT_COLOR = "rgba(95,149,168,";
+      const BASE_LINE_ALPHA = 0.055, BASE_DOT_ALPHA = 0.12, DOT_R = 1.2;
+      let cols = 0, rows = 0, offsetX = 0, offsetY = 0, mouseX = -1, mouseY = -1;
+      const MOUSE_RADIUS = 180, MOUSE_STRENGTH = 14;
+
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        cols = Math.ceil(width / CELL) + 2;
+        rows = Math.ceil(height / CELL) + 2;
+        offsetX = (width - (cols - 1) * CELL) * 0.5;
+        offsetY = (height - (rows - 1) * CELL) * 0.5;
+      }
+      resize();
+
+      document.addEventListener("mousemove", function(e) { mouseX = e.clientX; mouseY = e.clientY; }, { passive: true });
+      document.addEventListener("mouseleave", function() { mouseX = -1; mouseY = -1; });
+
+      function getDisplacement(baseX, baseY, time) {
+        var dx = Math.sin((baseX + baseY) / WAVE_LEN + time) * WAVE_AMP;
+        var dy = Math.cos((baseX - baseY * 0.7) / WAVE_LEN + time * 1.3) * WAVE_AMP;
+        if (mouseX >= 0) {
+          var mx = baseX + dx - mouseX, my = baseY + dy - mouseY;
+          var dist = Math.sqrt(mx * mx + my * my);
+          if (dist < MOUSE_RADIUS && dist > 0) {
+            var push = (1 - dist / MOUSE_RADIUS) * MOUSE_STRENGTH;
+            dx += (mx / dist) * push; dy += (my / dist) * push;
+          }
+        }
+        return { x: baseX + dx, y: baseY + dy };
+      }
+
+      function frame(now) {
+        ctx.clearRect(0, 0, width, height);
+        var t = now * WAVE_SPEED;
+        ctx.lineWidth = 0.5;
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            var bx = offsetX + c * CELL, by = offsetY + r * CELL;
+            var p = getDisplacement(bx, by, t);
+            if (c < cols - 1) {
+              var np = getDisplacement(offsetX + (c + 1) * CELL, by, t);
+              ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(np.x, np.y);
+              ctx.strokeStyle = LINE_COLOR + BASE_LINE_ALPHA + ")"; ctx.stroke();
+            }
+            if (r < rows - 1) {
+              var np2 = getDisplacement(bx, offsetY + (r + 1) * CELL, t);
+              ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(np2.x, np2.y);
+              ctx.strokeStyle = LINE_COLOR + BASE_LINE_ALPHA + ")"; ctx.stroke();
+            }
+            ctx.beginPath(); ctx.arc(p.x, p.y, DOT_R, 0, Math.PI * 2);
+            ctx.fillStyle = DOT_COLOR + BASE_DOT_ALPHA + ")"; ctx.fill();
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+      window.addEventListener("resize", resize);
+      requestAnimationFrame(frame);
+    })();
+
+    // Nav scroll state (starts scrolled since no dark hero on this page)
+    (function() {
+      var nav = document.getElementById("navbar");
+      function update() { nav.classList.toggle("scrolled", window.scrollY > 20); }
+      window.addEventListener("scroll", update, { passive: true });
+    })();
+
+    // Reveal observer
+    (function() {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+      document.querySelectorAll(".reveal").forEach(function(el) { observer.observe(el); });
+    })();
+  </script>
 </body>
 </html>
