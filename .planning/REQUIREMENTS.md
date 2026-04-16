@@ -47,12 +47,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### UI/UX
 
-- [ ] **UI-01**: CSS design tokens (colors, spacing, typography, shadows) defined as custom properties on `:root`; all stylesheets use tokens instead of hardcoded values
-- [ ] **UI-02**: Custom UI chrome (tabs, panels, modals, context menus) has ARIA roles, keyboard navigation, and visible focus indicators
-- [ ] **UI-03**: Shared HTML structure (nav, head, scripts, footer) extracted into nunjucks template layouts; 16 standalone pages converted to template inheritance
-- [ ] **UI-04**: Frontend JS and CSS are bundled and minified via esbuild; feature scripts lazy-loaded on demand
-- [ ] **UI-05**: Responsive design uses CSS custom property breakpoints; all pages usable at 768px width minimum
-- [ ] **UI-06**: `animejs` is vendored into the asset bundle instead of served from `node_modules/`
+- [x] **UI-01**: CSS design tokens (colors, spacing, typography, shadows) defined as custom properties on `:root`; all stylesheets use tokens instead of hardcoded values
+- [x] **UI-02**: Custom UI chrome (tabs, panels, modals, context menus) has ARIA roles, keyboard navigation, and visible focus indicators
+- [x] **UI-03**: Shared HTML structure (nav, head, scripts, footer) extracted into nunjucks template layouts; 16 standalone pages converted to template inheritance
+- [x] **UI-04**: Frontend JS and CSS are bundled and minified via esbuild; feature scripts lazy-loaded on demand
+- [x] **UI-05**: Responsive design uses CSS custom property breakpoints; all pages usable at 768px width minimum
+- [x] **UI-06**: `animejs` is vendored into the asset bundle instead of served from `node_modules/`
 
 ### Infrastructure
 
@@ -125,12 +125,12 @@ Explicitly excluded. Documented to prevent scope creep.
 | TEST-02 | Phase 22 | Pending |
 | TEST-03 | Phase 22 | Pending |
 | TEST-04 | Phase 22 | Pending |
-| UI-01 | Phase 26 | Pending |
-| UI-02 | Phase 26 | Pending |
-| UI-03 | Phase 26 | Pending |
-| UI-04 | Phase 26 | Pending |
-| UI-05 | Phase 26 | Pending |
-| UI-06 | Phase 26 | Pending |
+| UI-01 | Phase 26 | Complete |
+| UI-02 | Phase 26 | Complete |
+| UI-03 | Phase 26 | Complete |
+| UI-04 | Phase 26 | Complete |
+| UI-05 | Phase 26 | Complete |
+| UI-06 | Phase 26 | Complete |
 | INFRA-01 | Phase 22 | Pending |
 | INFRA-02 | Phase 27 | Pending |
 | INFRA-03 | Phase 27 | Pending |

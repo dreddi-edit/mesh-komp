@@ -80,8 +80,10 @@ GitHub Actions workflow (`.github/workflows/deploy.yml`):
 1. `npm ci --ignore-scripts`
 2. `npm test`
 3. Rsync to EC2 via `burnett01/rsync-deployments`
-4. SSH: `npm ci && pm2 restart mesh-gateway --update-env && pm2 save`
+4. SSH: `npm ci && pm2 reload ecosystem.config.js --env production && pm2 save`
 5. Smoke check: `curl -sf http://localhost:8080/healthz | grep '"service"'`
+
+PM2 is configured via `ecosystem.config.js` with `exec_mode: cluster`, `instances: max`, `UV_THREADPOOL_SIZE: 16`, and graceful 10s shutdown drain.
 
 Secret required: `EC2_SSH_KEY` (RSA private key for `ec2-user@50.16.15.217`)
 

@@ -184,9 +184,9 @@ The active encoding is stored in `transportEnvelope.contentEncoding` (`"zstd-chu
 - Score and rank which spans are most important
 - Enable precision section selection per tier
 
-Supported grammars: JavaScript, TypeScript, Python, CSS, HTML, JSON, Go.
+Supported grammars: JavaScript, TypeScript, Python, Go, CSS, HTML, JSON, Rust, C++, C#, Java, Swift, Kotlin, Ruby, PHP.
 
-See `package.json` for the full list of `tree-sitter-*` dependencies.
+See `mesh-core/package.json` for the full list of `tree-sitter-*` dependencies.
 
 ## Frontend Compression Map (`S.compressionMap`)
 

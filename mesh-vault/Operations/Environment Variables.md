@@ -100,6 +100,19 @@ All variables organized by component. Production env file: `/home/ec2-user/app/.
 | `MESH_WORKSPACE_INDEX_PARALLELISM` | No | `16` | Parallel indexing workers |
 | `MESH_WORKSPACE_SELECT_ASYNC_MODE` | No | `queue` | Async workspace select mode |
 
+### Performance / Tuning
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `UV_THREADPOOL_SIZE` | No | `4` | libuv async I/O thread pool size. Set to `16` in `ecosystem.config.js` for S3+Brotli workloads. **Must be set before Node starts** — cannot be set in application code. |
+| `MESH_MODEL_TIMEOUT_MS` | No | `120000` | Timeout (ms) for all outbound model provider `fetch()` calls and Bedrock SDK streaming. |
+
+### Worker Tunnel
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MESH_WORKER_SECRET` | No | Shared secret for Gateway→Worker tunnel requests via `x-mesh-worker-secret` header. If set, the worker rejects requests that don't match. |
+
 ### Observability
 
 | Variable | Required | Description |

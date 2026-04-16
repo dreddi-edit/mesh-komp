@@ -16,12 +16,12 @@ It is a **thin aggregator**: requires the submodules, destructures their exports
 src/core/index.js
   ├─ requires: src/core/auth.js
   ├─ requires: src/core/model-providers.js
-  ├─ requires: src/core/mesh-codec.js          ← extracted from model-providers
-  ├─ requires: src/core/operations-store.js     ← extracted from index.js
   ├─ requires: src/core/assistant-runs.js
   ├─ requires: src/core/workspace-infrastructure.js
   ├─ requires: src/core/workspace-context.js
   ├─ requires: src/core/workspace-ops.js
+  ├─ requires: src/core/voice-agent.js
+  ├─ requires: src/core/voice-aws-audio.js
   ├─ requires: src/core/deployments.js
   ├─ requires: assistant-core.js
   ├─ requires: secure-db.js
@@ -88,15 +88,15 @@ Receives deps via the `core` object passed through from `src/server.js` — no d
 - Graph payload construction
 - Assistant reply handling
 
-### `src/core/mesh-codec.js`
-Extracted from `model-providers.js`:
-- `encodeModel()` / `decodeModel()` — Mesh model codec for serialization
-- `injectModelConfig()` — runtime model configuration injection
+### `src/core/voice-agent.js`
+- Voice tool definitions (read_file, edit_file, search_workspace, git_status, delegate_task, etc.)
+- Task delegation to the typed assistant run system
+- Approval flow for voice-initiated code changes
 
-### `src/core/operations-store.js`
-Extracted from `index.js`:
-- Operations record persistence
-- File-backed operations storage and retrieval
+### `src/core/voice-aws-audio.js`
+- Amazon Transcribe Streaming integration
+- Amazon Polly TTS integration
+- Bedrock text model tool loop for voice turns
 
 ### `src/core/deployments.js`
 12 functions:
@@ -125,4 +125,5 @@ Called once at server boot by `src/server.js` **before** routes or database conn
 
 ## Known Issues
 
-- `src/core/index.js` is still large, though `operations-store.js` and `mesh-codec.js` have been extracted — further splits ongoing
+- `src/core/index.js` is still large; further module splits are ongoing
+- `workspace-context.js` uses globals injected by `index.js` at startup (`localAssistantWorkspace`, `workspaceMetadataStore`, `meshTunnelRequest`, etc.) via `Object.assign(global, ...)` — a circular-dep workaround, not a clean DI boundary

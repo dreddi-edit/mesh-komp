@@ -7,12 +7,13 @@ tags: [development]
 ## npm Scripts (Root Package)
 
 ```bash
-npm start              # Start the gateway: node --env-file .env src/server.js
-npm run monitor:web    # Launch ccmon dashboard: node ccmon-server.js
+npm start                  # Start the gateway: node --env-file .env src/server.js
+npm run monitor:web        # Launch ccmon dashboard: node ccmon-server.js
 npm run bench:compression  # Run compression benchmark
-npm test               # Run all tests: node --test
-npm run lint           # Lint all JS: eslint .
-npm run lint:fix       # Auto-fix lint issues: eslint . --fix
+npm test                   # Run all tests: node --test
+npm run test:workspace-ops # Run workspace-ops tests only: node --test test/workspace-ops.test.js
+npm run lint               # Lint all JS: eslint .
+npm run lint:fix           # Auto-fix lint issues: eslint . --fix
 ```
 
 ## Running Locally

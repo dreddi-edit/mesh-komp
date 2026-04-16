@@ -44,5 +44,13 @@ APIs: `/api/docs/index`, `/api/docs/file`
 
 ## Static Assets
 
-All assets (JS, CSS, SVG, JSON) are served from the repo root as static files.
-The repo root itself is the static root — assets are referenced by their relative paths.
+Assets are served via scoped `express.static` mounts — **not** from the repo root:
+
+| Mount path | Serves from |
+|------------|-------------|
+| `/assets` | `assets/` (immutable cache: `max-age=31536000, immutable`) |
+| `/pitch` | `pitch/` |
+| `/ccmon-web` | `ccmon-web/` |
+| `/node_modules/animejs` | `node_modules/animejs/` |
+
+HTML responses include content-hash query strings (`?v=<8-char MD5>`) on all `/assets/*.js` and `/assets/*.css` URLs, computed once at startup.

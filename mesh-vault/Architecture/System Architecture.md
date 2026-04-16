@@ -26,7 +26,7 @@ The gateway proxies most workspace requests to the worker via `meshTunnelRequest
 | Voice TTS | Amazon Polly (neural) |
 | Workspace offload | S3 `mesh-workspace-offload-960583973825` (optional) |
 | DNS | Cloudflare → EC2 |
-| CI/CD | GitHub Actions → rsync → `pm2 restart mesh-gateway` |
+| CI/CD | GitHub Actions → rsync → `pm2 reload ecosystem.config.js` (zero-downtime) |
 
 ## Two Domains
 
@@ -75,12 +75,14 @@ The browser communicates with the gateway over:
 
 ## Global State
 
-`global.*` has been fully removed from the gateway. All route modules receive dependencies via explicit injection:
+Route modules receive dependencies via explicit injection (no `global.*`):
 
-- HTTP routes (`auth.routes.js`, `app.routes.js`, `assistant.routes.js`, `assistant-chat.routes.js`, `assistant-git.routes.js`): factory functions — `createAuthRouter(core)`, `createAppRouter(core)`, `createAssistantRouter(core)`, etc.
-- WebSocket modules (`terminal.routes.js`, `realtime.routes.js`): setup functions — `setupTerminalRelay(server, { projectRoot, core })`, `setupRealtimeRelay(server, core)`
+- HTTP routes: factory functions — `createAuthRouter(core)`, `createAppRouter(core)`, `createAssistantRouter(core)`, etc.
+- WebSocket modules: setup functions — `setupTerminalRelay(server, { projectRoot, core })`, `setupRealtimeRelay(server, core)`
 
-`src/server.js` requires `src/core/index.js` once and passes it explicitly to all modules. No globals are written at startup.
+`src/server.js` requires `src/core/index.js` once and passes it explicitly to all route factories.
+
+**Exception:** `src/core/workspace-context.js` still reads several globals injected by `index.js` at startup via `Object.assign(global, ...)` — specifically `localAssistantWorkspace`, `workspaceMetadataStore`, `meshTunnelRequest`, and a handful of workspace utility functions. This is a circular-dependency workaround: those objects live in `index.js` which also requires `workspace-context.js`.
 
 ## Worker Tunnel Actions
 

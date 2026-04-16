@@ -37,7 +37,7 @@ Triggers on every push to `main`. Does:
 1. `npm ci --ignore-scripts`
 2. `npm test`
 3. Rsync to EC2 (excludes `.env`, `node_modules`, images)
-4. SSH: `npm ci && pm2 restart mesh-gateway --update-env && pm2 save`
+4. SSH: `npm ci && pm2 reload ecosystem.config.js --env production && pm2 save`
 5. Smoke check: `curl -sf http://localhost:8080/healthz | grep '"service"'`
 
 Monitor:
@@ -80,7 +80,7 @@ ssh -i /path/to/key.pem ec2-user@50.16.15.217 "
   set -e
   cd /home/ec2-user/app
   npm ci --ignore-scripts
-  pm2 restart mesh-gateway --update-env
+  pm2 reload ecosystem.config.js --env production
   pm2 save
 "
 ```

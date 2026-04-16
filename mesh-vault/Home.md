@@ -17,6 +17,10 @@ The product has three top-level surfaces:
 
 ## Quick Navigation
 
+### New Here?
+- [[Explanation/What is Mesh]] — plain-language intro with visuals, no prior context needed
+- [[Explanation/Architecture Overview]] — simplified system walkthrough
+
 ### Architecture
 - [[Architecture/System Architecture]] — split gateway/worker model, data flow
 - [[Architecture/AWS Architecture]] — EC2, DynamoDB, S3, Bedrock, Transcribe, Polly
@@ -56,7 +60,7 @@ The product has three top-level surfaces:
 |-------|-----------|
 | Frontend | Vanilla HTML/CSS/JS, Monaco, xterm.js, D3, Lottie |
 | Backend | Node.js, Express 5, DynamoDB (secure-db) |
-| Cloud | AWS EC2 (t2.micro), DynamoDB, S3, Bedrock, Transcribe, Polly |
+| Cloud | AWS EC2 (t2.micro, PM2 cluster), DynamoDB, S3, Bedrock, Transcribe, Polly |
 | AI | Anthropic Claude (via Bedrock), OpenAI GPT, Google Gemini, BYOK |
 | Compression | Tree-sitter AST, capsule serialization, tiered tiers |
 

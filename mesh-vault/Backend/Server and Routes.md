@@ -19,7 +19,7 @@ src/server.js       ← main Express/http server
 - Security headers (`X-Content-Type-Options`, `X-Frame-Options`, `CSP`, `Referrer-Policy`)
 - CSRF protection (Origin/Referer check for all state-mutating requests)
 - Request ID middleware (attaches `req.requestId` UUID for log correlation)
-- Static file serving from repo root (for `assets/`, `views/`)
+- Scoped static file serving: `/assets` → `assets/`, `/pitch` → `pitch/`, `/ccmon-web` → `ccmon-web/`, `/node_modules/animejs` → animejs package only. The repo root is **not** exposed as a static directory.
 - Clean URL routing via pre-built Map at startup (eliminates `fs.existsSync` on every request)
 - Route module mounting (passes `core` to factory functions — no `global.*`)
 - Terminal WebSocket setup via `setupTerminalRelay(server, { projectRoot, core })`
@@ -78,6 +78,9 @@ GET  /api/assistant/workspace/search
 GET  /api/assistant/workspace/grep
 GET  /api/assistant/workspace/context-budget
 POST /api/assistant/chat
+POST /api/assistant/chat/stream
+POST /api/assistant/codec/decode
+POST /api/inline-complete
 POST /api/assistant/run
 ```
 
@@ -100,12 +103,12 @@ All security middleware runs before routes in `src/server.js`:
 | Middleware | Purpose |
 |-----------|---------|
 | Request ID | UUID per request for log correlation (`req.requestId`). Propagates to Worker via `X-Request-ID`. |
-| Zod Validation | Validates API request payloads against rigorous schemas (`src/schemas/index.js`) to prevent malformed data. |
-| Security headers | CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` |
+| Schema Validation | Vanilla JS schema validator in `src/schemas/index.js` (no Zod — replaced to remove the Zod dependency). Validates API request payloads at the route handler level. |
+| Security headers | CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` |
 | CSRF guard | Rejects cross-origin `POST/PUT/PATCH/DELETE` via Origin/Referer check |
-| Rate limiter | `src/middleware/rate-limiter.js` — applied to auth and public endpoints |
-| XSS sanitization | Input sanitization on user-facing endpoints |
-| JSON body limit | Global 1 MB default; `/api/assistant/workspace/offload/ingest` overrides to 200 MB |
+| Rate limiter | `src/middleware/rate-limiter.js` — applied to `/api/*` globally; stricter limits on `/api/workspace/offload` and `/api/workspace/ingest` |
+| HTTP Compression | `src/middleware/compression.js` — Brotli/gzip for all compressible responses; SSE streams excluded |
+| JSON body limit | Global 1 MB; workspace offload/ingest endpoints override to 200 MB |
 
 Configuration is centralized in `src/config/index.js` — validates all env vars at startup and exports typed values. No `process.env` reads in business logic.
 

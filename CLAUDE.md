@@ -423,3 +423,196 @@ export const config = envSchema.parse(process.env);
 
 *This file is machine-readable by Claude and applied to every task in this project.*
 *Last updated: 2026-04*
+
+<!-- GSD:project-start source:PROJECT.md -->
+## Project
+
+**Mesh. — AI-Native IDE**
+<!-- GSD:project-end -->
+
+<!-- GSD:stack-start source:codebase/STACK.md -->
+## Technology Stack
+
+## Runtime
+| Property | Value |
+|----------|-------|
+| Language | JavaScript (Node.js) — no TypeScript |
+| Runtime | Node.js (uses `--env-file`, `node:crypto`, `node:test`) |
+| Entry point | `src/server.js` (production), `server.js` (legacy dev) |
+| Process manager | PM2 cluster mode (`ecosystem.config.js`) |
+| Node args | `--env-file .env` for secrets loading |
+## Framework
+- **Express v5.2.1** — HTTP server, middleware, routing
+- **ws v8.20.0** — WebSocket server (terminal, voice/realtime)
+- **node-pty v1.1.0** — pseudo-terminal spawning for browser terminal
+## AI / LLM Dependencies
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@anthropic-ai/sdk` | ^0.82.0 | Claude API client |
+| `@aws-sdk/client-bedrock-runtime` | ^3.1030.0 | AWS Bedrock for model inference |
+## AWS SDK Dependencies
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@aws-sdk/client-dynamodb` | ^3.1030.0 | DynamoDB for auth/session/user storage |
+| `@aws-sdk/lib-dynamodb` | ^3.1030.0 | DynamoDB Document Client |
+| `@aws-sdk/client-s3` | ^3.1030.0 | S3 workspace blob storage |
+| `@aws-sdk/s3-request-presigner` | ^3.1030.0 | Pre-signed S3 URLs |
+| `@aws-sdk/client-polly` | ^3.1030.0 | Text-to-speech |
+| `@aws-sdk/client-transcribe-streaming` | ^3.1030.0 | Speech-to-text |
+| `@aws-sdk/client-cloudwatch` | ^3.1030.0 | Metrics/monitoring |
+## Compression / Parsing
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `tree-sitter` + 7 language grammars | ^0.21.x | AST-based code compression |
+| `html-minifier-terser` | ^7.2.0 | HTML minification |
+| `terser` | ^5.46.1 | JS minification |
+| `marked` | ^17.0.5 | Markdown → HTML rendering |
+| `highlight.js` | ^11.11.1 | Syntax highlighting |
+| `fast-xml-parser` | ^5.5.10 | XML parsing |
+| `node-sql-parser` | ^5.4.0 | SQL parsing |
+| `yaml` | ^2.8.3 | YAML parsing |
+| `toml` | ^4.1.1 | TOML parsing |
+| `ini` | ^6.0.0 | INI parsing |
+## Data / Storage
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `better-sqlite3` | ^11.10.0 | Local SQLite for dev-mode auth fallback |
+## Frontend
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `animejs` | ^4.3.6 | UI animations (served from node_modules) |
+## Dev Dependencies
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `eslint` | ^8.57.0 | Linting |
+| `puppeteer` | ^24.41.0 | E2E/integration testing |
+## Build & Scripts
+| Script | Command |
+|--------|---------|
+| `start` | `node --env-file .env src/server.js` |
+| `test` | `node --test --test-force-exit --test-timeout=120000` |
+| `lint` | `eslint .` |
+| `bench:compression` | `node benchmarks/compression-benchmark.js` |
+| `monitor:web` | `node --env-file .env ccmon-server.js` |
+## Configuration
+<!-- GSD:stack-end -->
+
+<!-- GSD:conventions-start source:CONVENTIONS.md -->
+## Conventions
+
+## Module Pattern
+- `'use strict'` at top of every file
+- CommonJS `require()` / `module.exports` throughout — no ESM
+- Section headers with `// ── Title ──` box-drawing style
+- JSDoc on all exported functions with `@param`, `@returns`, `@throws`
+- Named function declarations preferred over arrow function assignments for exports
+## Naming
+| Context | Convention | Examples |
+|---------|-----------|----------|
+| Functions | camelCase | `readAuthCookieToken`, `localWorkspaceSelect` |
+| Constants | SCREAMING_SNAKE | `AUTH_SESSION_TTL_MS`, `WORKSPACE_BROTLI_QUALITY` |
+| Config keys | SCREAMING_SNAKE | `MESH_DYNAMO_ENABLED`, `ANTHROPIC_API_KEY` |
+| Files | kebab-case | `voice-aws-audio.js`, `assistant-chat.routes.js` |
+| Route files | `{domain}.routes.js` | `auth.routes.js`, `terminal.routes.js` |
+| Boolean flags | `is`/`has`/`should` prefix | `isLocalPathWorkspaceState()`, `hasCodecContextMarker()` |
+| Normalization | `normalize` prefix | `normalizeEmail()`, `normalizeStoredByokProviders()` |
+| Validation | `validate` prefix or `ensure` prefix | `validateConfig()`, `ensureWorkspaceOwnedPath()` |
+## Error Handling
+### Route-Level Pattern
+### Core-Level Pattern
+### Internal Error Logging
+## Validation
+### Schema Validation
+### Input Sanitization
+- `toSafePath()` — normalizes file paths, strips `..` traversal
+- `ensureWorkspaceOwnedPath()` — ensures paths stay within workspace root
+- `sanitizeTerminalSegment()` — strips unsafe chars from terminal workspace names
+- `EXT_IDENTIFIER_RE` — allowlist for extension publisher/name/version
+- `SAFE_GIT_URL_PATTERN` — protocol allowlist for git remote URLs
+## Configuration Pattern
+- `buildConfig(env)` — constructs all config from env vars with defaults
+- `validateConfig(env)` — returns `{ ok, errors, warnings }`
+- Server exits on startup if critical production vars are missing
+- All env vars accessed via `config.KEY` — never `process.env.KEY` in business logic
+- `env-utils.js` provides typed parsers: `parseBooleanFlag()`, `parseIntegerInRange()`, `clampBrotliQuality()`
+## Logging
+- Levels: debug, info, warn, error
+- Output: JSON lines to stdout (debug/info) or stderr (warn/error)
+- Context: `{ scope, requestId, error, ... }` passed as second argument
+- Controlled by `LOG_LEVEL` env var
+## Response Format
+## Global State
+<!-- GSD:conventions-end -->
+
+<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+## Architecture
+
+## Pattern
+```
+```
+## Layers
+### 1. Entry Point (`src/server.js`, 240 lines)
+- Creates Express app + HTTP server
+- Registers middleware stack (request ID → security headers → CSRF → JSON body → rate limiter → compression)
+- Builds asset hash map and view route map at startup
+- Mounts route groups and WebSocket handlers
+- Pre-warms tree-sitter worker pool
+### 2. Routes (`src/routes/`, 8 files, ~3,551 lines)
+- **`auth.routes.js`** (253 lines) — login, logout, register, session management, user store CRUD
+- **`app.routes.js`** (604 lines) — repo docs browsing/rendering, operations/deployments/policies API
+- **`assistant.routes.js`** (214 lines) — composer that mounts sub-routers + terminal sessions + runs
+- **`assistant-workspace.routes.js`** (478 lines) — workspace select/open/files/graph/sync/batch/reindex
+- **`assistant-chat.routes.js`** (768 lines) — chat, SSE streaming, codec, inline-complete
+- **`assistant-git.routes.js`** (332 lines) — git status/branch/commit/push/pull/diff/log/stash/clone
+- **`realtime.routes.js`** (573 lines) — WebSocket voice chat handler
+- **`terminal.routes.js`** (307 lines) — WebSocket terminal handler
+### 3. Core Logic (`src/core/`, 10 files, ~9,953 lines)
+- **`index.js`** (1,200 lines) — wiring hub: imports all modules, assigns globals, builds `module.exports` facade
+- **`auth.js`** (582 lines) — session cookies, password hashing (scrypt), session cache, credential cache
+- **`model-providers.js`** (1,663 lines) — multi-provider AI calls, mesh codec encode/decode, model routing
+- **`workspace-ops.js`** (1,723 lines) — workspace file CRUD, search, grep, git, batch operations
+- **`workspace-infrastructure.js`** (1,191 lines) — path safety, metadata store, git wrapper, S3 blob ops, job queue
+- **`workspace-context.js`** (1,146 lines) — file open cache, workspace fallback logic, terminal session management
+- **`assistant-runs.js`** (1,130 lines) — assistant run lifecycle, proposal generation, batch editing
+- **`voice-agent.js`** (851 lines) — voice chat agent with tool use (workspace read/write/search)
+- **`voice-aws-audio.js`** (257 lines) — AWS Transcribe + Polly integration
+- **`deployments.js`** (210 lines) — deployment queue, policy management
+### 4. Data Layer
+- **`secure-db.js`** (521 lines, root) — DynamoDB + SQLite dual-backend, AES-256-GCM encryption
+- **`workspace-metadata-store.cjs`** (519 lines, root) — DynamoDB workspace file metadata store
+- No ORM — direct DynamoDB Document Client operations
+### 5. Shared Libraries (root-level)
+- **`assistant-core.js`** (806 lines) — shared utilities for assistant features (structural edit, command guard, path scoring)
+- **`llm-compress.js`** (499 lines) — LLM context compression logic
+### 6. Mesh Core (`mesh-core/src/`, 7,232 lines)
+- **`compression-core.cjs`** (2,568 lines) — workspace file compression pipeline (Brotli + capsule + transport)
+- **`workspace-operations.js`** (2,326 lines) — mesh worker workspace operations
+- **`workspace-helpers.js`** (875 lines) — workspace utility functions
+- **`tree-sitter-worker.cjs`** (574 lines) — AST-based code analysis worker
+- **`server.js`** (324 lines) — mesh-core microservice (separate process)
+## Key Abstractions
+### Global State Pattern
+### Workspace Duality
+### Tunnel/Fallback Pattern
+### Credential Resolution
+<!-- GSD:architecture-end -->
+
+<!-- GSD:workflow-start source:GSD defaults -->
+## GSD Workflow Enforcement
+
+Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+
+Use these entry points:
+- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
+- `/gsd:debug` for investigation and bug fixing
+- `/gsd:execute-phase` for planned phase work
+
+Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+<!-- GSD:workflow-end -->
+
+<!-- GSD:profile-start -->
+## Developer Profile
+
+> Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile.
+> This section is managed by `generate-claude-profile` -- do not edit manually.
+<!-- GSD:profile-end -->

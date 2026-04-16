@@ -37,21 +37,16 @@ node --test <file> # run specific file
 | File | What It Tests |
 |------|--------------|
 | `test/model-providers.test.js` | Model registry, provider routing, BYOK calls |
-| `test/mesh-codec.test.js` | Mesh model codec encode/decode |
 | `test/rate-limiter.test.js` | Rate limiting middleware |
 | `test/realtime-routes.test.js` | Voice WebSocket session handling |
 | `test/terminal-routes.test.js` | Terminal WebSocket setup |
 | `test/security-integration.test.js` | CSRF, headers, XSS protection |
 
-### ccmon
+### Workspace Ops
 
 | File | What It Tests |
 |------|--------------|
-| `test/ccmon/parser.test.js` | JSONL parsing, event normalization |
-| `test/ccmon/history.test.js` | Historical aggregation logic |
-| `test/ccmon/pricing.test.js` | Cost calculation functions |
-| `test/ccmon/render.test.js` | Panel render functions |
-| `test/ccmon/state.test.js` | State accumulator and event application |
+| `test/workspace-ops.test.js` | `resolveAdaptiveCompressedContextBudget` — all 4 budget modes, key shape |
 
 ## Test Standards (from CLAUDE.md)
 

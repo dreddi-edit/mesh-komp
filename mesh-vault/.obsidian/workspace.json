@@ -11,17 +11,14 @@
             "id": "541d63d70ee16a97",
             "type": "leaf",
             "state": {
-              "type": "canvas",
+              "type": "markdown",
               "state": {
-                "file": "Overview.canvas",
-                "viewState": {
-                  "x": 1174.8285712218842,
-                  "y": -266.1846759170067,
-                  "zoom": -1.4127990746498111
-                }
+                "file": "Explanation/Architecture Overview.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-layout-dashboard",
-              "title": "Overview"
+              "icon": "lucide-file",
+              "title": "Architecture Overview"
             }
           }
         ]
@@ -185,20 +182,33 @@
   },
   "active": "541d63d70ee16a97",
   "lastOpenFiles": [
+    "Explanation/What is Mesh.md",
+    "Explanation/Architecture Overview.md",
+    "Assets/explanation/mesh-surfaces-diagram.svg",
+    "Architecture/Compression Benchmark.md",
+    "Assets/benchmark-graphics/compression-benchmark-recovery.svg",
+    "Assets/benchmark-graphics/compression-benchmark-vs-legacy.svg",
+    "Assets/benchmark-graphics/compression-benchmark-large-file-savings.svg",
+    "Explanation",
+    "Assets/explanation",
+    "Assets/benchmark-graphics",
+    "Assets",
     "Architecture/Compression Pipeline.md",
+    "Development/Testing.md",
+    "Backend/Core Orchestrator.md",
+    "Architecture/Workspace Model.md",
     "Home.md",
     "Overview.canvas",
     "Architecture/Authentication.md",
+    "Data/S3 Storage.md",
     "Unbenannt.canvas",
     "Projects.md",
     "Reading List.md",
     "Ideas.md",
     "Projects/Mesh Platform.md",
     "Resources/The Managers Path.md",
-    "Backend/Core Orchestrator.md",
     "Data/Blob Storage.md",
     "Data/Cosmos Data Model.md",
-    "Development/Testing.md",
     "Development/ccmon Dashboard.md",
     "Development/Scripts and Commands.md",
     "Operations/Troubleshooting.md",
@@ -208,10 +218,6 @@
     "Areas/Health.md",
     "Architecture/Voice System.md",
     "Operations/Deploy Runbook.md",
-    "Architecture/System Architecture.md",
-    "Architecture/Azure Architecture.md",
-    "Backend/Worker (mesh-core).md",
-    "Frontend/App Shell.md",
     "Data",
     "Development",
     "Operations",

@@ -29,7 +29,6 @@ Browser mic
 | `src/routes/realtime.routes.js` | WebSocket session handler, VAD, STT, TTS coordination |
 | `src/core/voice-agent.js` | Voice tool definitions, task delegation, approval flow |
 | `src/core/voice-aws-audio.js` | Amazon Transcribe + Polly integration, text tool loop |
-| `src/core/voice-realtime-profile.js` | Azure realtime profile builder (BYOK user feature — not used by server) |
 | `assets/features/voice-chat.js` | Browser UI, orb, mic capture, WebSocket client |
 | `assets/features/voice-audio-worklet.js` | Audio worklet for mic capture and speaker playback |
 
