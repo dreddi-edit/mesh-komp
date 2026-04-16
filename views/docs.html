@@ -679,7 +679,7 @@
             </div>
             <div class="step">
               <div class="step-n">02</div>
-              <div class="step-t">Indexer und Parser erstellen strukturierte Capsules mit priorisierten Sektionen.</div>
+              <div class="step-t">Worker Tunnel (node-worker) erstellt strukturierte Capsules mit AST-Parsern.</div>
             </div>
             <div class="step">
               <div class="step-n">03</div>
@@ -687,7 +687,7 @@
             </div>
             <div class="step">
               <div class="step-n">04</div>
-              <div class="step-t">Recovery lädt exakte Evidenz aus dem Original nach.</div>
+              <div class="step-t">Recovery lädt exakte Evidenz (Span-IDs) via S3 nach.</div>
             </div>
           </div>
         </div>
@@ -717,7 +717,7 @@
             <button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-wrap').querySelector('pre').textContent)">Copy JSON</button>
           </div>
           <pre class="code-pre">{
-  "path": "src/routes/assistant.routes.js",
+  "path": "src/routes/assistant-workspace.routes.js",
   "status": "completed",
   "views": {
     "original": "...",
@@ -760,7 +760,7 @@
               <div>Integrität</div><div>Digest-Ketten</div><div>Manipulationsschutz</div>
             </div>
             <div class="matrix-row">
-              <div>Isolation</div><div>Multi-Tenant Store</div><div>Kein Datenleck</div>
+              <div>Isolation</div><div>AWS S3 IAM Tags</div><div>Kein Datenleck</div>
             </div>
           </div>
         </div>

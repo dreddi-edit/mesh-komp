@@ -229,6 +229,27 @@
 
 ---
 
+### Phase 16: Compression Pipeline — Deep Audit & Optimization
+
+**Goal:** Perform a comprehensive audit of the entire compression pipeline — how files are compressed, where it happens, how the AI model accesses capsules, token cost per request — and implement targeted improvements for cost reduction, speed, quality, and security.
+**Status:** planned
+**Depends on:** Phase 15
+
+**Scope:**
+- Audit all compression-related source files end-to-end (mesh-core/src/compression-core.cjs, src/core/index.js, capsule access paths in AI chat routes)
+- Map the full data flow: file → capsule → context window → LLM
+- Identify optimization opportunities: token budget waste, redundant compression, unsafe inputs, slow paths
+- Implement approved improvements across cost, speed, quality, and security dimensions
+
+**Success Criteria:**
+- Full audit document produced covering all compression code paths
+- Token cost per request measurably reduced (baseline vs. optimized comparison)
+- No compression-related security vulnerabilities (path traversal, unbounded input, etc.)
+- Compression throughput unchanged or improved
+- All existing compression tests continue to pass
+
+---
+
 **Success Criteria (Milestone):**
 - Every visible feature in app.html is present in app-v2.html
 - All Antigravity IDE features (from screenshot) are preserved
