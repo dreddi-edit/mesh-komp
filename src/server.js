@@ -66,40 +66,20 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
 }));
 
-// ── CSRF protection (Origin / Referer check for mutating requests) ────────────
-
-/**
- * Rejects cross-origin state-changing requests.
- * Works as defense-in-depth alongside SameSite: Strict cookies.
- * Requests without Origin/Referer (e.g. curl, server-to-server) are allowed
- * because those clients cannot carry user session cookies via the browser.
- */
-function csrfGuard(req, res, next) {
-  const method = req.method.toUpperCase();
-  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return next();
-
-  const origin  = String(req.headers.origin  || '').trim();
-  const referer = String(req.headers.referer || '').trim();
-  const source  = origin || referer;
-  if (!source) return next();
-
-  try {
-    const parsed = new URL(source);
-    const host   = String(req.headers.host || '').trim();
-    if (parsed.host !== host) {
-      res.status(403).json({ ok: false, error: 'CSRF validation failed.' });
-      return;
-    }
-  } catch {
-    res.status(403).json({ ok: false, error: 'CSRF validation failed.' });
-    return;
-  }
-  next();
-}
+// ── CSRF protection (double-submit cookie via csrf-csrf) ─────────────────────
+const { csrfProtection, generateToken } = require('./middleware/csrf');
 
 // Tight default — only the offload/ingest route overrides this per-route.
 app.use(express.json({ limit: '1mb' }));
-app.use(csrfGuard);
+
+// Apply CSRF token validation to all state-mutating routes.
+// GET /api/csrf-token is exempt so clients can fetch the initial token.
+app.use((req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return csrfProtection(req, res, next);
+  }
+  next();
+});
 
 const { apiLimiter, uploadLimiter } = require('./middleware/rate-limiter');
 app.use('/api', apiLimiter);
@@ -183,22 +163,36 @@ function injectAssetHashes(html) {
   });
 }
 
-function sendHtmlWithHashes(res, filePath) {
-  const html = fs.readFileSync(filePath, 'utf8');
-  const rewritten = injectAssetHashes(html);
+// In-memory HTML cache — permanent in production, bypassed in dev
+const htmlCache = new Map();
+const IS_DEV = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev';
+
+async function sendHtmlWithHashes(res, filePath) {
+  let rewritten = htmlCache.get(filePath);
+  if (!rewritten || IS_DEV) {
+    const html = await fs.promises.readFile(filePath, 'utf8');
+    rewritten = injectAssetHashes(html);
+    if (!IS_DEV) htmlCache.set(filePath, rewritten);
+  }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.send(rewritten);
 }
 
-app.get('/', (_req, res) => {
-  sendHtmlWithHashes(res, path.join(REPO_ROOT, 'views', 'index.html'));
+app.get('/', async (_req, res, next) => {
+  try {
+    await sendHtmlWithHashes(res, path.join(REPO_ROOT, 'views', 'index.html'));
+  } catch (err) { next(err); }
 });
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (req.path === '/' || req.path.slice(1).includes('.')) return next();
   const filePath = VIEW_ROUTE_MAP.get(req.path);
-  if (filePath) return sendHtmlWithHashes(res, filePath);
+  if (filePath) {
+    try {
+      return await sendHtmlWithHashes(res, filePath);
+    } catch (err) { return next(err); }
+  }
   next();
 });
 
@@ -210,6 +204,11 @@ app.use('/pitch', express.static(path.join(REPO_ROOT, 'pitch'), STATIC_CACHE));
 app.use('/ccmon-web', express.static(path.join(REPO_ROOT, 'ccmon-web'), STATIC_CACHE));
 app.use('/node_modules/animejs', express.static(path.join(REPO_ROOT, 'node_modules', 'animejs'), STATIC_CACHE));
 
+
+// ── CSRF token endpoint (exempt from CSRF protection — used to seed the token) ─
+app.get('/api/csrf-token', (req, res) => {
+  res.json({ ok: true, token: generateToken(req, res) });
+});
 
 const { createAuthRouter } = require('./routes/auth.routes');
 const { createAppRouter } = require('./routes/app.routes');
