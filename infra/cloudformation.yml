@@ -50,6 +50,20 @@ Parameters:
       ACM certificate ARN for HTTPS on the ALB. Leave blank to use HTTP only
       (not recommended for production).
 
+  CloudFrontCertificateArn:
+    Type: String
+    Default: ''
+    Description: >
+      ACM certificate ARN (must be in us-east-1) for the CloudFront custom domain.
+      Leave blank to use the default CloudFront certificate (*.cloudfront.net only).
+
+  CloudFrontAlias:
+    Type: String
+    Default: ''
+    Description: >
+      Custom domain name for CloudFront (e.g. try-mesh.com). Must match the
+      CloudFrontCertificateArn subject. Leave blank for CloudFront default domain.
+
   AppRepoUrl:
     Type: String
     Default: https://github.com/dreddi-edit/mesh-komp.git
@@ -86,6 +100,7 @@ Parameters:
 # ─────────────────────────────────────────────────────────────────────────────
 Conditions:
   HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+  HasCloudFrontAlias: !Not [!Equals [!Ref CloudFrontAlias, '']]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Resources
@@ -428,6 +443,16 @@ Resources:
         Enabled: true
         HttpVersion: http2and3
         PriceClass: PriceClass_100   # US/EU/Japan only — cheapest
+        Aliases: !If
+          - HasCloudFrontAlias
+          - - !Ref CloudFrontAlias
+          - !Ref AWS::NoValue
+        ViewerCertificate: !If
+          - HasCloudFrontAlias
+          - ACMCertificateArn: !Ref CloudFrontCertificateArn
+            SSLSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
         Origins:
           # Origin 1: S3 workspace blobs
           - Id: S3WorkspaceBlobs
