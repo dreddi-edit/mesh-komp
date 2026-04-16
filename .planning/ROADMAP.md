@@ -154,7 +154,7 @@
 
 **Goal:** Extract CSS design tokens, convert 16 standalone HTML pages to nunjucks template inheritance, bundle frontend assets with esbuild, add accessibility (ARIA, keyboard nav), and implement responsive design.
 
-**Status:** planned
+**Status:** complete
 **Depends on:** Phase 21 (frontend XSS hardening complete), Phase 24 (modules split for clean asset references)
 **Requirements:** UI-01, UI-02, UI-03, UI-04, UI-05, UI-06
 **UI hint:** yes
