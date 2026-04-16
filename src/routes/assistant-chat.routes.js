@@ -19,6 +19,95 @@ const config = require('../config');
 const logger = require('../logger');
 const { safeRouteError } = require('./route-utils');
 
+/**
+ * Resolve capsule context, span recovery, and codec requirements for a chat request.
+ * Extracted from the two near-identical pipelines in /api/assistant/chat and
+ * /api/assistant/chat/stream so every future optimization applies to both routes.
+ *
+ * @param {object} core  Full core exports object (same shape createChatRouter receives)
+ * @param {object[]} normalizedMessages  Already-normalized chat messages
+ * @param {string} activeFilePath  Raw activeFilePath from request body (pre-toSafePath)
+ * @param {string} requestId  Request correlation ID (used by meshTunnelRequest + inference)
+ * @returns {Promise<{
+ *   capsuleContextEntries: object[],
+ *   recoveredSpanEntries: object[],
+ *   contextBlock: string,
+ *   modelMessages: object[],
+ *   requiresCodecDictionary: boolean,
+ *   adaptiveContextBudget: object,
+ *   skippedOversizeContextPaths: string[],
+ *   referencedFiles: string[]
+ * }>}
+ */
+async function resolveChatContext(core, normalizedMessages, activeFilePath, requestId) {
+  const {
+    meshTunnelRequest,
+    localResolveReferencedFiles,
+    inferReferencedFilesFromWorkspace,
+    toSafePath,
+    extractActiveFilePathFromMessages,
+    dedupePaths,
+    resolveAdaptiveCompressedContextBudget,
+    loadCapsuleContextEntries,
+    loadRecoveredSpanEntries,
+    buildCapsuleContextBlock,
+    injectCompressedContextIntoMessages,
+  } = core;
+
+  const lastUserMessage = normalizedMessages.filter((m) => m?.role === 'user').at(-1)?.content || '';
+
+  let referencedFiles = [];
+  try {
+    const context = await meshTunnelRequest('chat', { messages: normalizedMessages }, requestId);
+    referencedFiles = Array.isArray(context?.referencedFiles) ? context.referencedFiles : [];
+  } catch {
+    referencedFiles = await localResolveReferencedFiles(lastUserMessage);
+  }
+  if (referencedFiles.length === 0) {
+    const inferred = await inferReferencedFilesFromWorkspace(lastUserMessage, requestId);
+    if (inferred.length > 0) referencedFiles = inferred;
+  }
+
+  const requestedActiveFile = toSafePath(activeFilePath);
+  const taggedActiveFile = extractActiveFilePathFromMessages(normalizedMessages);
+  const contextPaths = dedupePaths([requestedActiveFile, taggedActiveFile, ...referencedFiles]);
+  const hasActiveFileFocus = Boolean(requestedActiveFile || taggedActiveFile);
+  const adaptiveContextBudget = resolveAdaptiveCompressedContextBudget({ lastUserMessage, hasActiveFileFocus });
+
+  // Capsule loading and span recovery are independent — run them in parallel.
+  const spanRecoveryPaths = contextPaths.slice(0, hasActiveFileFocus ? 2 : 1);
+  const [capsuleContextResult, recoveredSpanEntries] = await Promise.all([
+    loadCapsuleContextEntries(contextPaths, {
+      maxFiles: adaptiveContextBudget.maxFiles,
+      maxModelChars: adaptiveContextBudget.maxModelCompressedChars,
+      firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
+      query: lastUserMessage,
+      disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
+    }),
+    loadRecoveredSpanEntries(spanRecoveryPaths, lastUserMessage, {
+      maxFiles: hasActiveFileFocus ? 2 : 1,
+      maxSpansPerFile: hasActiveFileFocus ? 4 : 2,
+    }),
+  ]);
+
+  const capsuleContextEntries = capsuleContextResult.entries;
+  const skippedOversizeContextPaths = capsuleContextResult.skippedOversizePaths;
+  const contextBlock = buildCapsuleContextBlock(capsuleContextEntries, recoveredSpanEntries);
+  const requiresCodecDictionary = capsuleContextEntries.some((entry) => Boolean(entry.usesCodecDictionary));
+  const modelMessages = injectCompressedContextIntoMessages(normalizedMessages, contextBlock);
+
+  return {
+    capsuleContextEntries,
+    recoveredSpanEntries,
+    contextBlock,
+    modelMessages,
+    requiresCodecDictionary,
+    adaptiveContextBudget,
+    skippedOversizeContextPaths,
+    referencedFiles,
+  };
+}
+
 function createChatRouter(core) {
   const {
     requireAuth,
@@ -76,47 +165,16 @@ function createChatRouter(core) {
     const normalizedMessages = normalizeMessages(messages);
     const normalizedSessionId = normalizeChatSessionId(chatSessionId);
 
-    let referencedFiles = [];
-    const lastUserMessage = normalizedMessages.filter((m) => m?.role === 'user').at(-1)?.content || '';
-    try {
-      const context = await meshTunnelRequest('chat', { model, messages: normalizedMessages }, req.requestId);
-      referencedFiles = Array.isArray(context?.referencedFiles) ? context.referencedFiles : [];
-    } catch {
-      referencedFiles = await localResolveReferencedFiles(lastUserMessage);
-    }
+    const {
+      capsuleContextEntries,
+      recoveredSpanEntries,
+      modelMessages,
+      requiresCodecDictionary,
+      adaptiveContextBudget,
+      skippedOversizeContextPaths,
+      referencedFiles,
+    } = await resolveChatContext(core, normalizedMessages, activeFilePath, req.requestId);
 
-    if (referencedFiles.length === 0) {
-      const inferred = await inferReferencedFilesFromWorkspace(lastUserMessage, req.requestId);
-      if (inferred.length > 0) referencedFiles = inferred;
-    }
-
-    const requestedActiveFile = toSafePath(activeFilePath);
-    const taggedActiveFile = extractActiveFilePathFromMessages(normalizedMessages);
-    const contextPaths = dedupePaths([requestedActiveFile, taggedActiveFile, ...referencedFiles]);
-    const hasActiveFileFocus = Boolean(requestedActiveFile || taggedActiveFile);
-    const adaptiveContextBudget = resolveAdaptiveCompressedContextBudget({ lastUserMessage, hasActiveFileFocus });
-
-    // Capsule loading and span recovery are independent — run them in parallel.
-    const spanRecoveryPaths = contextPaths.slice(0, hasActiveFileFocus ? 2 : 1);
-    const [capsuleContextResult, recoveredSpanEntries] = await Promise.all([
-      loadCapsuleContextEntries(contextPaths, {
-        maxFiles: adaptiveContextBudget.maxFiles,
-        maxModelChars: adaptiveContextBudget.maxModelCompressedChars,
-        firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
-        query: lastUserMessage,
-        disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
-      }),
-      loadRecoveredSpanEntries(spanRecoveryPaths, lastUserMessage, {
-        maxFiles: hasActiveFileFocus ? 2 : 1,
-        maxSpansPerFile: hasActiveFileFocus ? 4 : 2,
-      }),
-    ]);
-    const capsuleContextEntries = capsuleContextResult.entries;
-    const skippedOversizeContextPaths = capsuleContextResult.skippedOversizePaths;
-    const contextBlock = buildCapsuleContextBlock(capsuleContextEntries, recoveredSpanEntries);
-    const requiresCodecDictionary = capsuleContextEntries.some((entry) => Boolean(entry.usesCodecDictionary));
-
-    const modelMessages = injectCompressedContextIntoMessages(normalizedMessages, contextBlock);
     let injectedCodecContext = false;
 
     // Build codec context and embed it in the system prompt rather than prepending to user
@@ -313,46 +371,15 @@ function createChatRouter(core) {
       const normalizedMessages = normalizeMessages(messages);
       const normalizedSessionId = normalizeChatSessionId(chatSessionId);
 
-      let referencedFiles = [];
-      const lastUserMessage = normalizedMessages.filter((m) => m?.role === 'user').at(-1)?.content || '';
-      try {
-        const context = await meshTunnelRequest('chat', { model, messages: normalizedMessages }, req.requestId);
-        referencedFiles = Array.isArray(context?.referencedFiles) ? context.referencedFiles : [];
-      } catch {
-        referencedFiles = await localResolveReferencedFiles(lastUserMessage);
-      }
+      const {
+        capsuleContextEntries,
+        recoveredSpanEntries,
+        modelMessages,
+        requiresCodecDictionary,
+        adaptiveContextBudget,
+        referencedFiles,
+      } = await resolveChatContext(core, normalizedMessages, activeFilePath, req.requestId);
 
-      if (referencedFiles.length === 0) {
-        const inferred = await inferReferencedFilesFromWorkspace(lastUserMessage, req.requestId);
-        if (inferred.length > 0) referencedFiles = inferred;
-      }
-
-      const requestedActiveFile = toSafePath(activeFilePath);
-      const taggedActiveFile = extractActiveFilePathFromMessages(normalizedMessages);
-      const contextPaths = dedupePaths([requestedActiveFile, taggedActiveFile, ...referencedFiles]);
-      const hasActiveFileFocus = Boolean(requestedActiveFile || taggedActiveFile);
-      const adaptiveContextBudget = resolveAdaptiveCompressedContextBudget({ lastUserMessage, hasActiveFileFocus });
-
-      // Capsule loading and span recovery are independent — run them in parallel.
-      const spanRecoveryPaths = contextPaths.slice(0, hasActiveFileFocus ? 2 : 1);
-      const [capsuleContextResult, recoveredSpanEntries] = await Promise.all([
-        loadCapsuleContextEntries(contextPaths, {
-          maxFiles: adaptiveContextBudget.maxFiles,
-          maxModelChars: adaptiveContextBudget.maxModelCompressedChars,
-          firstFileMaxModelChars: adaptiveContextBudget.firstFileMaxModelCompressedChars,
-          query: lastUserMessage,
-          disableCodecDictionary: adaptiveContextBudget.disableCodecDictionary,
-        }),
-        loadRecoveredSpanEntries(spanRecoveryPaths, lastUserMessage, {
-          maxFiles: hasActiveFileFocus ? 2 : 1,
-          maxSpansPerFile: hasActiveFileFocus ? 4 : 2,
-        }),
-      ]);
-      const capsuleContextEntries = capsuleContextResult.entries;
-      const contextBlock = buildCapsuleContextBlock(capsuleContextEntries, recoveredSpanEntries);
-      const requiresCodecDictionary = capsuleContextEntries.some((entry) => Boolean(entry.usesCodecDictionary));
-
-      let modelMessages = injectCompressedContextIntoMessages(normalizedMessages, contextBlock);
       let injectedCodecContext = false;
 
       // Build codec context and embed it in the system prompt rather than prepending to user

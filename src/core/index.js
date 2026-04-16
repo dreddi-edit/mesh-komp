@@ -298,7 +298,7 @@ const WORKSPACE_SELECT_MAX_JOB_HISTORY = config.WORKSPACE_SELECT_MAX_JOB_HISTORY
 const WORKSPACE_SELECT_MAX_PENDING = config.WORKSPACE_SELECT_MAX_PENDING;
 const WORKSPACE_SOURCE_UPLOAD = "upload";
 const WORKSPACE_SOURCE_LOCAL_PATH = "local-path";
-const LOCAL_WORKSPACE_SKIP_EXTENSIONS = /\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|mp4|mp3|wav|ogg|zip|gz|tar|wasm|map)$/i;
+const LOCAL_WORKSPACE_SKIP_EXTENSIONS = /(\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf|eot|mp4|mp3|wav|ogg|zip|gz|tar|wasm|map)|\.min\.(js|css))$/i;
 const LOCAL_WORKSPACE_SKIP_DIRS = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__)(\/|$)/;
 const LOCAL_WORKSPACE_MAX_FILE_CHARS = 1_000_000;
 

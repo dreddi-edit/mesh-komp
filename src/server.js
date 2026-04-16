@@ -195,6 +195,18 @@ app.use('/', createAssistantRouter(core));
 const { setupTerminalRelay } = require('./routes/terminal.routes');
 setupTerminalRelay(server, { projectRoot: REPO_ROOT, core });
 
+// Pre-warm tree-sitter worker pool so the first chat request doesn't pay
+// worker spin-up latency. Safe no-op if the export is unavailable.
+try {
+  const { getTreeSitterWorkerPool } = require('../mesh-core/src/compression-core.cjs');
+  if (typeof getTreeSitterWorkerPool === 'function') {
+    const pool = getTreeSitterWorkerPool();
+    logger.info('Tree-sitter worker pool pre-warmed', { workers: Array.isArray(pool) ? pool.length : 0 });
+  }
+} catch (err) {
+  logger.warn('Tree-sitter worker pool pre-warm skipped', { error: err?.message });
+}
+
 const PORT = config.PORT;
 server.listen(PORT, () => {
   logger.info('Server started', { port: PORT });

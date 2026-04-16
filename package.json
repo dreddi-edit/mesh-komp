@@ -8,6 +8,7 @@
     "bench:compression": "node benchmarks/compression-benchmark.js",
     "bench:compression:save": "node benchmarks/compression-benchmark.js --save",
     "test": "node --test --test-force-exit --test-timeout=120000",
+    "test:workspace-ops": "node --test test/workspace-ops.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

@@ -24,6 +24,7 @@ const {
   decodeRawStorage,
   ensureWorkspaceFileRecord,
 } = require('../../mesh-core/src/compression-core.cjs');
+const { escapeRegexLiteral } = require('./model-providers');
 
 let localWorkspaceEnrichmentRunning = false;
 const localWorkspaceEnrichmentPending = [];

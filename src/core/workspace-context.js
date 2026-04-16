@@ -856,7 +856,9 @@ async function loadCapsuleContextEntries(paths = [], options = {}) {
         usesCodecDictionary = Boolean(encodedMeta.dictionaryEnabled);
       } else {
         const nextLimit = Math.max(600, perFileLimit - 128);
-        modelContent = `${rendered.slice(0, nextLimit)}\n\n[capsule truncated by gateway budget]`;
+        const retainedPct = Math.round((nextLimit / rendered.length) * 100);
+        const totalKb = Math.round(rendered.length / 1024);
+        modelContent = `${rendered.slice(0, nextLimit)}\n\n[capsule truncated: showing first ${retainedPct}% of ${totalKb}k chars — use a specific file path to load complete content]`;
         truncated = true;
       }
     }

@@ -2556,6 +2556,7 @@ module.exports = {
   estimateTextTokens,
   extractTransportEnvelope,
   getFocusedCacheKey,
+  getTreeSitterWorkerPool,
   recoverWorkspaceFileRecord,
   allocateWorkspaceBudget,
   resolveWorkspacePath,
