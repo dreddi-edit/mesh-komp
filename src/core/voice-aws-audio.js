@@ -8,6 +8,7 @@
  *   - TTS: Amazon Polly (replaces Azure TTS)
  */
 
+const config = require('../config');
 const { callBedrockDirect } = require('./model-providers');
 
 let TranscribeStreamingClient, StartStreamTranscriptionCommand;
@@ -217,7 +218,7 @@ async function runAwsVoiceToolLoop(options = {}) {
   const maxSteps = Math.max(1, Math.min(Number(options.maxSteps || 8), 12));
 
   for (let step = 0; step < maxSteps; step += 1) {
-    const model = trimText(options.model || process.env.MESH_DEFAULT_MODEL || 'claude-sonnet-4-6');
+    const model = trimText(options.model || config.MESH_DEFAULT_MODEL);
     const maxTokens = Math.max(256, Number(options.maxTokens || 900));
     const result = await callBedrockDirect({ model, messages, maxTokens });
 

@@ -2,10 +2,10 @@
 
 /** Per-token pricing in USD. Prices as of 2026-04 — update when Anthropic changes them. */
 const PRICING = {
-  'claude-opus-4-6':   { input: 15.00 / 1e6, output: 75.00 / 1e6, cacheRead: 1.50 / 1e6, cacheWrite: 18.75 / 1e6 },
+  'claude-opus-4-6':   { input:  5.00 / 1e6, output: 25.00 / 1e6, cacheRead: 0.50 / 1e6, cacheWrite:  6.25 / 1e6 },
   'claude-sonnet-4-6': { input:  3.00 / 1e6, output: 15.00 / 1e6, cacheRead: 0.30 / 1e6, cacheWrite:  3.75 / 1e6 },
-  'claude-haiku-4-5':  { input:  0.80 / 1e6, output:  4.00 / 1e6, cacheRead: 0.08 / 1e6, cacheWrite:  1.00 / 1e6 },
-  'claude-opus-4-5':   { input: 15.00 / 1e6, output: 75.00 / 1e6, cacheRead: 1.50 / 1e6, cacheWrite: 18.75 / 1e6 },
+  'claude-haiku-4-5':  { input:  1.00 / 1e6, output:  5.00 / 1e6, cacheRead: 0.10 / 1e6, cacheWrite:  1.25 / 1e6 },
+  'claude-opus-4-5':   { input:  5.00 / 1e6, output: 25.00 / 1e6, cacheRead: 0.50 / 1e6, cacheWrite:  6.25 / 1e6 },
   'claude-sonnet-4-5': { input:  3.00 / 1e6, output: 15.00 / 1e6, cacheRead: 0.30 / 1e6, cacheWrite:  3.75 / 1e6 },
 };
 

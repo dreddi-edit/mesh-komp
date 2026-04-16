@@ -72,8 +72,8 @@ async function refreshCloudWatch() {
   const result = await fetchBedrockUsageFromCloudWatch({ lookbackDays: 30 });
 
   if (result.ok) {
-    cwStatus = { ok: true, lastFetched: new Date().toISOString(), cwByDate: result.cwByDate };
-    console.log(`\x1b[32m[ccmon-server]\x1b[0m CloudWatch OK — ${result.cwByDate.size} day(s) of Bedrock data`);
+    cwStatus = { ok: true, lastFetched: new Date().toISOString(), cwByDate: result.byDate };
+    console.log(`\x1b[32m[ccmon-server]\x1b[0m CloudWatch OK — ${result.byDate.size} day(s) of Bedrock data`);
   } else {
     cwStatus = { ok: false, lastFetched: new Date().toISOString(), error: result.error, cwByDate: null };
     console.warn(`\x1b[33m[ccmon-server]\x1b[0m CloudWatch unavailable: ${result.error}`);

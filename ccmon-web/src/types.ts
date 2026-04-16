@@ -4,8 +4,20 @@ export interface AppState {
   accumulated: Accumulated;
   burnRate: BurnRate;
   history: HistoryDay[];
+  cloudWatch: CloudWatchStatus;
   timestamp: number;
 }
+
+/**
+ * Discriminated union for all SSE message types emitted by ccmon-server.js.
+ * The server broadcasts { type: 'update'|'cw_update'|'init', ...AppState }.
+ * Using this type in onmessage handlers gives compile-time protection
+ * against shape drift between the server and client.
+ */
+export type ServerMessage =
+  | ({ type: 'init' } & AppState)
+  | ({ type: 'update' } & AppState)
+  | ({ type: 'cw_update' } & AppState);
 
 export interface Session {
   tokensIn: number;
@@ -20,16 +32,32 @@ export interface Session {
   peakSpeed: number;
   contextTokens: number;
   contextLimit: number;
+  totalLatencyMs: number;
+  sparkIn: number[];
+  sparkOut: number[];
+  sparkCost: number[];
+  sparkSpeed: number[];
   feed: FeedEvent[];
+  lastEvent: LastEvent | null;
+}
+
+export interface LastEvent {
+  tokensIn: number;
+  tokensOut: number;
+  cacheRead: number;
+  cacheWrite: number;
+  costUSD: number;
+  model: string;
 }
 
 export interface FeedEvent {
-  timestamp: string;
-  model: string;
+  time: string;
   tokensIn: number;
   tokensOut: number;
+  cacheRead: number;
   costUSD: number;
-  id: string;
+  speed: number;
+  latencyMs: number;
 }
 
 export interface Accumulated {
@@ -59,4 +87,10 @@ export interface HistoryDay {
   tokensIn: number;
   tokensOut: number;
   requests: number;
+}
+
+export interface CloudWatchStatus {
+  ok: boolean;
+  lastFetched: string | null;
+  error: string | null;
 }

@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node --env-file .env src/server.js",
     "monitor": "node ccmon.js",
+    "monitor:web": "node --env-file .env ccmon-server.js",
     "bench:compression": "node benchmarks/compression-benchmark.js",
     "bench:compression:save": "node benchmarks/compression-benchmark.js --save",
     "test": "node --test --test-force-exit --test-timeout=120000",
@@ -32,6 +33,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1030.0",
     "animejs": "^4.3.6",
     "better-sqlite3": "^11.10.0",
+    "cors": "^2.8.6",
     "express": "^5.2.1",
     "fast-xml-parser": "^5.5.10",
     "highlight.js": "^11.11.1",

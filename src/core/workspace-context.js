@@ -4,11 +4,22 @@
  * File access helpers, terminal session management, context excerpt and
  * compression utilities, codec transport building, and refusal detection.
  *
- * All functions reference globals (populated by server.js at startup) at
- * call-time. Only crypto is required directly for UUID generation.
+ * Static dependencies are imported explicitly. Shared runtime state
+ * (localAssistantWorkspace, workspaceMetadataStore, etc.) is injected via
+ * Object.assign(global, ...) in core/index.js at startup — those remain
+ * globals because they live in the parent module and a direct import would
+ * create a circular dependency.
  */
 
 const crypto = require('crypto');
+const {
+  mapWithConcurrency,
+  isWorkspaceIndexablePath,
+} = require('./workspace-infrastructure');
+const {
+  buildWorkspaceFileRecord,
+  ensureWorkspaceFileRecord,
+} = require('../../mesh-core/src/compression-core.cjs');
 
 async function compressLocalWorkspaceChunkFiles(incomingFiles, options = {}) {
   const recordMode = String(options.recordMode || "initial").trim().toLowerCase() === "full" ? "full" : "initial";

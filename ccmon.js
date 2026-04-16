@@ -123,8 +123,8 @@ async function refreshCloudWatch(silent = false) {
   const result = await fetchBedrockUsageFromCloudWatch({ lookbackDays: 30 });
 
   if (result.ok) {
-    cwStatusMsg = `{green-fg}CW ✔ ${result.cwByDate.size}d{/}`;
-    byDate = mergeCloudWatchIntoHistory(jsonlByDate, result.cwByDate);
+    cwStatusMsg = `{green-fg}CW ✔ ${result.byDate.size}d{/}`;
+    byDate = mergeCloudWatchIntoHistory(jsonlByDate, result.byDate);
   } else {
     cwStatusMsg = `{red-fg}CW ✗{/}`;
     byDate = new Map(jsonlByDate);

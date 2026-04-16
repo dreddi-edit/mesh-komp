@@ -4,11 +4,26 @@
  * File CRUD, workspace selection, search/grep, git operations, AI reply
  * routing, context assembly, and reference resolution.
  *
- * All functions reference globals (populated by server.js at startup) at
- * call-time. No Node.js built-ins are needed directly.
+ * Static dependencies are imported explicitly. Shared runtime state
+ * (localAssistantWorkspace, workspaceMetadataStore, etc.) is injected via
+ * Object.assign(global, ...) in core/index.js at startup — those remain
+ * globals because they live in the parent module and a direct import would
+ * create a circular dependency.
  */
 
 const logger = require('../logger');
+const {
+  mapWithConcurrency,
+  createWorkspacePerfTracker,
+  isWorkspaceIndexablePath,
+} = require('./workspace-infrastructure');
+const {
+  WORKSPACE_RECORD_VERSION,
+  buildWorkspaceFileRecord,
+  buildWorkspaceFileView,
+  decodeRawStorage,
+  ensureWorkspaceFileRecord,
+} = require('../../mesh-core/src/compression-core.cjs');
 
 let localWorkspaceEnrichmentRunning = false;
 const localWorkspaceEnrichmentPending = [];
@@ -265,15 +280,24 @@ async function localWorkspaceSelect(data) {
   const compressedEntries = await compressLocalWorkspaceChunkFiles(incomingFiles, {
     recordMode: syncMode === "single-file" ? "full" : "initial",
   });
-  for (const entry of compressedEntries) {
-    const packed = await ensureLocalWorkspaceMeta(entry.packed, entry.filePath);
+  // Process all compressed entries in parallel — ensureLocalWorkspaceMeta is I/O-bound
+  // (metadata store reads/writes) so concurrency here directly reduces wall-clock time.
+  const ensuredEntries = await mapWithConcurrency(
+    compressedEntries,
+    MESH_WORKSPACE_BUILD_CONCURRENCY,
+    async (entry) => {
+      const packed = await ensureLocalWorkspaceMeta(entry.packed, entry.filePath);
+      return { filePath: entry.filePath, packed };
+    },
+  );
+  for (const { filePath, packed } of ensuredEntries) {
     originalBytes += Number(packed.originalSize || 0);
     compressedBytes += Number(packed.compressedSize || 0);
     capsuleBytes += Number(packed.compressionStats?.capsuleBytes || 0);
     transportBytes += Number(packed.compressionStats?.transportBytes || 0);
-    next.set(entry.filePath, {
+    next.set(filePath, {
       ...packed,
-      path: entry.filePath,
+      path: filePath,
       kind: "source",
     });
   }
@@ -966,16 +990,20 @@ async function localWorkspaceRename(fromPathInput, toPathInput, options = {}) {
       },
       status: String(sourceDoc.status || "completed").toLowerCase() === "completed" ? "completed" : "pending",
     });
-    await workspaceMetadataStore.deleteWorkspaceFileRecord(workspaceId, fromPath, {
-      folderName: sourceDoc.folderName || localAssistantWorkspace.folderName || "workspace",
-      rootPath: "",
-      sourceKind: WORKSPACE_SOURCE_UPLOAD,
-      sessionId: sourceDoc.sessionId || localAssistantWorkspace.sessionId,
-    });
-    await syncLocalUploadWorkspaceSummary(workspaceId, {
-      folderName: sourceDoc.folderName || localAssistantWorkspace.folderName || "workspace",
-      sessionId: sourceDoc.sessionId || localAssistantWorkspace.sessionId,
-    });
+    // Delete the old record and refresh the workspace summary in parallel —
+    // neither depends on the other's result.
+    await Promise.all([
+      workspaceMetadataStore.deleteWorkspaceFileRecord(workspaceId, fromPath, {
+        folderName: sourceDoc.folderName || localAssistantWorkspace.folderName || "workspace",
+        rootPath: "",
+        sourceKind: WORKSPACE_SOURCE_UPLOAD,
+        sessionId: sourceDoc.sessionId || localAssistantWorkspace.sessionId,
+      }),
+      syncLocalUploadWorkspaceSummary(workspaceId, {
+        folderName: sourceDoc.folderName || localAssistantWorkspace.folderName || "workspace",
+        sessionId: sourceDoc.sessionId || localAssistantWorkspace.sessionId,
+      }),
+    ]);
     return {
       ok: true,
       mode: "local-fallback",
@@ -1051,16 +1079,20 @@ async function localWorkspaceDelete(pathInput) {
     if (existing.storage?.provider === "s3") {
       await deleteWorkspaceBlob(existing.storage);
     }
-    await workspaceMetadataStore.deleteWorkspaceFileRecord(workspaceId, requested, {
-      folderName: existing.folderName || localAssistantWorkspace.folderName || "workspace",
-      rootPath: "",
-      sourceKind: WORKSPACE_SOURCE_UPLOAD,
-      sessionId: existing.sessionId || localAssistantWorkspace.sessionId,
-    });
-    await syncLocalUploadWorkspaceSummary(workspaceId, {
-      folderName: existing.folderName || localAssistantWorkspace.folderName || "workspace",
-      sessionId: existing.sessionId || localAssistantWorkspace.sessionId,
-    });
+    // Delete the record and refresh workspace summary in parallel —
+    // neither depends on the other's result.
+    await Promise.all([
+      workspaceMetadataStore.deleteWorkspaceFileRecord(workspaceId, requested, {
+        folderName: existing.folderName || localAssistantWorkspace.folderName || "workspace",
+        rootPath: "",
+        sourceKind: WORKSPACE_SOURCE_UPLOAD,
+        sessionId: existing.sessionId || localAssistantWorkspace.sessionId,
+      }),
+      syncLocalUploadWorkspaceSummary(workspaceId, {
+        folderName: existing.folderName || localAssistantWorkspace.folderName || "workspace",
+        sessionId: existing.sessionId || localAssistantWorkspace.sessionId,
+      }),
+    ]);
     return {
       ok: true,
       mode: "local-fallback",
