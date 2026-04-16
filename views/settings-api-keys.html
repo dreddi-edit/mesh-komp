@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-color.svg"/>
-  <link rel="apple-touch-icon" href="assets/brand/icon-color.svg"/>
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/icon-color.svg"/>
+  <link rel="apple-touch-icon" href="/assets/brand/icon-color.svg"/>
   <script>
     (function() {
       var p = window.location.pathname;
@@ -17,13 +17,13 @@
   <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-  <link href="assets/mesh-settings.css" rel="stylesheet"/>
+  <link href="/assets/mesh-settings.css" rel="stylesheet"/>
 </head>
 <body data-settings-page="api-keys">
   <div class="settings-shell">
     <header class="settings-topbar">
       <a class="topbar-logo" href="app" aria-label="Mesh workspace">
-        <img src="assets/brand/lockup-color.svg" alt="Mesh"/>
+        <img src="/assets/brand/lockup-color.svg" alt="Mesh"/>
       </a>
       <a class="topbar-back" href="app">← Workspace</a>
     </header>
@@ -204,7 +204,7 @@
   </div>
 
   <div data-toast-stack class="toast-stack"></div>
-  <script defer src="assets/settings.js"></script>
+  <script defer src="/assets/settings.js"></script>
   <script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="mesh-theme")document.documentElement.dataset.theme=e.data.theme;});</script>
 </body>
 </html>
