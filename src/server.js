@@ -255,6 +255,20 @@ const { createAppRouter } = require('./routes/app.routes');
 const { createAssistantRouter } = require('./routes/assistant.routes');
 const { setupRealtimeRelay } = require('./routes/realtime.routes');
 
+// ── Service layer ─────────────────────────────────────────────────────────────
+// Services sit between routes and core — each service wraps domain core ops
+// and receives its dependencies via factory injection.
+const services = require('./services');
+const voiceAgent = require('./core/voice-agent');
+const voiceAudio = require('./core/voice-aws-audio');
+
+app.locals.services = {
+  workspaceService: services.createWorkspaceService({ core, config, logger }),
+  assistantService: services.createAssistantService({ core, config, logger }),
+  authService: services.createAuthService({ core, config, logger }),
+  voiceService: services.createVoiceService({ voiceAgent, voiceAudio, config, logger }),
+};
+
 const http = require('http');
 const server = http.createServer(app);
 
