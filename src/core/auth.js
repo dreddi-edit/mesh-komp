@@ -384,6 +384,12 @@ async function resolveAuthUserFromRequest(req) {
  * Express middleware that validates auth session from cookie.
  * Sets req.authUser, req.authToken, req.authSession on success.
  * Returns 401 on failure.
+ *
+ * Prefetches credentials in the background after session resolution so that
+ * handlers calling getStoredCredentialsForUser() immediately after this
+ * middleware hit the warm credential cache instead of waiting on a DynamoDB
+ * GSI query. The prefetch is fire-and-forget — it never delays the response.
+ *
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  * @param {import('express').NextFunction} next
@@ -398,6 +404,21 @@ async function requireAuth(req, res, next) {
   req.authUser    = resolved.user;
   req.authToken   = resolved.token;
   req.authSession = resolved.session;
+
+  // Warm the credential cache while the handler begins executing.
+  // The credential cache TTL is 60s — a cache miss here means a cold user
+  // session; subsequent calls within the same request or next 60s are free.
+  const userId = resolved.user?.id;
+  if (userId) {
+    const cached = credentialCache.get(String(userId));
+    if (!cached || Date.now() - cached.ts >= CREDENTIAL_CACHE_TTL_MS) {
+      // Fire-and-forget: don't await — handler proceeds immediately.
+      getStoredCredentialsForUser(userId).catch(() => {
+        // Prefetch failure is silent — handler will fetch on demand.
+      });
+    }
+  }
+
   next();
 }
 
