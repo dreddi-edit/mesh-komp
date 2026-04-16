@@ -1124,20 +1124,65 @@ function buildDocsCapsule(pathValue, text, fileType) {
 function buildTextFallbackCapsule(pathValue, text, fileType) {
   const rawText = String(text || "");
   const spanManager = createSpanManager(rawText);
-  const outlineSection = createSection("outline", "P0");
-  rawText.split(/\r?\n/g).filter(Boolean).slice(0, 20).forEach((line, index) => {
-    const spanId = spanManager.addLineSpan(index + 1, "line", line);
-    pushSectionItem(outlineSection, {
-      text: truncateText(line, 160),
-      spanIds: [spanId],
-      priority: index < 3 ? "P0" : "P1",
+  const symbolsSection = createSection("symbols", "P0");
+  const outlineSection = createSection("outline", "P1");
+
+  // Regex patterns covering Rust, Elixir, Ruby, generic C-style, JS/TS, class/struct/trait/protocol
+  const SYMBOL_PATTERNS = [
+    { re: /^[\t ]*(pub(\(crate\))?\s+)?(async\s+)?fn\s+(\w+)\s*[<(]/, nameGroup: 4, kind: "fn" },
+    { re: /^[\t ]*def\s+(\w+)\s*[(\[]/, nameGroup: 1, kind: "fn" },
+    { re: /^[\t ]*defp?\s+(\w+)\s*[\(\s]/, nameGroup: 1, kind: "fn" },
+    { re: /^(\w+)\s*::/, nameGroup: 1, kind: "fn" },
+    { re: /^[\t ]*(public|private|protected|static|async|export|override|virtual|inline|final|abstract|sealed|open|fun|func)?\s+[\w:<>*&\[\]]+\s+(\w+)\s*\(/, nameGroup: 2, kind: "fn" },
+    { re: /^[\t ]*(export\s+)?(async\s+)?function\s+(\w+)\s*\(/, nameGroup: 3, kind: "fn" },
+    { re: /^[\t ]*(public|private|abstract|sealed|data|open|final|export)?\s*(class|struct|interface|trait|enum|protocol|impl|object|module)\s+(\w+)/, nameGroup: 3, kind: "class" },
+  ];
+
+  const seenNames = new Set();
+  const lines = rawText.split(/\r?\n/g);
+
+  for (let i = 0; i < lines.length && symbolsSection.items.length < MAX_SYMBOL_DISCOVERY; i += 1) {
+    const line = lines[i];
+    for (const { re, nameGroup, kind } of SYMBOL_PATTERNS) {
+      const match = re.exec(line);
+      if (!match) continue;
+      const name = (match[nameGroup] || "").trim();
+      if (!name || seenNames.has(name)) break;
+      seenNames.add(name);
+      const spanId = spanManager.addLineSpan(i + 1, kind, line);
+      pushSectionItem(symbolsSection, {
+        text: kind + " " + name + " line=" + (i + 1),
+        spanIds: [spanId],
+        priority: "P0",
+      });
+      break;
+    }
+  }
+
+  // If no symbols found, fall back to showing the first 12 non-empty lines
+  if (symbolsSection.items.length === 0) {
+    lines.filter(Boolean).slice(0, 12).forEach((line, index) => {
+      const spanId = spanManager.addLineSpan(index + 1, "line", line);
+      pushSectionItem(outlineSection, {
+        text: truncateText(line, 160),
+        spanIds: [spanId],
+        priority: index < 3 ? "P0" : "P1",
+      });
     });
+  }
+
+  const sections = [symbolsSection, outlineSection].filter((s) => {
+    s.items = dedupeByText(s.items);
+    return s.items.length > 0;
   });
+
   return {
     parserFamily: "heuristic",
-    parseOk: outlineSection.items.length > 0,
-    fallbackReason: "plain text fallback capsule",
-    sections: [outlineSection],
+    parseOk: sections.length > 0,
+    fallbackReason: symbolsSection.items.length > 0
+      ? "heuristic symbol extraction (no tree-sitter grammar for this language)"
+      : "plain text fallback — no recognizable symbol patterns found",
+    sections,
     spanMap: spanManager.spans,
   };
 }
