@@ -145,6 +145,65 @@
 
 ---
 
+### Phase 12: CloudWatch Observability
+
+**Goal:** Add structured JSON logging to the Node.js backend (replacing raw pm2 text output), create a CloudWatch dashboard with ALB 5xx rate, p50/p99 latency, EC2 CPU, DynamoDB consumed capacity, and enable ALB access logs to S3.
+**Status:** not started
+**Depends on:** Phase 11
+
+**Scope:**
+- Replace `console.log`/`console.error` calls in `src/` with a structured JSON logger (winston or pino) — fields: `level`, `ts`, `requestId`, `userId`, `msg`, `err`
+- CloudWatch Log Group + metric filters for 5xx errors and slow requests (>2s)
+- CloudWatch Dashboard: ALB RequestCount, HTTPCode_ELB_5XX_Count, TargetResponseTime p50/p99, EC2 CPUUtilization, DynamoDB ConsumedReadCapacityUnits/ConsumedWriteCapacityUnits
+- ALB access logs enabled → S3 prefix `alb-logs/`
+- CloudFormation updates for the dashboard + log group resources
+
+**Success Criteria:**
+- Structured JSON log lines appear in CloudWatch Logs (not raw pm2 text)
+- CloudWatch dashboard visible with all 6 widgets populated after a request
+- ALB access logs appear in S3 under `alb-logs/`
+- Zero regression in existing request handling
+
+---
+
+### Phase 13: Cold-Start Latency Fix
+
+**Goal:** Parallelize the serial DynamoDB calls on the first authenticated request. Session resolve + credential fetch currently happen sequentially; use Promise.all to cut cold-start by 100–200ms.
+**Status:** not started
+**Depends on:** Phase 12
+
+**Scope:**
+- Audit `src/core/auth.js` and request handler path for sequential `await` calls that can be parallelized
+- Replace serial session-resolve + credential-fetch chain with `Promise.all` where safe
+- Ensure cache invalidation logic remains correct after parallelization
+- Benchmark before/after with local load test (autocannon or wrk)
+
+**Success Criteria:**
+- Cold-start authenticated request time drops ≥80ms measured locally
+- All 145 existing tests continue to pass
+- No race condition between session cache and credential cache writes
+
+---
+
+### Phase 14: Branded CloudFront Error Pages
+
+**Goal:** Create S3-hosted branded Mesh HTML error pages for 502/503/504 and wire them into the CloudFront distribution so users see a Mesh-branded page instead of a raw browser error when the origin is down.
+**Status:** not started
+**Depends on:** Phase 13
+
+**Scope:**
+- Create `infra/error-pages/502.html`, `503.html`, `504.html` — Mesh-branded, dark theme matching app.html, human-readable message + retry button
+- Upload error pages to S3 workspace bucket under `/_errors/` prefix
+- CloudFormation update: add `CustomErrorResponses` to the CloudFront distribution (502 → `/_errors/502.html`, 503 → `/_errors/503.html`, 504 → `/_errors/504.html`), TTL 30s
+- Deploy script for uploading error pages as part of the standard deploy pipeline
+
+**Success Criteria:**
+- Simulated ALB outage (stop pm2) returns branded 503 page from CloudFront, not browser default
+- Error pages load in <200ms (served from CloudFront edge, not origin)
+- Error pages pass HTML validation (no inline JS, valid charset)
+
+---
+
 **Success Criteria (Milestone):**
 - Every visible feature in app.html is present in app-v2.html
 - All Antigravity IDE features (from screenshot) are preserved

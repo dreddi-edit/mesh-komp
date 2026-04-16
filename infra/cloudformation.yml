@@ -207,6 +207,12 @@ Resources:
           Value: 'true'
         - Key: deletion_protection.enabled
           Value: 'false'
+        - Key: access_logs.s3.enabled
+          Value: 'true'
+        - Key: access_logs.s3.bucket
+          Value: !Ref S3BucketName
+        - Key: access_logs.s3.prefix
+          Value: alb-logs
       Tags:
         - Key: Name
           Value: !Sub mesh-alb-${AWS::StackName}
@@ -345,8 +351,8 @@ Resources:
                 "logs_collected": {
                   "files": {
                     "collect_list": [
-                      { "file_path": "/home/ec2-user/.pm2/logs/mesh-gateway-out.log", "log_group_name": "/mesh/gateway/app", "log_stream_name": "{instance_id}" },
-                      { "file_path": "/home/ec2-user/.pm2/logs/mesh-gateway-error.log", "log_group_name": "/mesh/gateway/errors", "log_stream_name": "{instance_id}" }
+                      { "file_path": "/home/ec2-user/.pm2/logs/mesh-gateway-out.log", "log_group_name": "/mesh/app", "log_stream_name": "{instance_id}" },
+                      { "file_path": "/home/ec2-user/.pm2/logs/mesh-gateway-error.log", "log_group_name": "/mesh/app", "log_stream_name": "{instance_id}-errors" }
                     ]
                   }
                 }
@@ -471,6 +477,7 @@ Resources:
           Value: !Sub mesh-cloudfront-${AWS::StackName}
 
   # Allow CloudFront to read S3 objects via OAC
+  # Also allows ALB access log delivery from the ELB service account (us-east-1: 127311923021)
   S3BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -487,6 +494,135 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+          - Sid: AllowAlbAccessLogs
+            Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::127311923021:root
+            Action: s3:PutObject
+            Resource: !Sub arn:aws:s3:::${S3BucketName}/alb-logs/*
+
+  # ── CloudWatch Observability ─────────────────────────────────────────────────
+
+  # Log group for structured app output (pm2 + CloudWatch agent ships logs here)
+  AppLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      RetentionInDays: 14
+
+  # Metric filter: count 5xx responses from ALB access log entries
+  # ALB access log format field [3] is the HTTP status code
+  Alb5xxMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: AppLogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      FilterPattern: '[..., status=5*, ...]'
+      MetricTransformations:
+        - MetricName: Alb5xxCount
+          MetricNamespace: MeshGateway
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # Metric filter: count slow requests (response time field >2000ms)
+  # NOTE: ALB log field positions vary by log format version; this targets
+  # the request_processing_time field pattern for values >=2.0 seconds.
+  AlbSlowRequestMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    DependsOn: AppLogGroup
+    Properties:
+      LogGroupName: /mesh/app
+      FilterPattern: '[..., request_processing_time>=2.0, ...]'
+      MetricTransformations:
+        - MetricName: SlowRequestCount
+          MetricNamespace: MeshGateway
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # CloudWatch Dashboard — 6 widgets covering ALB, EC2, and DynamoDB
+  ObservabilityDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: Mesh-Gateway
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0, "y": 0, "width": 8, "height": 6,
+              "properties": {
+                "title": "ALB Request Count",
+                "view": "timeSeries",
+                "metrics": [["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${Alb.LoadBalancerFullName}"]],
+                "stat": "Sum",
+                "period": 60,
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8, "y": 0, "width": 8, "height": 6,
+              "properties": {
+                "title": "ALB 5xx Errors",
+                "view": "timeSeries",
+                "metrics": [["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", "${Alb.LoadBalancerFullName}"]],
+                "stat": "Sum",
+                "period": 60,
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16, "y": 0, "width": 8, "height": 6,
+              "properties": {
+                "title": "ALB Target Response Time (p50 / p99)",
+                "view": "timeSeries",
+                "metrics": [
+                  ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${Alb.LoadBalancerFullName}", {"stat": "p50", "label": "p50"}],
+                  ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${Alb.LoadBalancerFullName}", {"stat": "p99", "label": "p99"}]
+                ],
+                "period": 60,
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0, "y": 6, "width": 8, "height": 6,
+              "properties": {
+                "title": "EC2 CPU Utilization (ASG)",
+                "view": "timeSeries",
+                "metrics": [["AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "${AutoScalingGroup}"]],
+                "stat": "Average",
+                "period": 60,
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 8, "y": 6, "width": 8, "height": 6,
+              "properties": {
+                "title": "DynamoDB Consumed Read Capacity",
+                "view": "timeSeries",
+                "metrics": [["AWS/DynamoDB", "ConsumedReadCapacityUnits"]],
+                "stat": "Sum",
+                "period": 60,
+                "region": "${AWS::Region}"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 16, "y": 6, "width": 8, "height": 6,
+              "properties": {
+                "title": "DynamoDB Consumed Write Capacity",
+                "view": "timeSeries",
+                "metrics": [["AWS/DynamoDB", "ConsumedWriteCapacityUnits"]],
+                "stat": "Sum",
+                "period": 60,
+                "region": "${AWS::Region}"
+              }
+            }
+          ]
+        }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Outputs
