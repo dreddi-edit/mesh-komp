@@ -52,6 +52,13 @@ function validateConfig(env = process.env) {
     warnings.push('Neither ANTHROPIC_API_KEY nor AWS_ACCESS_KEY_ID is set. Chat and assistant features will be unavailable.');
   }
 
+  const corsOrigins = env.CORS_ORIGINS
+    ? env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+  if (isProduction && corsOrigins.length === 0) {
+    warnings.push('CORS_ORIGINS not set — CORS will reject all cross-origin requests in production');
+  }
+
   return { ok: errors.length === 0, errors, warnings };
 }
 
@@ -184,6 +191,10 @@ function buildConfig(env = process.env) {
     RATE_LIMIT_API_MAX: parseIntegerInRange(env.MESH_RATE_LIMIT_API_MAX, 100, 10, 10000),
     RATE_LIMIT_API_WINDOW_MS: parseIntegerInRange(env.MESH_RATE_LIMIT_API_WINDOW_MS, 60_000, 1000, 600_000),
     RATE_LIMIT_UPLOAD_MAX: parseIntegerInRange(env.MESH_RATE_LIMIT_UPLOAD_MAX, 20, 5, 1000),
+
+    CORS_ORIGINS: env.CORS_ORIGINS
+      ? env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+      : (IS_PRODUCTION ? [] : ['http://localhost:3000', 'http://localhost:3001']),
   };
 }
 
