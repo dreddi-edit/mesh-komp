@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, randomBytes } = require('node:crypto');
 
 const logger = require('./logger');
 
@@ -29,13 +29,20 @@ app.use((req, _res, next) => {
   next();
 });
 
+// ── Per-request CSP nonce ─────────────────────────────────────────────────────
+// Must run before helmet so the nonce is available for CSP directives.
+app.use((_req, res, next) => {
+  res.locals.cspNonce = randomBytes(16).toString('base64');
+  next();
+});
+
 // ── Security headers (helmet) ────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+      scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://unpkg.com", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
+      styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
       imgSrc: ["'self'", "data:", "blob:"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       connectSrc: ["'self'", "ws:", "wss:"],
@@ -163,17 +170,34 @@ function injectAssetHashes(html) {
   });
 }
 
-// In-memory HTML cache — permanent in production, bypassed in dev
+// In-memory HTML cache — permanent in production, bypassed in dev.
+// Stores pre-hash-injected HTML without nonces (nonces are per-request).
 const htmlCache = new Map();
 const IS_DEV = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev';
 
+/**
+ * Injects per-request CSP nonce attributes into all inline <script> and <style> tags.
+ *
+ * @param {string} html
+ * @param {string} nonce
+ * @returns {string}
+ */
+function injectCspNonces(html, nonce) {
+  return html
+    .replace(/<script(?![^>]*\bsrc=)/g, `<script nonce="${nonce}"`)
+    .replace(/<script(?=[^>]*\bsrc=)/g, `<script nonce="${nonce}"`)
+    .replace(/<style/g, `<style nonce="${nonce}"`);
+}
+
 async function sendHtmlWithHashes(res, filePath) {
-  let rewritten = htmlCache.get(filePath);
-  if (!rewritten || IS_DEV) {
+  let cached = htmlCache.get(filePath);
+  if (!cached || IS_DEV) {
     const html = await fs.promises.readFile(filePath, 'utf8');
-    rewritten = injectAssetHashes(html);
-    if (!IS_DEV) htmlCache.set(filePath, rewritten);
+    cached = injectAssetHashes(html);
+    if (!IS_DEV) htmlCache.set(filePath, cached);
   }
+  const nonce = res.locals.cspNonce;
+  const rewritten = nonce ? injectCspNonces(cached, nonce) : cached;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.send(rewritten);
