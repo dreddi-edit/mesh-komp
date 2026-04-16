@@ -9,9 +9,26 @@
     "ecmaVersion": "latest",
     "sourceType": "module"
   },
+  "globals": {
+    "d3": "readonly",
+    "monaco": "readonly",
+    "marked": "readonly",
+    "DOMPurify": "readonly",
+    "idbKeyval": "readonly",
+    "applySettingsTheme": "readonly",
+    "anime": "readonly",
+    "lottie": "readonly",
+    "hljs": "readonly"
+  },
   "rules": {
     "no-unused-vars": "warn",
-    "no-undef": "error"
+    "no-undef": "error",
+    "no-empty": "warn",
+    "no-constant-condition": "warn",
+    "no-inner-declarations": "warn",
+    "no-redeclare": "error",
+    "no-case-declarations": "warn",
+    "no-useless-escape": "warn"
   },
   "ignorePatterns": [
     "node_modules/",

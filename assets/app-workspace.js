@@ -1337,8 +1337,6 @@ async function gitUnstage(path) { await window.MeshGit?.gitUnstage(path); }
 async function gitCommit()      { await window.MeshGit?.gitCommit(); }
 async function gitPull()        { await window.MeshGit?.gitPull(); }
 async function gitPush()        { await window.MeshGit?.gitPush(); }
-async function gitInit()        { await window.MeshGit?.gitInit(); }
-
 async function gitInit() {
   try {
     toast('Git Init', 'Initializing...');
