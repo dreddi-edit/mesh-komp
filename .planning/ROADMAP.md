@@ -204,6 +204,31 @@
 
 ---
 
+### Phase 15: Compression Engine — Full Language Coverage + Pipeline Quality
+
+**Goal:** Extend the capsule compression pipeline to produce rich structural capsules for all major programming languages (C++, C#, Rust, Java, Swift, Kotlin, Ruby, PHP), fix the `.wasm`/`.min.js` indexing bugs, and harden the heuristic fallback path so every file type delivers maximum useful signal to the LLM regardless of whether a tree-sitter grammar exists.
+**Status:** not started
+**Depends on:** Phase 14
+
+**Scope:**
+- Add tree-sitter grammars for: Rust (`tree-sitter-rust`), C++ (`tree-sitter-cpp`), C# (`tree-sitter-c-sharp`), Java (`tree-sitter-java`), Swift (`tree-sitter-swift`), Kotlin (`tree-sitter-kotlin`), Ruby (`tree-sitter-ruby`), PHP (`tree-sitter-php`)
+- Register all new languages in `CODE_LANGUAGE_MAP` in `mesh-core/src/compression-core.cjs`
+- Fix `LOCAL_WORKSPACE_SKIP_EXTENSIONS` in `src/core/index.js` to exclude `.wasm`, `*.min.js`, `*.min.css`
+- Improve heuristic fallback capsule: extract function/class/method signatures via regex for any language not in `CODE_LANGUAGE_MAP`, instead of producing a plain text outline
+- Add `*.min.js` / `*.min.css` to skip-extensions (minified files waste token budget)
+- Extend `test/compression-core.test.js` with fixture files for each new language
+- Update `mesh-core/package.json` with new grammar dependencies
+
+**Success Criteria:**
+- `.rs`, `.cpp`, `.cs`, `.java`, `.swift`, `.kt`, `.rb`, `.php` files produce `capsuleType: "structure"` capsules with symbols extracted
+- `.wasm` files are excluded from indexing
+- `*.min.js` / `*.min.css` files are excluded from indexing
+- Heuristic fallback for unknown extensions produces at least function/class name extraction
+- All new grammars covered by at least one passing test in `test/compression-core.test.js`
+- Zero regressions in existing JS/TS/Python/Go capsule output
+
+---
+
 **Success Criteria (Milestone):**
 - Every visible feature in app.html is present in app-v2.html
 - All Antigravity IDE features (from screenshot) are preserved
