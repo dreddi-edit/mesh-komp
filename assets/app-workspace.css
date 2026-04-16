@@ -1,11 +1,13 @@
+@import './tokens.css';
+
 /* Mesh AI IDE v4 — Antigravity Clone CSS */
 :root,[data-theme="dark"]{
---bg:#1e1e1e;--bg2:#252526;--bg3:#2d2d2d;--bg4:#313131;--bg5:#181818;
---bd:#3c3c3c;--bd2:#333;--bdhov:#505050;
---tx:#ccc;--tx2:#e0e0e0;--tx3:#777;--txw:#fff;
---ac:#0098ff;--ac2:#007acc;--acs:rgba(0,152,255,.12);
---grn:#4ec9b0;--red:#f14c4c;--org:#cca700;--yel:#e2c556;
---f:'Inter',system-ui,sans-serif;--m:'JetBrains Mono',monospace;
+--bg:var(--color-bg-primary);--bg2:var(--color-bg-secondary);--bg3:var(--color-bg-surface);--bg4:var(--color-bg-elevated);--bg5:#181818;
+--bd:var(--color-border);--bd2:#333;--bdhov:var(--color-border-hover);
+--tx:var(--color-text-primary);--tx2:var(--color-text-secondary);--tx3:var(--color-text-muted);--txw:var(--color-text-inverse);
+--ac:var(--color-accent-primary);--ac2:var(--color-accent-secondary);--acs:var(--color-accent-subtle);
+--grn:var(--color-accent-success);--red:var(--color-accent-error);--org:var(--color-accent-warning);--yel:#e2c556;
+--f:var(--font-sans);--m:var(--font-mono);
 --ab-w:48px;--sb-w:260px;--ch-w:380px;--st-h:22px;--tab-h:35px;--top-h:38px;
 --mono-theme:vs-dark;
 }
@@ -436,3 +438,16 @@ button{border:none;background:none;font:inherit;cursor:pointer;color:inherit}inp
 
 .graph-stats{position:absolute;top:10px;left:10px;z-index:20;background:var(--bg2);border:1px solid var(--bd);border-radius:5px;padding:3px 9px;font-size:.66rem;color:var(--tx3);font-family:var(--f);box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .nodes text { font-family: var(--f); font-weight: 500; text-shadow: 0 1px 2px var(--bg); }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ide { grid-template-columns: 0 0 0 1fr 0 0; }
+  .act-bar, .sidebar, .rs-v, .chat-panel { display: none !important; }
+  .bottom-panel { display: none !important; } /* Stack vertically / hide non-essential */
+  .fv-grid { grid-template-columns: 1fr; }
+  .ops-stats { grid-template-columns: 1fr; }
+  .top-bar { padding: 0 var(--space-sm); }
+  .tb-title { font-size: var(--font-size-sm); }
+  .terminal-surface-grid.is-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+  body { font-size: var(--font-size-md); }
+}

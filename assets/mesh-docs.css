@@ -1,24 +1,26 @@
+@import './tokens.css';
+
 /* ============================================================
    MESH Knowledge Hub — Premium Documentation Styles
    Shared design system for /docs, /how-it-works, /repo-docs
    ============================================================ */
 
 :root {
-  --primary: #0f6a7b;
+  --primary: var(--color-docs-primary);
   --primary-rgb: 15, 106, 123;
   --deep: #123f5c;
-  --ink: #102432;
-  --soft: #5f7686;
-  --bg: #f8fbfe;
-  --panel: #ffffff;
+  --ink: var(--color-docs-ink);
+  --soft: var(--color-docs-soft);
+  --bg: var(--color-docs-bg);
+  --panel: var(--color-docs-panel);
   --line: rgba(18, 62, 89, 0.12);
   --line-hi: rgba(18, 62, 89, 0.18);
   --mint: #dff4ec;
   --sky: #e7f2fb;
-  --accent: #0098ff;
+  --accent: var(--color-accent-primary);
   --r: 20px;
   --r-sm: 12px;
-  --font-mono: "Berkeley Mono", ui-monospace, monospace;
+  --font-mono: var(--font-mono);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
