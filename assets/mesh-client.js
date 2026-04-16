@@ -1,8 +1,65 @@
 /**
- * MESH CLIENT (Browser-Side Compression Engine)
+ * MESH CLIENT (Browser-Side Compression Engine + CSRF Token Manager)
  * Intercepts payloads, minifies them lightly, and compresses them via WebAssembly Brotli
- * before sending to the MeshServer.
+ * before sending to the MeshServer. Also manages CSRF token for all mutating requests.
  */
+
+// ── CSRF Token Manager ────────────────────────────────────────────────────────
+
+const MeshCsrf = (() => {
+  let _token = null;
+  let _fetchPromise = null;
+
+  async function fetchToken() {
+    const res = await fetch('/api/csrf-token', { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch CSRF token');
+    const data = await res.json();
+    _token = data.token;
+    return _token;
+  }
+
+  async function getToken() {
+    if (_token) return _token;
+    if (!_fetchPromise) _fetchPromise = fetchToken().finally(() => { _fetchPromise = null; });
+    return _fetchPromise;
+  }
+
+  /**
+   * Wraps the native fetch API to automatically inject the CSRF token header
+   * on all mutating requests (POST, PUT, PATCH, DELETE).
+   *
+   * @param {string | URL | Request} input
+   * @param {RequestInit} [init]
+   * @returns {Promise<Response>}
+   */
+  async function safeFetch(input, init = {}) {
+    const method = (init.method || 'GET').toUpperCase();
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      const token = await getToken();
+      init.headers = {
+        ...init.headers,
+        'X-CSRF-Token': token,
+      };
+    }
+    const res = await fetch(input, init);
+    // On 403 CSRF error, refresh token and retry once.
+    if (res.status === 403) {
+      _token = null;
+      const freshToken = await fetchToken();
+      if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        init.headers = { ...init.headers, 'X-CSRF-Token': freshToken };
+      }
+      return fetch(input, init);
+    }
+    return res;
+  }
+
+  return { getToken, safeFetch };
+})();
+
+window.MeshCsrf = MeshCsrf;
+
+// ── MeshClient (Brotli Compression) ──────────────────────────────────────────
 
 class MeshClient {
     constructor() {
@@ -15,7 +72,6 @@ class MeshClient {
             // Load Brotli WASM dynamically from unpkg
             const brotliWasm = await import('https://unpkg.com/brotli-wasm@3.0.0/index.web.js?module');
             this.brotli = await brotliWasm.default();
-            // Brotli WASM loaded
         } catch (err) {
             console.error("[MeshClient] Failed to load WASM Brotli:", err);
         }
@@ -26,7 +82,7 @@ class MeshClient {
      */
     minifyPayload(text) {
         if (typeof text !== 'string') return text;
-        
+
         let minified = text;
         // Basic HTML minification (strip spaces between tags)
         if (minified.includes('<') && minified.includes('>')) {
@@ -49,14 +105,10 @@ class MeshClient {
 
         const minified = this.minifyPayload(rawText);
         const textBuffer = new TextEncoder().encode(minified);
-        
+
         // Brotli QUALITY: 11 (Max)
         const compressedBuffer = this.brotli.compress(textBuffer, { quality: 11 });
-        
-        const originalSize = textBuffer.length;
-        const compressedSize = compressedBuffer.length;
-        const ratio = (originalSize / compressedSize).toFixed(2);
-        
+
         return compressedBuffer;
     }
 
@@ -66,7 +118,7 @@ class MeshClient {
     async decompress(compressedBuffer) {
         await this.ready;
         if (!this.brotli) return new TextDecoder().decode(compressedBuffer);
-        
+
         const decompressed = this.brotli.decompress(new Uint8Array(compressedBuffer));
         return new TextDecoder().decode(decompressed);
     }

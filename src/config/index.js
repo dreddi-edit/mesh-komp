@@ -124,6 +124,8 @@ function buildConfig(env = process.env) {
       0,
       1000 * 60 * 60 * 24 * 14,
     ),
+    CSRF_SECRET: String(env.MESH_CSRF_SECRET || env.MESH_DATA_ENCRYPTION_KEY || env.AUTH_SECRET || 'csrf-fallback-dev-only').trim(),
+
     AUTH_COOKIE_NAME: String(env.MESH_AUTH_COOKIE_NAME || 'mesh_auth').trim() || 'mesh_auth',
     AUTH_COOKIE_PATH: String(env.MESH_AUTH_COOKIE_PATH || '/').trim() || '/',
     AUTH_COOKIE_SAME_SITE: String(env.MESH_AUTH_COOKIE_SAMESITE || 'Strict').trim() || 'Strict',
