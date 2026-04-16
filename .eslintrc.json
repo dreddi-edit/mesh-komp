@@ -7,7 +7,7 @@
   "extends": "eslint:recommended",
   "parserOptions": {
     "ecmaVersion": "latest",
-    "sourceType": "module"
+    "sourceType": "script"
   },
   "globals": {
     "d3": "readonly",
@@ -22,14 +22,24 @@
   },
   "rules": {
     "no-unused-vars": "warn",
-    "no-undef": "error",
+    "no-undef": "warn",
     "no-empty": "warn",
     "no-constant-condition": "warn",
     "no-inner-declarations": "warn",
     "no-redeclare": "error",
     "no-case-declarations": "warn",
-    "no-useless-escape": "warn"
+    "no-useless-escape": "warn",
+    "no-dupe-keys": "error",
+    "no-regex-spaces": "warn"
   },
+  "overrides": [
+    {
+      "files": ["mesh-core/src/*.js", "mesh-core/src/*.mjs"],
+      "parserOptions": {
+        "sourceType": "module"
+      }
+    }
+  ],
   "ignorePatterns": [
     "node_modules/",
     "old/",

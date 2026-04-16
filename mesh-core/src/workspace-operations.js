@@ -508,7 +508,6 @@ async function selectWorkspaceFolder(data) {
 
         return {
             ok: true,
-            mode: 'mesh-worker',
             folderName: workspaceState.folderName || folderName,
             rootPath: '',
             workspaceId,
@@ -624,7 +623,6 @@ async function selectWorkspaceFolder(data) {
 
     return {
         ok: true,
-        mode: 'mesh-worker',
         folderName,
         rootPath: '',
         sourceKind: WORKSPACE_SOURCE_UPLOAD,
