@@ -128,7 +128,9 @@ function buildConfig(env = process.env) {
       .split(',')
       .map((entry) => String(entry || '').trim().toLowerCase())
       .filter(Boolean),
-    DEMO_USER_PASSWORD: String(env.MESH_DEMO_USER_PASSWORD || '12345').trim(),
+    // No default — MESH_DEMO_USER_PASSWORD must be set explicitly.
+    // An empty fallback disables demo login rather than using a guessable password.
+    DEMO_USER_PASSWORD: String(env.MESH_DEMO_USER_PASSWORD || '').trim(),
 
     MESH_CORE_URL: String(env.MESH_CORE_URL || 'http://localhost:8080/mesh/tunnel').trim(),
     MESH_TERMINAL_UPLOAD_ROOT: String(env.MESH_TERMINAL_UPLOAD_ROOT || '').trim(),

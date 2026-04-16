@@ -248,9 +248,14 @@ function setupTerminalRelay(server, { projectRoot, core }) {
 
     const urlParams = new URL(req.url, 'http://localhost').searchParams;
     const shellPref = urlParams.get('shell');
-    let shell = shellPref || process.env.SHELL || 'bash';
 
-    // Explicit Linux fallbacks for Azure
+    // Allowlist of acceptable shell names — never pass unvalidated client input to spawn().
+    // node-pty uses execvp (no shell expansion), but restricting to known shells prevents
+    // clients from spawning arbitrary binaries (e.g. ?shell=/path/to/malicious-binary).
+    const ALLOWED_SHELLS = new Set(['bash', 'sh', 'zsh', 'fish', '/bin/bash', '/bin/sh', '/bin/zsh', '/usr/bin/fish']);
+    let shell = ALLOWED_SHELLS.has(shellPref) ? shellPref : (process.env.SHELL || 'bash');
+
+    // Resolve to absolute path on Linux — ignore client-supplied value not in allowlist.
     if (process.platform !== 'win32' && !shell.startsWith('/')) {
       shell = fs.existsSync('/bin/bash') ? '/bin/bash' : '/bin/sh';
     }

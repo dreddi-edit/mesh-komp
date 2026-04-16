@@ -534,8 +534,20 @@ function createAppRouter(core) {
     }
   });
 
+  // Allowlist of model IDs accepted by the simple /api/chat route.
+  // Prevents clients from passing arbitrary strings to the Anthropic API.
+  const ALLOWED_CHAT_MODELS = new Set([
+    'claude-opus-4-6',
+    'claude-sonnet-4-6',
+    'claude-haiku-4-5-20251001',
+    'claude-3-5-sonnet-20241022',
+    'claude-3-5-haiku-20241022',
+  ]);
+
   router.post("/api/chat", requireAuth, async (req, res) => {
-    const { model = "claude-opus-4-6", messages = [] } = req.body;
+    const requestedModel = String(req.body?.model || 'claude-opus-4-6').trim();
+    const model = ALLOWED_CHAT_MODELS.has(requestedModel) ? requestedModel : 'claude-opus-4-6';
+    const { messages = [] } = req.body;
     const apiKey = config.ANTHROPIC_API_KEY;
 
     if (!apiKey || !Anthropic) {

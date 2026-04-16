@@ -102,12 +102,17 @@ function createAuthRouter(core) {
 
     try {
       let isDemoLogin = false;
-      if (DEMO_USER_ENABLED) {
+      if (DEMO_USER_ENABLED && DEMO_USER_PASSWORD) {
         const acceptedDemoEmails = new Set([
           normalizeEmail(DEMO_USER_EMAIL),
           ...DEMO_USER_EMAIL_ALIASES.map((entry) => normalizeEmail(entry)).filter(Boolean),
         ]);
-        isDemoLogin = acceptedDemoEmails.has(email) && password === DEMO_USER_PASSWORD;
+        // Use timing-safe comparison to prevent timing-oracle enumeration of the demo password.
+        const { timingSafeEqual } = require('crypto');
+        const pwBuf = Buffer.from(password);
+        const demoBuf = Buffer.from(DEMO_USER_PASSWORD);
+        const passwordMatches = pwBuf.length === demoBuf.length && timingSafeEqual(pwBuf, demoBuf);
+        isDemoLogin = acceptedDemoEmails.has(email) && passwordMatches;
       }
       let user = await secureDb.getUserByEmail(email);
 

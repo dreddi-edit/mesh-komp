@@ -4,17 +4,31 @@ const config = require('../config');
 
 const DEFAULT_STORE_CLEANUP_THRESHOLD = 10_000;
 
+// RFC-1918 and loopback ranges for trusted reverse-proxy detection.
+// X-Forwarded-For is only trusted when the direct connection comes from a
+// known private-network address (ALB, CloudFront, or local dev proxy).
+// An attacker connecting directly from a public IP cannot spoof this header.
+const TRUSTED_PROXY_PATTERN = /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1$|::ffff:127\.|::ffff:10\.|::ffff:192\.168\.)/;
+
 /**
- * Extracts client IP from request, respecting X-Forwarded-For proxy header.
+ * Extracts client IP from request.
+ * Trusts X-Forwarded-For only when the direct connection originates from a
+ * private-network address (reverse proxy / load balancer).
+ *
  * @param {import('express').Request} req
  * @returns {string}
  */
 function getClientIp(req) {
-  const forwarded = String(req.headers['x-forwarded-for'] || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)[0];
-  return forwarded || String(req.socket?.remoteAddress || '');
+  const remoteAddress = String(req.socket?.remoteAddress || '');
+  if (TRUSTED_PROXY_PATTERN.test(remoteAddress)) {
+    // Trust the leftmost (client-set) value from X-Forwarded-For only from known proxies.
+    const forwarded = String(req.headers['x-forwarded-for'] || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)[0];
+    if (forwarded) return forwarded;
+  }
+  return remoteAddress;
 }
 
 /**
