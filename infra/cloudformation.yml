@@ -509,12 +509,28 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}
+          # ALB access logs use the delivery.logs.amazonaws.com service principal
+          # (required when bucket ObjectOwnership=BucketOwnerEnforced; the legacy
+          # ELB account ID approach only works with ACL-enabled buckets)
           - Sid: AllowAlbAccessLogs
             Effect: Allow
             Principal:
-              AWS: arn:aws:iam::127311923021:root
+              Service: delivery.logs.amazonaws.com
             Action: s3:PutObject
             Resource: !Sub arn:aws:s3:::${S3BucketName}/alb-logs/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+                aws:SourceAccount: !Ref AWS::AccountId
+          - Sid: AllowAlbAccessLogsAclCheck
+            Effect: Allow
+            Principal:
+              Service: delivery.logs.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !Sub arn:aws:s3:::${S3BucketName}
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
 
   # ── CloudWatch Observability ─────────────────────────────────────────────────
 
