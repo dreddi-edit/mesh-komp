@@ -195,6 +195,14 @@ function buildConfig(env = process.env) {
     CORS_ORIGINS: env.CORS_ORIGINS
       ? env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
       : (IS_PRODUCTION ? [] : ['http://localhost:3000', 'http://localhost:3001']),
+
+    // LRU cache sizes
+    RATE_LIMITER_MAX_ENTRIES: parseIntegerInRange(env.RATE_LIMITER_MAX_ENTRIES, 5000, 1000, 50000),
+    WORKSPACE_FILE_CACHE_MAX: parseIntegerInRange(env.WORKSPACE_FILE_CACHE_MAX, 10000, 100, 100000),
+    SESSION_CACHE_MAX: parseIntegerInRange(env.SESSION_CACHE_MAX, 1000, 100, 10000),
+    CODEC_SESSION_CACHE_MAX: parseIntegerInRange(env.CODEC_SESSION_CACHE_MAX, 500, 100, 5000),
+    ASSISTANT_RUNS_CACHE_MAX: parseIntegerInRange(env.ASSISTANT_RUNS_CACHE_MAX, 500, 50, 5000),
+    INFER_FILES_CACHE_MAX: parseIntegerInRange(env.INFER_FILES_CACHE_MAX, 500, 50, 5000),
   };
 }
 
