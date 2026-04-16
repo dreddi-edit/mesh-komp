@@ -8,6 +8,7 @@
  */
 
 const path = require('path');
+const { LRUCache } = require('lru-cache');
 const config = require('../config');
 
 let Anthropic;
@@ -130,7 +131,7 @@ const MESH_MODEL_CODEC_TABLE = MESH_MODEL_CODEC_TERMS.map((term, index) => {
 const MESH_MODEL_CODEC_ENCODE_TABLE = [...MESH_MODEL_CODEC_TABLE].sort((a, b) => b[0].length - a[0].length);
 const MESH_MODEL_CODEC_DECODE_TABLE = [...MESH_MODEL_CODEC_TABLE].sort((a, b) => b[1].length - a[1].length);
 
-const meshCodecSessionState = new Map();
+const meshCodecSessionState = new LRUCache({ max: config.CODEC_SESSION_CACHE_MAX });
 
 function stripModelPrefix(model) {
   return String(model || "").replace(/^models\//, "").trim();
@@ -1460,15 +1461,6 @@ function normalizeChatSessionId(rawSessionId) {
   return normalized.slice(0, 120);
 }
 
-function pruneCodecSessionStateIfNeeded() {
-  if (meshCodecSessionState.size <= 500) return;
-  const sorted = [...meshCodecSessionState.entries()].sort((a, b) => Number(a[1]?.updatedAt || 0) - Number(b[1]?.updatedAt || 0));
-  const deleteCount = Math.max(100, sorted.length - 400);
-  for (const [sessionId] of sorted.slice(0, deleteCount)) {
-    meshCodecSessionState.delete(sessionId);
-  }
-}
-
 function markCodecContextInitialized(sessionId, options = {}) {
   if (!sessionId) return;
   const previous = meshCodecSessionState.get(sessionId) || {};
@@ -1477,7 +1469,6 @@ function markCodecContextInitialized(sessionId, options = {}) {
     dictionaryReady: Boolean(previous.dictionaryReady || options.dictionaryReady),
     updatedAt: Date.now(),
   });
-  pruneCodecSessionStateIfNeeded();
 }
 
 function isCodecContextInitializedForSession(sessionId, options = {}) {
@@ -1651,7 +1642,6 @@ module.exports = {
   buildMeshCodecContextDocument,
   hasCodecContextMarker,
   normalizeChatSessionId,
-  pruneCodecSessionStateIfNeeded,
   markCodecContextInitialized,
   isCodecContextInitializedForSession,
   injectCodecContextIntoMessages,

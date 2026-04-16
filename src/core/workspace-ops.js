@@ -11,6 +11,8 @@
  * create a circular dependency.
  */
 
+const { LRUCache } = require('lru-cache');
+const config = require('../config');
 const logger = require('../logger');
 const {
   mapWithConcurrency,
@@ -1587,19 +1589,10 @@ function rankWorkspacePathsForQuery(lastUserMessage, candidatePaths = [], maxMat
  * Cap: 50 entries — prevents unbounded growth under concurrent users.
  */
 const INFER_FILES_CACHE_TTL_MS = 30_000;
-const INFER_FILES_CACHE_MAX = 50;
-const inferFilesCache = new Map();
-
-function pruneInferFilesCache() {
-  if (inferFilesCache.size <= INFER_FILES_CACHE_MAX) return;
-  // Evict oldest entries first.
-  const cutoff = Date.now() - INFER_FILES_CACHE_TTL_MS;
-  for (const [key, entry] of inferFilesCache) {
-    if (entry.ts < cutoff || inferFilesCache.size > INFER_FILES_CACHE_MAX) {
-      inferFilesCache.delete(key);
-    }
-  }
-}
+const inferFilesCache = new LRUCache({
+  max: config.INFER_FILES_CACHE_MAX,
+  ttl: INFER_FILES_CACHE_TTL_MS,
+});
 
 async function inferReferencedFilesFromWorkspace(lastUserMessage, requestId = null) {
   const text = String(lastUserMessage || "").trim();
@@ -1634,7 +1627,6 @@ async function inferReferencedFilesFromWorkspace(lastUserMessage, requestId = nu
 
   const result = rankWorkspacePathsForQuery(text, indexedPaths, maxMatches);
   inferFilesCache.set(text, { result, ts: Date.now() });
-  pruneInferFilesCache();
   return result;
 }
 

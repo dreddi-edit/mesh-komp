@@ -100,7 +100,7 @@ const {
   rot47Transform, textCompositionStats, containsCodecSignals, isLikelyUnframedRot47,
   decodedReadabilityScore, pickMostReadableDecoded, decodeCodecTokens, codecTokenShouldReplace,
   encodeMeshModelCodec, decodeMeshModelCodec, buildMeshCodecContextDocument, hasCodecContextMarker,
-  normalizeChatSessionId, pruneCodecSessionStateIfNeeded, markCodecContextInitialized,
+  normalizeChatSessionId, markCodecContextInitialized,
   isCodecContextInitializedForSession, injectCodecContextIntoMessages,
   extractCompressedModelPayload, decodeCompressedModelResponse, escapeTagAttribute, dedupePaths,
 } = mp;
@@ -1059,7 +1059,6 @@ module.exports = {
   buildMeshCodecContextDocument,
   hasCodecContextMarker,
   normalizeChatSessionId,
-  pruneCodecSessionStateIfNeeded,
   markCodecContextInitialized,
   isCodecContextInitializedForSession,
   injectCodecContextIntoMessages,
