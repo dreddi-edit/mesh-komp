@@ -53,26 +53,13 @@ function createWorkspaceRouter(core) {
 
   const router = express.Router();
 
-  router.get('/api/assistant/status', requireAuth, async (_req, res) => {
+  router.get('/api/assistant/status', requireAuth, async (req, res) => {
+    const { workspaceService } = req.app.locals.services;
     try {
-      const result = await meshTunnelRequest('status', {}, req.requestId);
+      const result = await workspaceService.getStatus(req.requestId);
       res.json(result);
     } catch (error) {
-      res.json({
-        ok: true,
-        mode: 'local-fallback',
-        workspaceSelected: Boolean(localAssistantWorkspace.folderName || localAssistantWorkspace.workspaceId),
-        workspaceFileCount: Number(localAssistantWorkspace.fileCountTotal || localAssistantWorkspace.files.size || 0),
-        rootPath: localAssistantWorkspace.rootPath || '',
-        workspaceId: localAssistantWorkspace.workspaceId || '',
-        sessionId: localAssistantWorkspace.sessionId || '',
-        sourceKind: normalizeWorkspaceSourceKind(localAssistantWorkspace.sourceKind),
-        workspaceStatus: String(localAssistantWorkspace.status || ''),
-        fileCountCompleted: Number(localAssistantWorkspace.fileCountCompleted || 0),
-        fileCountPending: Number(localAssistantWorkspace.fileCountPending || 0),
-        fileCountFailed: Number(localAssistantWorkspace.fileCountFailed || 0),
-        warning: `Mesh worker unavailable: ${error.message || 'offline'}`,
-      });
+      safeRouteError(res, 503, 'Workspace status unavailable', error);
     }
   });
 
@@ -92,15 +79,11 @@ function createWorkspaceRouter(core) {
   });
 
   router.post('/api/assistant/workspace/select', requireAuth, async (req, res) => {
+    const { workspaceService } = req.app.locals.services;
     try {
-      const selectPayload = req.body || {};
-      if (shouldQueueWorkspaceSelectPayload(selectPayload)) {
-        const queuedJob = enqueueWorkspaceSelectJob(selectPayload, { userId: req.authUser?.id });
-        res.status(202).json(buildWorkspaceSelectAcceptedResponse(queuedJob));
-        return;
-      }
-      const result = await executeWorkspaceSelectWithFallback(selectPayload, req.requestId);
-      res.json(result);
+      const result = await workspaceService.selectWorkspace(req.body || {}, req.authUser?.id, req.requestId);
+      const status = result?.accepted ? 202 : 200;
+      res.status(status).json(result);
     } catch (error) {
       const isQueueFull = String(error?.message || '').toLowerCase().includes('queue is full');
       logger.error('Workspace select failed', {

@@ -574,6 +574,7 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
   });
 
   router.post("/api/inline-complete", requireAuth, async (req, res) => {
+    const { assistantService } = req.app.locals.services;
     const { prefix = "", language = "plaintext" } = req.body || {};
 
     const messages = [
@@ -581,11 +582,11 @@ Be concise, technical, and precise. When showing code changes, use diff format.`
     ];
 
     try {
-      const result = await runModelChat({
-        model: config.MESH_DEFAULT_MODEL,
-        messages,
-        maxTokens: 200,
-      });
+      const result = await assistantService.chat(
+        { model: config.MESH_DEFAULT_MODEL, messages, maxTokens: 200 },
+        req.authUser,
+        req.requestId
+      );
       const text = String(result?.content || "");
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
