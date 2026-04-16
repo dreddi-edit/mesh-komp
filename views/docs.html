@@ -18,9 +18,109 @@
   </script>
   <link rel="stylesheet" href="/assets/mesh-docs.css"/>
   <style>
-    /* Absolute path routing fix for assets */
+    :root {
+      --primary: #0f6a7b;
+      --primary-deep: #123f5c;
+      --secondary: #5f95a8;
+      --tertiary: #1f496b;
+      --surface: #f7fbfd;
+      --surface-low: #ffffff;
+      --surface-mid: #eef5f8;
+      --ink: #102432;
+      --ink-soft: #607787;
+      --outline: #9bb0bc;
+    }
+
     #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
     
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.02;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* ── Nav (Override) ── */
+    .docs-nav {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      right: auto;
+      width: auto;
+      max-width: 720px;
+      height: auto;
+      padding: 8px 8px 8px 20px;
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(20px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .nav-logo img { height: 20px; filter: brightness(0) invert(1); transition: filter 0.4s ease; }
+    .nav-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 6px; }
+    .nav-links a { font-size: 0.76rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); padding: 6px 12px; border-radius: 999px; transition: 0.2s; }
+    .nav-links a:hover { color: rgba(255, 255, 255, 0.95); background: rgba(255, 255, 255, 0.08); }
+    .nav-links a.active { color: #fff; background: rgba(255, 255, 255, 0.1); }
+    .nav-btn-primary { font-size: 0.76rem; font-weight: 600; color: #fff; padding: 7px 16px; border-radius: 999px; background: rgba(15, 106, 123, 0.5); backdrop-filter: blur(10px); }
+    
+    .docs-nav.scrolled {
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-color: rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+    .docs-nav.scrolled .nav-logo img { filter: none; }
+    .docs-nav.scrolled .nav-links a { color: rgba(16, 36, 50, 0.55); }
+    .docs-nav.scrolled .nav-links a:hover { color: #102432; background: rgba(15, 106, 123, 0.06); }
+    .docs-nav.scrolled .nav-links a.active { color: #0f6a7b; background: rgba(15, 106, 123, 0.08); }
+    .docs-nav.scrolled .nav-btn-primary { background: linear-gradient(135deg, #0f6a7b, #123f5c); }
+
+    /* ── Hero (Override mesh-docs.css) ── */
+    .hero {
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 0 64px 0 !important;
+      padding: 160px 24px 100px !important;
+      border-radius: 0 !important;
+      background: linear-gradient(180deg, #070e14 0%, #0d1f2d 50%, #1a3a4a 75%, #f7fbfd 100%) !important;
+      box-shadow: none !important;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .hero::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 25%;
+      background: linear-gradient(180deg, transparent, var(--surface)); z-index: 3; pointer-events: none;
+    }
+
+    .hero-aurora { position: absolute; inset: -40% -20%; filter: blur(70px); opacity: 0.6; z-index: 0; }
+    .aurora-band { position: absolute; border-radius: 50%; opacity: 0.5; }
+    .aurora-band-1 { width: 120%; height: 45%; top: -10%; left: -10%; background: radial-gradient(ellipse at 30% 50%, rgba(15,106,123,0.35) 0%, transparent 70%); animation: aurora-flow-1 16s ease-in-out infinite; }
+    .aurora-band-2 { width: 90%; height: 50%; top: 20%; right: -15%; background: radial-gradient(ellipse at 70% 40%, rgba(31,73,107,0.3) 0%, transparent 70%); animation: aurora-flow-2 20s ease-in-out infinite; }
+    .aurora-band-3 { width: 100%; height: 55%; bottom: -15%; left: 5%; background: radial-gradient(ellipse at 50% 60%, rgba(95,149,168,0.25) 0%, transparent 75%); animation: aurora-flow-3 22s ease-in-out infinite; }
+    .aurora-band-4 { width: 70%; height: 35%; top: 30%; left: 15%; background: radial-gradient(ellipse at 40% 50%, rgba(15,106,123,0.2) 0%, transparent 70%); animation: aurora-flow-4 18s ease-in-out infinite; }
+
+    @keyframes aurora-flow-1 { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(5%, 2%) scale(1.05); } }
+    @keyframes aurora-flow-2 { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-3%, -4%) scale(1.1); } }
+    @keyframes aurora-flow-3 { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(2%, 5%) scale(1.08); } }
+    @keyframes aurora-flow-4 { 0%, 100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-4%, 3%) scale(1.06); } }
+
+    /* ── Shell Adjustments ── */
+    .docs-shell { padding-top: 0 !important; max-width: 1200px !important; }
+    .docs-sidebar { background: transparent !important; border-right: none !important; top: 100px !important; }
+    .docs-main { padding: 0 64px 100px !important; }
+
     /* Reveal Animation Support */
     .reveal {
       opacity: 0;
@@ -29,7 +129,6 @@
     }
     .reveal.visible { opacity: 1; transform: translateY(0); }
     .reveal-delay-1 { transition-delay: 0.08s; }
-    .reveal-delay-2 { transition-delay: 0.16s; }
   </style>
 </head>
 <body>
@@ -46,7 +145,6 @@
       <a href="terminal">Terminal</a>
     </div>
     <div class="nav-actions">
-      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
       <a class="nav-btn-primary" href="app?login=1">Workspace</a>
     </div>
   </nav>
