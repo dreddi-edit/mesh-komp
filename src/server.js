@@ -232,6 +232,10 @@ app.use('/', createAssistantRouter(core));
 const { setupTerminalRelay } = require('./routes/terminal.routes');
 setupTerminalRelay(server, { projectRoot: REPO_ROOT, core });
 
+// ── Centralized error handler (must be last middleware) ──────────────────────
+const { errorHandler } = require('./middleware/error-handler');
+app.use(errorHandler);
+
 // Pre-warm tree-sitter worker pool so the first chat request doesn't pay
 // worker spin-up latency. Safe no-op if the export is unavailable.
 try {
