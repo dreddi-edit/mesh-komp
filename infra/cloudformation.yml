@@ -539,31 +539,30 @@ Resources:
       LogGroupName: /mesh/app
       RetentionInDays: 14
 
-  # Metric filter: count 5xx responses from ALB access log entries
-  # ALB access log format field [3] is the HTTP status code
+  # Metric filter: count 5xx responses from structured JSON app logs.
+  # Pattern matches log lines where the JSON "level" field is "error" —
+  # app errors that result in 5xx responses are logged at error level.
   Alb5xxMetricFilter:
     Type: AWS::Logs::MetricFilter
     DependsOn: AppLogGroup
     Properties:
       LogGroupName: /mesh/app
-      FilterPattern: '[..., status=5*, ...]'
+      FilterPattern: '{ $.level = "error" }'
       MetricTransformations:
-        - MetricName: Alb5xxCount
+        - MetricName: AppErrorCount
           MetricNamespace: MeshGateway
           MetricValue: '1'
           DefaultValue: 0
 
-  # Metric filter: count slow requests (response time field >2000ms)
-  # NOTE: ALB log field positions vary by log format version; this targets
-  # the request_processing_time field pattern for values >=2.0 seconds.
+  # Metric filter: count warn-level events (degraded paths, retries, etc.)
   AlbSlowRequestMetricFilter:
     Type: AWS::Logs::MetricFilter
     DependsOn: AppLogGroup
     Properties:
       LogGroupName: /mesh/app
-      FilterPattern: '[..., request_processing_time>=2.0, ...]'
+      FilterPattern: '{ $.level = "warn" }'
       MetricTransformations:
-        - MetricName: SlowRequestCount
+        - MetricName: AppWarnCount
           MetricNamespace: MeshGateway
           MetricValue: '1'
           DefaultValue: 0
