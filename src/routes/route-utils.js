@@ -19,4 +19,17 @@ function safeRouteError(res, statusCode, fallbackMessage, error) {
   res.status(statusCode).json({ ok: false, error: fallbackMessage });
 }
 
-module.exports = { safeRouteError };
+/**
+ * Returns middleware that sets a Cache-Control header on the response.
+ *
+ * @param {number} maxAge - Cache duration in seconds
+ * @returns {import('express').RequestHandler}
+ */
+function cacheControl(maxAge) {
+  return (req, res, next) => {
+    res.set('Cache-Control', `public, max-age=${maxAge}`);
+    next();
+  };
+}
+
+module.exports = { safeRouteError, cacheControl };
