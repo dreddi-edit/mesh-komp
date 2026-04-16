@@ -257,10 +257,10 @@ function createWorkspaceRouter(core) {
 
   router.post('/api/assistant/workspace/recovery', requireAuth, async (req, res) => {
     try {
+      const result = await meshTunnelRequest('workspace.recovery', {
         spanIds: Array.isArray(req.body?.spanIds) ? req.body.spanIds : [],
         ranges: Array.isArray(req.body?.ranges) ? req.body.ranges : [],
-        requestId: req.requestId,
-      });
+      }, req.requestId);
       res.json(result);
     } catch (error) {
       safeRouteError(res, 400, 'Workspace recovery failed', error);
@@ -317,6 +317,7 @@ function createWorkspaceRouter(core) {
   });
 
   router.post('/api/assistant/workspace/purge', requireAuth, async (req, res) => {
+    try {
       const result = await meshTunnelRequest('workspace.purge', {
         workspaceId: String(req.body.workspaceId || '').trim(),
         sessionId: String(req.body.sessionId || '').trim(),
@@ -329,10 +330,10 @@ function createWorkspaceRouter(core) {
 
   router.delete('/api/assistant/workspace/file', requireAuth, async (req, res) => {
     try {
+      const result = await meshTunnelRequest('workspace.file.delete', {
         workspaceId: String(req.query.workspaceId || '').trim(),
         sessionId: String(req.query.sessionId || '').trim(),
-        requestId: req.requestId,
-      });
+      }, req.requestId);
       res.json(result);
     } catch (error) {
       safeRouteError(res, 400, 'Delete file failed', error);
@@ -341,10 +342,10 @@ function createWorkspaceRouter(core) {
 
   router.get('/api/assistant/workspace/search', requireAuth, async (req, res) => {
     try {
+      const result = await meshTunnelRequest('workspace.search', {
         scope: String(req.query.scope || 'all'),
         limit: Math.min(Number(req.query.limit) || 12, 200),
-        requestId: req.requestId,
-      });
+      }, req.requestId);
       res.json(result);
     } catch (error) {
       safeRouteError(res, 400, 'Workspace search failed', error);
@@ -353,10 +354,10 @@ function createWorkspaceRouter(core) {
 
   router.post('/api/assistant/workspace/grep', requireAuth, async (req, res) => {
     try {
+      const result = await meshTunnelRequest('workspace.grep', {
         limit: Math.min(Number(req.body?.limit) || 40, 500),
         caseSensitive: req.body?.caseSensitive === true,
-        requestId: req.requestId,
-      });
+      }, req.requestId);
       if (result.ok === false) {
         res.status(400).json(result);
         return;
