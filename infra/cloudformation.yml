@@ -462,7 +462,10 @@ Resources:
             AllowedMethods: [GET, HEAD]
             CachedMethods: [GET, HEAD]
             Compress: true
-        # Custom error responses — return API errors as-is without CloudFront HTML
+        # Custom error responses:
+        # - 403/404 from S3 (missing blob) are passed through as 200 SPA fallback.
+        # - 502/503/504 from ALB (origin down/overloaded) serve branded Mesh error
+        #   pages from S3 (/_errors/ prefix). TTL 30s — short enough for deploys.
         CustomErrorResponses:
           - ErrorCode: 403
             ResponsePagePath: /
@@ -472,6 +475,18 @@ Resources:
             ResponsePagePath: /
             ResponseCode: 200
             ErrorCachingMinTTL: 0
+          - ErrorCode: 502
+            ResponsePagePath: /_errors/502.html
+            ResponseCode: 502
+            ErrorCachingMinTTL: 30
+          - ErrorCode: 503
+            ResponsePagePath: /_errors/503.html
+            ResponseCode: 503
+            ErrorCachingMinTTL: 30
+          - ErrorCode: 504
+            ResponsePagePath: /_errors/504.html
+            ResponseCode: 504
+            ErrorCachingMinTTL: 30
       Tags:
         - Key: Name
           Value: !Sub mesh-cloudfront-${AWS::StackName}
