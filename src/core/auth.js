@@ -8,6 +8,7 @@
 
 const path   = require('path');
 const crypto = require('crypto');
+const { LRUCache } = require('lru-cache');
 const secureDb = require('../../secure-db');
 const logger = require('../logger');
 const config = require('../config');
@@ -51,19 +52,10 @@ const USER_STORE_MAX_JSON_BYTES = 1024 * 1024;
 // Saves 2 DynamoDB calls (readSession + getUserById) per authenticated request.
 // Expiry is still re-checked on every cache hit — no security shortcut.
 const SESSION_CACHE_TTL_MS = 30_000;
-const SESSION_CACHE_MAX    = 100;
-/** @type {Map<string, { result: { token: string, user: object, session: object }, ts: number }>} */
-const sessionCache = new Map();
-
-function pruneSessionCache() {
-  if (sessionCache.size <= SESSION_CACHE_MAX) return;
-  const cutoff = Date.now() - SESSION_CACHE_TTL_MS;
-  for (const [key, entry] of sessionCache) {
-    if (entry.ts < cutoff || sessionCache.size > SESSION_CACHE_MAX) {
-      sessionCache.delete(key);
-    }
-  }
-}
+const sessionCache = new LRUCache({
+  max: config.SESSION_CACHE_MAX,
+  ttl: SESSION_CACHE_TTL_MS,
+});
 
 /**
  * Evict a single session token from the in-process cache (call on logout).
@@ -89,19 +81,10 @@ function invalidateSessionCacheForUser(userId) {
 // Saves 1 DynamoDB GSI query (getUserStoreValues) per /api/assistant/chat request.
 // Invalidated immediately on PUT /api/user/store/:key.
 const CREDENTIAL_CACHE_TTL_MS = 60_000;
-const CREDENTIAL_CACHE_MAX    = 100;
-/** @type {Map<string, { result: object, ts: number }>} */
-const credentialCache = new Map();
-
-function pruneCredentialCache() {
-  if (credentialCache.size <= CREDENTIAL_CACHE_MAX) return;
-  const cutoff = Date.now() - CREDENTIAL_CACHE_TTL_MS;
-  for (const [key, entry] of credentialCache) {
-    if (entry.ts < cutoff || credentialCache.size > CREDENTIAL_CACHE_MAX) {
-      credentialCache.delete(key);
-    }
-  }
-}
+const credentialCache = new LRUCache({
+  max: config.SESSION_CACHE_MAX,
+  ttl: CREDENTIAL_CACHE_TTL_MS,
+});
 
 /**
  * Evict a user's credential cache entry (call after PUT /api/user/store/:key).
@@ -372,7 +355,6 @@ async function resolveAuthUserFromRequest(req) {
 
     const result = { token, user, session };
     sessionCache.set(token, { result, ts: Date.now() });
-    pruneSessionCache();
     return result;
   } catch (error) {
     reportAuthStoreError('resolve-session', error);
@@ -521,7 +503,6 @@ async function getStoredCredentialsForUser(userId) {
   };
 
   credentialCache.set(uid, { result, ts: Date.now() });
-  pruneCredentialCache();
   return result;
 }
 
