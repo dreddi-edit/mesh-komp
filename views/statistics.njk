@@ -1,6 +1,6 @@
 {% extends "layouts/base.njk" %}
 
-{% block title %}Statistiken - Mesh{% endblock %}
+{% block title %}Statistics - Mesh{% endblock %}
 
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
@@ -496,21 +496,8 @@
 
   <canvas id="bg-canvas"></canvas>
 
-  <nav class="docs-nav" id="navbar">
-    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="/assets/brand/lockup-color.svg" alt="Mesh"/></a>
-    <div class="nav-divider"></div>
-    <div class="nav-links">
-      <a href="index">Start</a>
-      <a href="how-it-works">So funktioniert es</a>
-      <a class="active" href="statistics">Statistiken</a>
-      <a href="docs">Dokumentation</a>
-      <a href="terminal">Terminal</a>
-    </div>
-    <div class="nav-actions">
-      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
-      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
-    </div>
-  </nav>
+  {% set activePage = "statistics" %}
+  {% include "partials/site-nav.njk" %}
 
   <main>
     <header class="hero reveal" id="overview">
@@ -520,9 +507,9 @@
         <div class="aurora-band aurora-band-3"></div>
         <div class="aurora-band aurora-band-4"></div>
       </div>
-      <div class="eyebrow">Betriebsdaten</div>
-      <h1>Transparenz über Kompression &amp; Recovery</h1>
-      <p>Kennzahlen über den Mehrwert von Mesh: Wie viel Kontext gespart wird und wie präzise Quellen belegt werden. Stand: April 2026.</p>
+      <div class="eyebrow">Operational Data</div>
+      <h1>Transparency for compression and recovery</h1>
+      <p>Metrics that show the value of Mesh: how much context is saved and how precisely sources can be verified. As of April 2026.</p>
     </header>
 
     <div class="page-inner">
@@ -530,79 +517,79 @@
       <div class="stat-row reveal reveal-delay-1">
         <div class="stat-card">
           <div class="stat-value">94%</div>
-          <div class="stat-label">Durchschnittliche Token-Einsparung (Large Files)</div>
+          <div class="stat-label">Average token savings (large files)</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">96%</div>
-          <div class="stat-label">Einsparung für Dokumentation (.md)</div>
+          <div class="stat-label">Savings for documentation (.md)</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">16x</div>
-          <div class="stat-label">Kontext-Reduktion im Vergleich zu Raw-Text</div>
+          <div class="stat-label">Context reduction compared with raw text</div>
         </div>
       </div>
 
       <div class="section">
-        <p class="section-label reveal">Überblick</p>
-        <h2 class="section-title reveal reveal-delay-1">Dateiansichten und Recovery-Wege</h2>
+        <p class="section-label reveal">Overview</p>
+        <h2 class="section-title reveal reveal-delay-1">File views and recovery paths</h2>
         <div class="grid-cards">
           <div class="card reveal reveal-delay-1">
             <div class="icon-pill">V</div>
-            <h3>Dateiansichten</h3>
-            <p>4 Sichten (Original, Capsule, Focused, Transport) sorgen für maximale Flexibilität pro Datei.</p>
+            <h3>File Views</h3>
+            <p>Four views, Original, Capsule, Focused, and Transport, provide maximum flexibility per file.</p>
           </div>
           <div class="card reveal reveal-delay-2">
             <div class="icon-pill">R</div>
-            <h3>Recovery-Wege</h3>
-            <p>3 Pfade (Span-IDs, Zeilen, Bytes) garantieren, dass jede Antwort belegbar bleibt.</p>
+            <h3>Recovery Paths</h3>
+            <p>Three paths, span IDs, lines, and bytes, keep every answer verifiable.</p>
           </div>
           <div class="card reveal reveal-delay-1">
-            <h3>Indexpfade</h3>
-            <p>Hybrid-System aus Cloud-Processing und lokalem Fallback für 100% Verfügbarkeit.</p>
+            <h3>Index Paths</h3>
+            <p>A hybrid system combines cloud processing with local fallback for full availability.</p>
           </div>
         </div>
       </div>
 
       <div class="section" id="pipeline">
         <p class="section-label reveal">Performance</p>
-        <h2 class="section-title reveal reveal-delay-1">Pipeline-Fortschritt &amp; Qualität</h2>
+        <h2 class="section-title reveal reveal-delay-1">Pipeline progress and quality</h2>
         <div class="grid-cards">
           <div class="card reveal reveal-delay-1">
-            <h3>Fortschritt</h3>
-            <p>Manifest-Seeding: 100%<br>Processing: Aktiv<br>Recovery-Ready: Stabil</p>
+            <h3>Progress</h3>
+            <p>Manifest seeding: 100%<br>Processing: Active<br>Recovery-ready: Stable</p>
           </div>
           <div class="card reveal reveal-delay-2">
-            <h3>Qualität</h3>
-            <p>Digest-Check: Aktiv<br>Span-Validierung: Aktiv<br>Cache-Hits: 94%</p>
+            <h3>Quality</h3>
+            <p>Digest check: Active<br>Span validation: Active<br>Cache hits: 94%</p>
           </div>
         </div>
       </div>
 
       <div class="section" id="tokens">
-        <p class="section-label reveal">Effizienz</p>
-        <h2 class="section-title reveal reveal-delay-1">Geschätzte Token-Einsparung</h2>
+        <p class="section-label reveal">Efficiency</p>
+        <h2 class="section-title reveal reveal-delay-1">Estimated token savings</h2>
         <div class="matrix reveal reveal-delay-1">
           <div class="matrix-row head">
-            <div>Modus</div><div>Einsparung</div><div>Ergebnis</div>
+            <div>Mode</div><div>Savings</div><div>Result</div>
           </div>
           <div class="matrix-row">
-            <div>Raw Kontext</div><div>0%</div><div>Volltext</div>
+            <div>Raw Context</div><div>0%</div><div>Full text</div>
           </div>
           <div class="matrix-row">
-            <div>Capsule</div><div>ca. 94%</div><div>AST-Struktur</div>
+            <div>Capsule</div><div>ca. 94%</div><div>AST structure</div>
           </div>
           <div class="matrix-row">
-            <div>Focused</div><div>ca. 96%</div><div>Zielgerichtet</div>
+            <div>Focused</div><div>ca. 96%</div><div>Targeted</div>
           </div>
         </div>
       </div>
 
       <div class="section" id="benchmarks">
-        <p class="section-label reveal">Validierung</p>
-        <h2 class="section-title reveal reveal-delay-1">Benchmark-Auswirkungen</h2>
+        <p class="section-label reveal">Validation</p>
+        <h2 class="section-title reveal reveal-delay-1">Benchmark impact</h2>
         <div class="matrix reveal reveal-delay-1">
           <div class="matrix-row head">
-            <div>Typ</div><div>Erwarteter Effekt</div><div>Treiber</div>
+            <div>Type</div><div>Expected Effect</div><div>Driver</div>
           </div>
           <div class="matrix-row">
             <div>NIAH</div><div>+24% bis +38%</div><div>Focused Retrieval</div>
@@ -616,18 +603,7 @@
     </div>
   </main>
 
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-logo"><img src="/assets/brand/wordmark-black.svg" alt="Mesh"/></div>
-      <div class="footer-links">
-        <a href="docs">Dokumentation</a>
-        <a href="how-it-works">So funktioniert es</a>
-        <a href="statistics">Statistiken</a>
-        <a href="app">Arbeitsbereich</a>
-      </div>
-      <p class="footer-copy">2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.</p>
-    </div>
-  </footer>
+  {% include "partials/site-footer.njk" %}
 
   <script>
     (function initBackground() {

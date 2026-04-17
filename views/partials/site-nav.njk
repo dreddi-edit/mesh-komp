@@ -1,0 +1,19 @@
+{% set navId = siteNavId or "navbar" %}
+<nav class="docs-nav" id="{{ navId }}">
+  <a class="nav-logo" href="index" aria-label="Mesh home"><img src="/assets/brand/lockup-color.svg" alt="Mesh"/></a>
+  <div class="nav-divider" style="width:1px;height:16px;background:rgba(255,255,255,0.15);margin:0 6px;"></div>
+  <div class="nav-links">
+    <a class="{% if activePage == 'home' %}active{% endif %}" href="index">Home</a>
+    <a class="{% if activePage == 'how-it-works' %}active{% endif %}" href="how-it-works">How It Works</a>
+    <a class="{% if activePage == 'statistics' %}active{% endif %}" href="statistics">Statistics</a>
+    <a class="{% if activePage == 'docs' %}active{% endif %}" href="docs">Documentation</a>
+    <a class="{% if activePage == 'terminal' %}active{% endif %}" href="terminal">Terminal</a>
+    {% if siteNavShowRepoDocs %}
+      <a class="{% if activePage == 'repo-docs' %}active{% endif %}" href="repo-docs">Repo Docs</a>
+    {% endif %}
+  </div>
+  <div class="nav-actions">
+    <a class="nav-btn-ghost" href="app?login=1">Sign In</a>
+    <a class="nav-btn-primary" href="app?login=1">Workspace</a>
+  </div>
+</nav>

@@ -1,6 +1,6 @@
 {% extends "layouts/base.njk" %}
 
-{% block title %}Mesh - Kontext-Kompressionsplattform{% endblock %}
+{% block title %}Mesh - Context Compression Platform{% endblock %}
 
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
@@ -1290,21 +1290,8 @@
 
   <canvas id="bg-canvas"></canvas>
 
-  <nav class="docs-nav" id="navbar">
-    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="/assets/brand/lockup-color.svg" alt="Mesh"/></a>
-    <div class="nav-divider" style="width:1px;height:16px;background:rgba(255,255,255,0.15);margin:0 6px;"></div>
-    <div class="nav-links">
-      <a class="active" href="index">Start</a>
-      <a href="how-it-works">So funktioniert es</a>
-      <a href="statistics">Statistiken</a>
-      <a href="docs">Dokumentation</a>
-      <a href="terminal">Terminal</a>
-    </div>
-    <div class="nav-actions">
-      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
-      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
-    </div>
-  </nav>
+  {% set activePage = "home" %}
+  {% include "partials/site-nav.njk" %}
 
   <main>
     <div class="hero" id="top">
@@ -1315,34 +1302,34 @@
         <div class="aurora-band aurora-band-4"></div>
       </div>
 
-      <div class="badge"><div class="badge-dot"></div>Kontext-Plattform für Dateien - April 2026</div>
+      <div class="badge"><div class="badge-dot"></div>Context platform for files - April 2026</div>
 
       <div class="hero-loader-row">
         <div class="hero-loader" id="hero-mesh-loader" aria-hidden="true"></div>
-        <span class="hero-loader-label">Indexer läuft</span>
+        <span class="hero-loader-label">Indexer running</span>
       </div>
 
       <h1 class="hero-headline">
-        <span class="word">Kontext</span>
-        <span class="word">komprimieren.</span>
-        <span class="word">Wahrheit</span>
-        <span class="word gradient-text">wiederherstellen.</span>
+        <span class="word">Turn large codebases</span>
+        <span class="word">into precise,</span>
+        <span class="word">source-backed</span>
+        <span class="word gradient-text">context.</span>
       </h1>
 
       <p class="hero-sub">
-        Mesh macht aus vielen Dateien eine gut lesbare Arbeitsansicht: zuerst kurz zusammengefasst, dann nach deiner Frage gefiltert und bei Bedarf mit genauen Stellen aus der Originaldatei ergänzt.
-        Du schickst deutlich weniger Kontext mit, bleibst präzise und bekommst Antworten mit Quellen statt mit Vermutungen.
+        Mesh compresses files into structured capsules, finds the exact passages that matter, and restores original source lines whenever an answer needs proof.
+        You send far less context, stay precise, and get answers with sources instead of guesses.
       </p>
 
       <div class="hero-actions">
         <a class="btn-hero-primary" href="app?login=1">
           <span class="material-symbols-outlined" style="font-size:18px">folder_open</span>
-          Arbeitsbereich öffnen
+          Open Workspace
           <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
         </a>
         <a class="btn-hero-secondary" href="#pipeline">
           <span class="material-symbols-outlined" style="font-size:16px">schema</span>
-          Pipeline ansehen
+          View Pipeline
         </a>
       </div>
 
@@ -1353,65 +1340,65 @@
             <span class="dot-yellow"></span>
             <span class="dot-green"></span>
           </div>
-          <div class="terminal-title">workspace-indexer@mesh-gateway:~ - pipeline-ansicht</div>
-          <div class="live-badge"><div class="live-dot"></div>Echtzeit</div>
+          <div class="terminal-title">workspace-indexer@mesh-gateway:~ - pipeline-view</div>
+          <div class="live-badge"><div class="live-dot"></div>Live</div>
         </div>
         <div class="terminal-body" id="terminal-typing-body">
-          <span class="t-line fade-line" style="animation-delay: 0.3s;"><span class="t-primary">></span> workspace.select --manifest 191 dateien</span>
+          <span class="t-line fade-line" style="animation-delay: 0.3s;"><span class="t-primary">></span> workspace.select --manifest 191 files</span>
           <span class="t-line t-dim fade-line" style="animation-delay: 0.6s;">---------------------------------------------------------------</span>
-          <span class="t-line fade-line" style="animation-delay: 0.9s;"><span class="t-amber">14:02:11</span> Manifest angelegt -&gt; Dateien sichtbar, aber noch nicht fertig verarbeitet</span>
-          <span class="t-line fade-line" style="animation-delay: 1.2s;"><span class="t-amber">14:02:14</span> Upload erkannt -&gt; Verarbeitung startet im Hintergrund</span>
-          <span class="t-line fade-line" style="animation-delay: 1.5s;"><span class="t-amber">14:02:16</span> Kurzzusammenfassung erstellt -&gt; Platz für Antworten reserviert</span>
-          <span class="t-line fade-line" style="animation-delay: 1.8s;"><span class="t-amber">14:02:18</span> Suche nach "title console" -&gt; 4 passende Stellen gefunden</span>
-          <span class="t-line fade-line" style="animation-delay: 2.1s;"><span class="t-amber">14:02:19</span> Quellenstellen nachgeladen -&gt; exakte Zeilen geliefert</span>
-          <span class="t-line fade-line" style="animation-delay: 2.4s;"><span class="t-green">READY</span> Datei fertig verarbeitet · Antwort mit Quellen möglich</span>
+          <span class="t-line fade-line" style="animation-delay: 0.9s;"><span class="t-amber">14:02:11</span> Manifest created -&gt; files visible, not fully processed yet</span>
+          <span class="t-line fade-line" style="animation-delay: 1.2s;"><span class="t-amber">14:02:14</span> Upload detected -&gt; processing starts in the background</span>
+          <span class="t-line fade-line" style="animation-delay: 1.5s;"><span class="t-amber">14:02:16</span> Compact summary created -&gt; answer budget reserved</span>
+          <span class="t-line fade-line" style="animation-delay: 1.8s;"><span class="t-amber">14:02:18</span> Search for "title console" -&gt; 4 relevant passages found</span>
+          <span class="t-line fade-line" style="animation-delay: 2.1s;"><span class="t-amber">14:02:19</span> Source passages recovered -&gt; exact lines delivered</span>
+          <span class="t-line fade-line" style="animation-delay: 2.4s;"><span class="t-green">READY</span> File fully processed · source-backed answer ready</span>
           <span class="t-line fade-line" style="animation-delay: 2.7s;"><span class="t-primary">></span><span class="t-cursor"></span></span>
         </div>
       </div>
 
-      <div class="scroll-hint"><span>Scrollen</span><div class="scroll-line"></div></div>
+      <div class="scroll-hint"><span>Scroll</span><div class="scroll-line"></div></div>
     </div>
 
     <div class="trusted-strip">
-      <p class="trusted-label">Gebaut für Teams, die schnell aus vielen Dateien verstehen müssen, worum es geht</p>
+      <p class="trusted-label">Built for teams that need to understand many files quickly.</p>
       <div class="trusted-logos">
-        <span class="trusted-logo">Kurz zusammenfassen</span>
-        <span class="trusted-logo">Passende Stellen finden</span>
-        <span class="trusted-logo">Quellen exakt laden</span>
-        <span class="trusted-logo">Uploads im Hintergrund</span>
-        <span class="trusted-logo">Automatisch indexieren</span>
+        <span class="trusted-logo">Summarize compactly</span>
+        <span class="trusted-logo">Find relevant passages</span>
+        <span class="trusted-logo">Load exact sources</span>
+        <span class="trusted-logo">Background uploads</span>
+        <span class="trusted-logo">Automatic indexing</span>
       </div>
     </div>
 
     <div class="ticker-wrap">
       <div class="ticker">
-        <div class="ticker-item"><div class="ticker-dot"></div>Dateien sichtbar machen</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Verarbeitung von pending zu completed</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Text automatisch strukturieren</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Nur passende Stellen anzeigen</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Originalquellen exakt nachladen</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Sichere Übertragung im Hintergrund</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Integrität prüfen</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Sitzung sicher verwalten</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Make files visible</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Process pending files to completed</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Structure text automatically</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Show only relevant passages</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Recover exact original sources</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Secure background transport</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Verify integrity</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Manage sessions securely</div>
 
-        <div class="ticker-item"><div class="ticker-dot"></div>Workspace-Manifest anlegen</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Dateistatus von pending zu completed</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Tree-Sitter Capsule-Extraktion</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Fokussierte Query-Capsules</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Exakte Quellenstellen nachladen</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Create workspace manifest</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>File status from pending to completed</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Tree-Sitter capsule extraction</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Focused query capsules</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Recover exact source passages</div>
         <div class="ticker-item"><div class="ticker-dot"></div>Chunked Transport Envelope</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Digest-Validierung</div>
-        <div class="ticker-item"><div class="ticker-dot"></div>Cookie-only Session-Auth</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Digest validation</div>
+        <div class="ticker-item"><div class="ticker-dot"></div>Cookie-only session auth</div>
       </div>
     </div>
 
     <section id="features">
       <div class="section-inner">
         <div class="reveal">
-          <p class="section-label">Fähigkeiten</p>
-          <h2 class="section-title">Ein System, das aus vielen Dateien schnell verständlichen Kontext macht.</h2>
+          <p class="section-label">Capabilities</p>
+          <h2 class="section-title">A system that turns many files into fast, understandable context.</h2>
           <p class="section-desc">
-            Statt rohe Dateien ungefiltert in den Prompt zu kippen, macht Mesh Inhalte lesbar, priorisiert das Wichtige und lädt genaue Stellen nur bei Bedarf nach.
+            Instead of dumping raw files into the prompt, Mesh makes content readable, prioritizes what matters, and retrieves exact passages only when needed.
           </p>
         </div>
 
@@ -1421,14 +1408,14 @@
               <span class="material-symbols-outlined" style="color:#0f6a7b">compress</span>
             </div>
             <p class="bento-card-label">01 // CAPSULE</p>
-            <h3 class="bento-card-title">Komprimierte Datei-Zusammenfassung</h3>
+            <h3 class="bento-card-title">Compressed File Summary</h3>
             <p class="bento-card-desc">
-              Jede Datei wird in eine gut strukturierte Kurzfassung mit klaren Abschnitten überführt.
-              So bleibt das Wichtigste sichtbar, ohne die Verbindung zur Originaldatei zu verlieren.
+              A capsule captures the structure, intent, and key references of a file without forcing the model to read every raw line.
+              The essentials stay visible without losing the connection to the original file.
             </p>
             <div style="position:absolute; right:30px; bottom:30px; text-align:right;">
-              <div style="font-family:'Berkeley Mono',monospace; font-size:1.8rem; font-weight:700; letter-spacing:-0.04em; color:#0f6a7b;">94<span style="font-size:0.95rem; color:#9bb0bc;">% weniger</span></div>
-              <div style="font-family:'Berkeley Mono',monospace; font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:#9bb0bc;">weniger Kontext pro Anfrage</div>
+              <div style="font-family:'Berkeley Mono',monospace; font-size:1.8rem; font-weight:700; letter-spacing:-0.04em; color:#0f6a7b;">94<span style="font-size:0.95rem; color:#9bb0bc;">% less</span></div>
+              <div style="font-family:'Berkeley Mono',monospace; font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase; color:#9bb0bc;">less context per request</div>
             </div>
           </article>
 
@@ -1436,16 +1423,16 @@
             <div class="bento-icon" style="background: rgba(31,73,107,0.09)">
               <span class="material-symbols-outlined" style="color:#5f95a8">manage_search</span>
             </div>
-            <p class="bento-card-label">02 // FOKUSSIERTE SICHT</p>
-            <h3 class="bento-card-title">Passende Stellen finden</h3>
+            <p class="bento-card-label">02 // FOCUSED VIEW</p>
+            <h3 class="bento-card-title">Find relevant passages</h3>
             <p class="bento-card-desc">
-              Mesh sucht nur die Teile heraus, die zu deiner Frage passen, und merkt sich diese Auswahl für wiederholte Fragen.
-              So bekommst du schneller die relevanten Stellen statt die komplette Datei.
+              Focused views surface the exact sections that match your question instead of flooding the prompt with unrelated code.
+              Mesh keeps the selection available for follow-up questions.
             </p>
             <div style="margin-top:22px; border:1px solid rgba(18,62,89,0.2); background:#eef5f8; border-radius:12px; padding:14px; font-family:'Berkeley Mono',monospace; font-size:0.68rem; color:#607787; line-height:1.7;">
-              frage: "title console"<br/>
-              passende stellen: 8<br/>
-              genaue quellen: 4
+              query: "title console"<br/>
+              matching passages: 8<br/>
+              exact sources: 4
             </div>
           </article>
 
@@ -1454,8 +1441,8 @@
               <span class="material-symbols-outlined" style="color:#1f496b">rule</span>
             </div>
             <p class="bento-card-label">03 // EVIDENCE</p>
-            <h3 class="bento-card-title">Quellenstellen zurückholen</h3>
-            <p class="bento-card-desc">Wenn du Genauigkeit brauchst, lädt Mesh die exakten Zeilen oder Textbereiche aus der Originaldatei nach.</p>
+            <h3 class="bento-card-title">Restore Source Evidence</h3>
+            <p class="bento-card-desc">When precision matters, Mesh retrieves the exact lines or spans from the original file.</p>
           </article>
 
           <article class="bento-card bento-4 reveal reveal-delay-2">
@@ -1463,8 +1450,8 @@
               <span class="material-symbols-outlined" style="color:#0f6a7b">cloud_sync</span>
             </div>
             <p class="bento-card-label">04 // INGEST</p>
-            <h3 class="bento-card-title">AWS S3 Cloud-Storage</h3>
-            <p class="bento-card-desc">Skalierbare Verarbeitung per AWS Lambda, Management in EC2-Worker Tunnels und DynamoDB.</p>
+            <h3 class="bento-card-title">AWS S3 Cloud Storage</h3>
+            <p class="bento-card-desc">Scalable processing through AWS Lambda, EC2 worker tunnels, and DynamoDB-backed state.</p>
           </article>
 
           <article class="bento-card bento-5 reveal reveal-delay-3">
@@ -1472,8 +1459,8 @@
               <span class="material-symbols-outlined" style="color:#5f95a8">verified_user</span>
             </div>
             <p class="bento-card-label">05 // TRUST</p>
-            <h3 class="bento-card-title">Integrität über Digests</h3>
-            <p class="bento-card-desc">Prüfsummen schützen den Weg der Daten, damit unterwegs nichts unbemerkt verändert wird.</p>
+            <h3 class="bento-card-title">Integrity Through Digests</h3>
+            <p class="bento-card-desc">Checksums protect the data path so unexpected changes are visible immediately.</p>
           </article>
         </div>
       </div>
@@ -1483,20 +1470,20 @@
       <div class="section-inner">
         <div class="stats-row reveal" id="stats-row">
           <div class="stat-item">
-            <div class="stat-num"><span class="counter" data-target="4">0</span><span class="stat-unit"> ansichten</span></div>
-            <div class="stat-label">Vier Ansichten pro Datei: Original, Kurzfassung, passende Stelle, Transport</div>
+            <div class="stat-num"><span class="counter" data-target="4">0</span><span class="stat-unit"> views</span></div>
+            <div class="stat-label">Four views per file: Original, Capsule, Focused, and Transport</div>
           </div>
           <div class="stat-item">
-            <div class="stat-num"><span class="counter" data-target="3">0</span><span class="stat-unit"> recovery-wege</span></div>
-            <div class="stat-label">Quellenstellen lassen sich über IDs, Zeilen oder Bytes wiederfinden</div>
+            <div class="stat-num"><span class="counter" data-target="3">0</span><span class="stat-unit"> recovery paths</span></div>
+            <div class="stat-label">Source passages can be recovered by IDs, lines, or bytes</div>
           </div>
           <div class="stat-item">
-            <div class="stat-num"><span class="counter" data-target="2">0</span><span class="stat-unit"> indexpfade</span></div>
-            <div class="stat-label">Verarbeitung im Hintergrund und lokale Ausweichroute</div>
+            <div class="stat-num"><span class="counter" data-target="2">0</span><span class="stat-unit"> index paths</span></div>
+            <div class="stat-label">Background processing and local fallback</div>
           </div>
           <div class="stat-item">
-            <div class="stat-num"><span class="counter" data-target="1">0</span><span class="stat-unit"> wahrheitsquelle</span></div>
-            <div class="stat-label">Antworten bleiben direkt mit der Ursprungsdatei verknüpft</div>
+            <div class="stat-num"><span class="counter" data-target="1">0</span><span class="stat-unit"> source of truth</span></div>
+            <div class="stat-label">Answers stay directly linked to the original file</div>
           </div>
         </div>
       </div>
@@ -1506,37 +1493,37 @@
       <div class="section-inner">
         <div class="reveal">
           <p class="section-label">Pipeline</p>
-          <h2 class="section-title">Vom Datei-Upload zur Antwort mit Quellen in vier einfachen Schritten.</h2>
-          <p class="section-desc">Zuerst wird die Datei sichtbar, dann verarbeitet, dann verständlich zusammengefasst und am Ende bei Bedarf mit genauen Stellen ergänzt.</p>
+          <h2 class="section-title">From file upload to source-backed answer in four clear steps.</h2>
+          <p class="section-desc">Files become visible first, then processed, summarized, and finally enriched with exact source evidence when needed.</p>
         </div>
 
         <div class="steps-grid reveal reveal-delay-1">
           <article class="step-item">
             <div class="step-num">01 // MANIFEST</div>
             <span class="material-symbols-outlined" style="color:#0f6a7b">list_alt</span>
-            <h4 class="step-title">Dateien sofort sichtbar machen</h4>
-            <p class="step-desc">Wenn du einen Workspace öffnest, erscheinen die Dateien direkt. Du kannst also schon schauen, bevor alles fertig verarbeitet ist.</p>
+            <h4 class="step-title">Make files visible</h4>
+            <p class="step-desc">When you open a workspace, files appear immediately so you can inspect structure before processing finishes.</p>
           </article>
 
           <article class="step-item">
             <div class="step-num">02 // PROCESS</div>
             <span class="material-symbols-outlined" style="color:#5f95a8">hub</span>
-            <h4 class="step-title">Blob-Event-Verarbeitung</h4>
-            <p class="step-desc">Ein Hintergrundprozess liest die Dateien ein, trennt Text von Binärdaten und legt den Arbeitsstand ab.</p>
+            <h4 class="step-title">Background blob processing</h4>
+            <p class="step-desc">A worker reads files, separates text from binary content, and stores processing state.</p>
           </article>
 
           <article class="step-item">
             <div class="step-num">03 // COMPRESS</div>
             <span class="material-symbols-outlined" style="color:#1f496b">database</span>
-            <h4 class="step-title">Kurzfassung plus Sicherung</h4>
-            <p class="step-desc">Aus der Datei entsteht eine kompakte Übersicht mit Verweisen auf die Originalstellen und einer sicheren Übertragung.</p>
+            <h4 class="step-title">Create compact capsules</h4>
+            <p class="step-desc">Each file becomes a compact overview with references back to original source locations.</p>
           </article>
 
           <article class="step-item">
             <div class="step-num">04 // ANSWER</div>
             <span class="material-symbols-outlined" style="color:#1f8aa2">task_alt</span>
-            <h4 class="step-title">Passende Antwort plus Quellen</h4>
-            <p class="step-desc">Die Antwort zeigt erst die relevanten Stellen und lädt bei Bedarf die exakten Originalzeilen nach.</p>
+            <h4 class="step-title">Answer with evidence</h4>
+            <p class="step-desc">Responses start with relevant focused passages and can recover exact original lines on demand.</p>
           </article>
         </div>
       </div>
@@ -1545,20 +1532,20 @@
     <section class="sticky-flow-section" id="workflow">
       <div class="section-inner sticky-flow-layout">
         <div class="sticky-flow-left">
-          <p class="section-label">Arbeitsalltag</p>
-          <h2 class="sticky-flow-heading reveal-left">Drei Szenarien,<br>ein Prinzip.</h2>
-          <nav class="sticky-flow-nav" aria-label="Szenarien-Navigation">
+          <p class="section-label">Everyday Workflows</p>
+          <h2 class="sticky-flow-heading reveal-left">Three scenarios,<br>one principle.</h2>
+          <nav class="sticky-flow-nav" aria-label="Scenario navigation">
             <div class="sticky-nav-item active" data-step="0">
               <span class="sticky-nav-num">01</span>
-              <span class="sticky-nav-label">Neue Codebase verstehen</span>
+              <span class="sticky-nav-label">Understand a new codebase</span>
             </div>
             <div class="sticky-nav-item" data-step="1">
               <span class="sticky-nav-num">02</span>
-              <span class="sticky-nav-label">Debugging mit vielen Dateien</span>
+              <span class="sticky-nav-label">Debug across many files</span>
             </div>
             <div class="sticky-nav-item" data-step="2">
               <span class="sticky-nav-num">03</span>
-              <span class="sticky-nav-label">Dokumentation durchsuchen</span>
+              <span class="sticky-nav-label">Search documentation</span>
             </div>
           </nav>
         </div>
@@ -1568,13 +1555,13 @@
               <div class="sticky-panel-icon">
                 <span class="material-symbols-outlined">folder_open</span>
               </div>
-              <h3 class="sticky-panel-title">Neue Codebase. Sofort Kontext.</h3>
+              <h3 class="sticky-panel-title">New codebase. Instant context.</h3>
               <p class="sticky-panel-desc">
-                Du öffnest ein fremdes Repository mit 400 Dateien. Statt Stunden im Code zu lesen, wählt Mesh die wichtigsten Strukturen aus, fasst sie kompakt zusammen und zeigt dir, wo Entscheidungen getroffen wurden.
+                Open a repository and get a structured view before every file has been fully indexed. Mesh highlights the most important structures and shows where decisions were made.
               </p>
               <div class="sticky-panel-metric">
                 <span class="sticky-metric-val">15 min</span>
-                <span class="sticky-metric-label">statt 2 Tage bis zum ersten Überblick</span>
+                <span class="sticky-metric-label">instead of 2 days to first overview</span>
               </div>
             </div>
           </article>
@@ -1583,13 +1570,13 @@
               <div class="sticky-panel-icon">
                 <span class="material-symbols-outlined">bug_report</span>
               </div>
-              <h3 class="sticky-panel-title">Fehler eingrenzen. Quellen laden.</h3>
+              <h3 class="sticky-panel-title">Narrow the bug. Load the source.</h3>
               <p class="sticky-panel-desc">
-                Ein Bug liegt irgendwo in 80 Dateien. Du stellst eine gezielte Frage, Mesh findet die passenden Stellen und lädt nur diese exakt nach — mit Zeilenangaben, damit du direkt weiterarbeiten kannst.
+                Ask a targeted question, inspect matching sections, and pull original evidence only where needed, with line references so you can keep moving.
               </p>
               <div class="sticky-panel-metric">
-                <span class="sticky-metric-val">4 relevante</span>
-                <span class="sticky-metric-label">Stellen aus 80 Dateien in Sekunden</span>
+                <span class="sticky-metric-val">4 relevant</span>
+                <span class="sticky-metric-label">passages from 80 files in seconds</span>
               </div>
             </div>
           </article>
@@ -1598,13 +1585,13 @@
               <div class="sticky-panel-icon">
                 <span class="material-symbols-outlined">menu_book</span>
               </div>
-              <h3 class="sticky-panel-title">Dokumentation. Direkt antwortfähig.</h3>
+              <h3 class="sticky-panel-title">Documentation. Ready to answer.</h3>
               <p class="sticky-panel-desc">
-                API-Referenz, Architektur-ADRs, interne Wikis — Mesh indexiert alles, beantwortet Fragen mit Quellen und liefert nie Halluzinationen, weil die Belege direkt mitgeschickt werden.
+                Turn product and architecture notes into compact, retrievable knowledge for the whole team, with source-backed answers instead of unsupported guesses.
               </p>
               <div class="sticky-panel-metric">
                 <span class="sticky-metric-val">100%</span>
-                <span class="sticky-metric-label">belegbare Antworten durch Quellenverweise</span>
+                <span class="sticky-metric-label">verifiable answers through source references</span>
               </div>
             </div>
           </article>
@@ -1616,37 +1603,25 @@
       <div class="cta-card reveal-left">
         <div class="cta-glow"></div>
         <div>
-          <div class="live-badge" style="margin-bottom: 22px;"><div class="live-dot"></div>indexing-modus aktiv</div>
-          <h2 class="cta-title">Liefer Antworten mit <span>weniger Kontextmüll</span> und mehr Belegen.</h2>
+          <div class="live-badge" style="margin-bottom: 22px;"><div class="live-dot"></div>indexing mode active</div>
+          <h2 class="cta-title">Deliver answers with <span>less context noise</span> and stronger evidence.</h2>
           <p style="margin-top:14px; max-width:500px; font-size:0.92rem; color:#607787; line-height:1.65;">
-            Starte mit einem echten Ordner, beobachte wie pending-Dateien completed werden und stelle dann gezielte Fragen mit spanbasierter Evidenz.
+            Start with a real folder, watch pending files become completed, and ask targeted questions with span-based evidence.
           </p>
         </div>
         <div class="cta-actions">
           <a class="btn-hero-primary" href="app?login=1">
             <span class="material-symbols-outlined" style="font-size:16px">rocket_launch</span>
-            Workspace-Flow starten
+            Start Workspace Flow
           </a>
-          <a class="btn-hero-secondary" href="docs">Technische Doku öffnen</a>
-          <p class="cta-note">Compression-first Kontext • evidenzgestütztes Retrieval</p>
+          <a class="btn-hero-secondary" href="docs">Open Technical Docs</a>
+          <p class="cta-note">Compression-first context • evidence-backed retrieval</p>
         </div>
       </div>
     </div>
   </main>
 
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-logo"><img src="/assets/brand/wordmark-black.svg" alt="Mesh"/></div>
-      <div class="footer-links">
-        <a href="docs">Dokumentation</a>
-        <a href="how-it-works">So funktioniert es</a>
-        <a href="statistics">Statistiken</a>
-        <a href="/settings-security">Datenschutz</a>
-        <a href="app">Arbeitsbereich</a>
-      </div>
-      <p class="footer-copy">2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.</p>
-    </div>
-  </footer>
+  {% include "partials/site-footer.njk" %}
 
   <script>
     (function initBackground() {
@@ -1903,7 +1878,7 @@
       const LINES = [
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-primary', '>')); p.appendChild(document.createTextNode(' ')); },
-          text: 'workspace.select --manifest 191 dateien', delay: 42,
+          text: 'workspace.select --manifest 191 files', delay: 42,
         },
         {
           buildPrefix: function() {},
@@ -1911,27 +1886,27 @@
         },
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-amber', '14:02:11')); p.appendChild(document.createTextNode(' ')); },
-          text: 'Manifest angelegt -> Dateien sichtbar, aber noch nicht fertig verarbeitet', delay: 16,
+          text: 'Manifest created -> files visible, still processing', delay: 16,
         },
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-amber', '14:02:14')); p.appendChild(document.createTextNode(' ')); },
-          text: 'Upload erkannt -> Verarbeitung startet im Hintergrund', delay: 16,
+          text: 'Upload detected -> background processing starts', delay: 16,
         },
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-amber', '14:02:16')); p.appendChild(document.createTextNode(' ')); },
-          text: 'Kurzzusammenfassung erstellt -> Platz fuer Antworten reserviert', delay: 16,
+          text: 'Compact capsule created -> answer context reserved', delay: 16,
         },
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-amber', '14:02:18')); p.appendChild(document.createTextNode(' ')); },
-          text: 'Suche nach "title console" -> 4 passende Stellen gefunden', delay: 16,
+          text: 'Search for "title console" -> 4 relevant passages found', delay: 16,
         },
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-amber', '14:02:19')); p.appendChild(document.createTextNode(' ')); },
-          text: 'Quellenstellen nachgeladen -> exakte Zeilen geliefert', delay: 16,
+          text: 'Source passages recovered -> exact lines delivered', delay: 16,
         },
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-green', 'READY')); p.appendChild(document.createTextNode(' ')); },
-          text: 'Datei fertig verarbeitet \u00b7 Antwort mit Quellen moeglich', delay: 22,
+          text: 'File processing complete - source-backed answer available', delay: 22,
         },
         {
           buildPrefix: function(p) { p.appendChild(mkSpan('t-primary', '>')); p.appendChild(mkSpan('t-cursor', '')); },

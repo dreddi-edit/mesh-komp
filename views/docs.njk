@@ -1,6 +1,6 @@
 {% extends "layouts/base.njk" %}
 
-{% block title %}Dokumentation - Mesh{% endblock %}
+{% block title %}Documentation - Mesh{% endblock %}
 
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
@@ -68,6 +68,7 @@
     .nav-links a { font-size: 0.76rem; font-weight: 500; color: rgba(255, 255, 255, 0.6); padding: 6px 12px; border-radius: 999px; transition: 0.2s; }
     .nav-links a:hover { color: rgba(255, 255, 255, 0.95); background: rgba(255, 255, 255, 0.08); }
     .nav-links a.active { color: #fff; background: rgba(255, 255, 255, 0.1); }
+    .nav-btn-ghost { display: none; }
     .nav-btn-primary { font-size: 0.76rem; font-weight: 600; color: #fff; padding: 7px 16px; border-radius: 999px; background: rgba(15, 106, 123, 0.5); backdrop-filter: blur(10px); }
     
     .docs-nav.scrolled {
@@ -134,114 +135,102 @@
 
   <canvas id="bg-canvas"></canvas>
 
-  <nav class="docs-nav" id="navbar">
-    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="/assets/brand/lockup-color.svg" alt="Mesh"/></a>
-    <div class="nav-divider"></div>
-    <div class="nav-links">
-      <a href="index">Start</a>
-      <a href="how-it-works">So funktioniert es</a>
-      <a href="statistics">Statistiken</a>
-      <a class="active" href="docs">Dokumentation</a>
-      <a href="terminal">Terminal</a>
-    </div>
-    <div class="nav-actions">
-      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
-    </div>
-  </nav>
+  {% set activePage = "docs" %}
+  {% include "partials/site-nav.njk" %}
 
   <main>
-    <header class="hero reveal" id="ueberblick">
+    <header class="hero reveal" id="overview">
       <div class="hero-aurora">
         <div class="aurora-band aurora-band-1"></div>
         <div class="aurora-band aurora-band-2"></div>
         <div class="aurora-band aurora-band-3"></div>
         <div class="aurora-band aurora-band-4"></div>
       </div>
-      <div class="eyebrow">Mesh Produktdokumentation</div>
-      <h1>Infrastruktur für Engineering-Teams</h1>
-      <p>Verbindet Produktverständnis, Architektur und Betriebsleitfäden in einer klaren Struktur. Für Teams, die Mesh sicher skalieren wollen.</p>
+      <div class="eyebrow">Mesh Product Documentation</div>
+      <h1>Infrastructure for engineering teams</h1>
+      <p>Connects product understanding, architecture, and operational runbooks in one clear structure for teams that want to scale Mesh safely.</p>
     </header>
 
     <div class="docs-shell">
       <aside class="docs-sidebar">
         <div class="side-title">Navigation</div>
         <nav class="side-nav">
-          <a class="active" href="#ueberblick">Überblick</a>
-          <a href="#architektur">Architekturfluss</a>
-          <a href="#api">API und SDK</a>
-          <a href="#betrieb">Betrieb</a>
-          <a href="#sicherheit">Sicherheit</a>
+          <a class="active" href="#overview">Overview</a>
+          <a href="#architecture-flow">Architecture Flow</a>
+          <a href="#api">API and SDK</a>
+          <a href="#operations">Operations</a>
+          <a href="#security">Security</a>
         </nav>
       </aside>
 
       <div class="docs-main">
         <div class="section">
-          <p class="section-label reveal">Kernbegriffe</p>
-          <h2 class="section-title reveal reveal-delay-1">Die drei Säulen der Mesh-Interaktion</h2>
+          <p class="section-label reveal">Core Concepts</p>
+          <h2 class="section-title reveal reveal-delay-1">The three pillars of Mesh interaction</h2>
           <div class="grid-cards">
             <div class="card reveal reveal-delay-1">
               <div class="icon-pill">C</div>
               <h3>Capsule</h3>
-              <p>Die strukturierte Zusammenfassung einer Datei. Reduziert Rauschen, erhält aber die logische Verbindung zum Original.</p>
+              <p>The structured summary of a file. It reduces noise while preserving the logical link to the original.</p>
             </div>
             <div class="card reveal reveal-delay-2">
               <div class="icon-pill">F</div>
               <h3>Focused</h3>
-              <p>Mesh zeigt nur die Stellen, die exakt zu deiner Frage passen. Retrieval auf höchstem Präzisionsniveau.</p>
+              <p>Mesh shows only the passages that match your question exactly. Retrieval with maximum precision.</p>
             </div>
             <div class="card reveal reveal-delay-1">
               <div class="icon-pill">R</div>
               <h3>Recovery</h3>
-              <p>Lädt bei Bedarf die exakten Originalzeilen nach, um Beweise für jede Antwort zu liefern.</p>
+              <p>Loads exact original lines on demand to provide proof for every answer.</p>
             </div>
           </div>
         </div>
 
-        <div class="section" id="architektur">
+        <div class="section" id="architecture-flow">
           <p class="section-label reveal">Pipeline</p>
-          <h2 class="section-title reveal reveal-delay-1">Architekturfluss von Ingest bis Antwort</h2>
+          <h2 class="section-title reveal reveal-delay-1">Architecture flow from ingest to answer</h2>
           <div class="timeline reveal reveal-delay-1">
             <div class="step">
               <div class="step-n">01</div>
-              <div class="step-t">Workspace-Ingest erzeugt Manifest und setzt Dateien auf <code>pending</code>.</div>
+              <div class="step-t">Workspace ingest creates the manifest and sets files to <code>pending</code>.</div>
             </div>
             <div class="step">
               <div class="step-n">02</div>
-              <div class="step-t">Worker Tunnel (node-worker) erstellt strukturierte Capsules mit AST-Parsern.</div>
+              <div class="step-t">The worker tunnel (node-worker) creates structured capsules with AST parsers.</div>
             </div>
             <div class="step">
               <div class="step-n">03</div>
-              <div class="step-t">Focused Retrieval reduziert den Kontext auf query-relevante Ausschnitte.</div>
+              <div class="step-t">Focused retrieval reduces context to query-relevant excerpts.</div>
             </div>
             <div class="step">
               <div class="step-n">04</div>
-              <div class="step-t">Recovery lädt exakte Evidenz (Span-IDs) via S3 nach.</div>
+              <div class="step-t">Recovery retrieves exact evidence (span IDs) through S3.</div>
             </div>
           </div>
         </div>
 
         <div class="section" id="api">
-          <p class="section-label reveal">Schnittstellen</p>
-          <h2 class="section-title reveal reveal-delay-1">API-Referenz im Überblick</h2>
+          <p class="section-label reveal">Interfaces</p>
+          <h2 class="section-title reveal reveal-delay-1">API reference overview</h2>
           <div class="matrix reveal reveal-delay-1">
             <div class="matrix-row head">
-              <div>Endpunkt</div><div>Nutzen</div><div>Ergebnis</div>
+              <div>Endpoint</div><div>Use</div><div>Result</div>
             </div>
             <div class="matrix-row">
-              <div>GET /workspace/files</div><div>Gesundheit und Status</div><div>Dateiliste + Status</div>
+              <div>GET /workspace/files</div><div>Health and status</div><div>File list + status</div>
             </div>
             <div class="matrix-row">
-              <div>GET /workspace/file</div><div>Spezifische Ansicht</div><div>original / focused / capsule</div>
+              <div>GET /workspace/file</div><div>Specific view</div><div>original / focused / capsule</div>
             </div>
             <div class="matrix-row">
-              <div>POST /chat</div><div>Kontext-Antwort</div><div>Response + Belege</div>
+              <div>POST /chat</div><div>Context answer</div><div>Response + evidence</div>
             </div>
           </div>
         </div>
 
         <div class="code-wrap reveal">
           <div class="code-header">
-            <span>Dateivertrag (File Record)</span>
+            <span>File contract (File Record)</span>
             <button class="code-copy" onclick="navigator.clipboard.writeText(this.closest('.code-wrap').querySelector('pre').textContent)">Copy JSON</button>
           </div>
           <pre class="code-pre">{
@@ -258,37 +247,37 @@
 }</pre>
         </div>
 
-        <div class="section" id="betrieb">
-          <p class="section-label reveal">Operationen</p>
-          <h2 class="section-title reveal reveal-delay-1">Runbooks für den stabilen Betrieb</h2>
+        <div class="section" id="operations">
+          <p class="section-label reveal">Operations</p>
+          <h2 class="section-title reveal reveal-delay-1">Runbooks for stable operations</h2>
           <div class="grid-cards">
             <div class="card reveal reveal-delay-1">
-              <h3>Queue-Health</h3>
-              <p>Wenn pending Dateien steigen: Prüfen der Event-Kette und Queue-Latenz in der Worker-Instanz.</p>
+              <h3>Queue Health</h3>
+              <p>When pending files increase, inspect the event chain and queue latency in the worker instance.</p>
             </div>
             <div class="card reveal reveal-delay-2">
-              <h3>Fehlerklassen</h3>
-              <p>Wenn failed Dateien steigen: Gruppieren der Error-Logs und Durchführung eines selektiven Retrys.</p>
+              <h3>Error Classes</h3>
+              <p>When failed files increase, group the error logs and run a selective retry.</p>
             </div>
             <div class="card reveal reveal-delay-1">
-              <h3>Genauigkeit</h3>
-              <p>Wenn Antworten unpräzise sind: Validierung des Focused-Scoring und der Recovery-Span Definitionen.</p>
+              <h3>Accuracy</h3>
+              <p>When answers are imprecise, validate focused scoring and recovery span definitions.</p>
             </div>
           </div>
         </div>
 
-        <div class="section" id="sicherheit">
+        <div class="section" id="security">
           <p class="section-label reveal">Compliance</p>
-          <h2 class="section-title reveal reveal-delay-1">Sicherheit und Audit-Fähigkeit</h2>
+          <h2 class="section-title reveal reveal-delay-1">Security and auditability</h2>
           <div class="matrix reveal reveal-delay-1">
             <div class="matrix-row head">
-              <div>Domäne</div><div>Ansatz</div><div>Vorteil</div>
+              <div>Domain</div><div>Approach</div><div>Benefit</div>
             </div>
             <div class="matrix-row">
-              <div>Integrität</div><div>Digest-Ketten</div><div>Manipulationsschutz</div>
+              <div>Integrity</div><div>Digest chains</div><div>Tamper protection</div>
             </div>
             <div class="matrix-row">
-              <div>Isolation</div><div>AWS S3 IAM Tags</div><div>Kein Datenleck</div>
+              <div>Isolation</div><div>AWS S3 IAM Tags</div><div>No data leakage</div>
             </div>
           </div>
         </div>
@@ -297,18 +286,7 @@
     </div> <!-- end docs-shell -->
   </main>
 
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-logo"><img src="/assets/brand/wordmark-black.svg" alt="Mesh"/></div>
-      <div class="footer-links">
-        <a href="docs">Dokumentation</a>
-        <a href="how-it-works">So funktioniert es</a>
-        <a href="statistics">Statistiken</a>
-        <a href="app">Arbeitsbereich</a>
-      </div>
-      <p class="footer-copy">2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.</p>
-    </div>
-  </footer>
+  {% include "partials/site-footer.njk" %}
 
   <script>
     (function initBackground() {

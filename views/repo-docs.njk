@@ -12,20 +12,9 @@
 
 {% block content %}
 
-  <nav class="docs-nav">
-    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="/assets/brand/lockup-color.svg" alt="Mesh"/></a>
-    <div class="nav-links">
-      <a href="/index">Start</a>
-      <a href="/how-it-works">So funktioniert es</a>
-      <a href="/statistics">Statistiken</a>
-      <a href="/docs">Dokumentation</a>
-      <a class="active" href="/repo-docs">Repo Docs</a>
-    </div>
-    <div class="nav-actions">
-      <a class="nav-btn-ghost" href="/app?login=1">Anmelden</a>
-      <a class="nav-btn-primary" href="/app?login=1">Workspace</a>
-    </div>
-  </nav>
+  {% set activePage = "repo-docs" %}
+  {% set siteNavShowRepoDocs = true %}
+  {% include "partials/site-nav.njk" %}
 
   <div class="docs-shell">
     <aside class="docs-sidebar">
@@ -50,8 +39,8 @@
     <main class="docs-main">
       <header class="repo-docs-topbar">
         <div>
-          <div class="repo-docs-topline">Live-Repository Surface</div>
-          <div id="repoDocsMeta" class="repo-docs-meta">Loading repo info…</div>
+          <div class="repo-docs-topline">Live Repository Surface</div>
+          <div id="repoDocsMeta" class="repo-docs-meta">Loading repo info...</div>
         </div>
       </header>
 
@@ -65,9 +54,7 @@
         <div id="repoDocsContent" class="repo-docs-rendered" hidden></div>
       </article>
 
-      <footer class="animate delay-3">
-        &copy; 2026 Mesh. Code Intelligence Surface.
-      </footer>
+      {% include "partials/site-footer.njk" %}
     </main>
   </div>
 

@@ -303,7 +303,7 @@ function initForms() {
           }
         });
       }
-      withButtonBusy(submit, true, "Saving…");
+      withButtonBusy(submit, true, "Saving...");
       try {
         await persistJSON(key, { ...loadJSON(key, {}), ...data });
         initialSnapshot.value = snapshotForm(form);
@@ -526,7 +526,7 @@ function updateAiStats() {
   const openai = loadJSON("meshAiOpenAI", {});
   const google = loadJSON("meshAiGoogle", {});
   const byok = loadJSON("meshAiByok", {});
-  const behaviour = loadJSON("meshAiBehaviour", {});
+  const behavior = loadJSON("meshAiBehaviour", {});
 
   let providerCount = 0;
   if (String(anthropic.apiKey || "").trim()) providerCount++;
@@ -535,7 +535,7 @@ function updateAiStats() {
   if (String(byok.apiKey || "").trim()) providerCount++;
   if (providerCountEl) providerCountEl.textContent = String(providerCount);
 
-  const provider = String(behaviour.defaultProvider || "anthropic").trim().toLowerCase();
+  const provider = String(behavior.defaultProvider || "anthropic").trim().toLowerCase();
   let defaultModel = "claude-sonnet-4-6";
   if (provider === "openai") {
     defaultModel = String(openai.defaultModel || "gpt-5.4");
@@ -550,7 +550,7 @@ function updateAiStats() {
   }
   if (modelEl) modelEl.textContent = aiModelLabel(defaultModel);
 
-  const limit = Number(behaviour.fileCharLimit || 8000);
+  const limit = Number(behavior.fileCharLimit || 8000);
   if (contextEl) contextEl.textContent = `${Math.round(limit / 1000)}k`;
 }
 
@@ -610,7 +610,7 @@ function setValidationButtonState(button, busy) {
   if (busy) {
     button.dataset.originalText = button.textContent;
     button.disabled = true;
-    button.textContent = "Testing…";
+    button.textContent = "Testing...";
     return;
   }
   button.disabled = false;
@@ -728,7 +728,7 @@ function initExpireSessions() {
   if (recoveryDesc) recoveryDesc.textContent = "Recovery contacts configured for emergency workspace access.";
 
   async function revoke(mode, sessionId, button) {
-    withButtonBusy(button, true, mode === "all" ? "Expiring…" : "Working…");
+    withButtonBusy(button, true, mode === "all" ? "Expiring..." : "Working...");
     try {
       const response = await fetch("/api/auth/sessions/revoke", {
         method: "POST",
@@ -763,7 +763,7 @@ function initExpireSessions() {
 
   async function loadSessions() {
     if (!list) return;
-    list.innerHTML = `<div class="session-card"><div class="session-meta"><strong>Loading active sessions…</strong><span class="badge badge-neutral">Syncing</span></div><div class="session-detail">Fetching current sessions.</div></div>`;
+    list.innerHTML = `<div class="session-card"><div class="session-meta"><strong>Loading active sessions...</strong><span class="badge badge-neutral">Syncing</span></div><div class="session-detail">Fetching current sessions.</div></div>`;
     try {
       const response = await fetch("/api/auth/sessions", { credentials: "same-origin" });
       const body = await response.json().catch(() => ({}));
@@ -859,7 +859,7 @@ function initConnectAccounts() {
         const state = normalizeState(loadJSON("meshIntegrations", DEFAULT_INTEGRATIONS));
         if (!state[serviceId]) return;
         state[serviceId].connected = !state[serviceId].connected;
-        withButtonBusy(button, true, state[serviceId].connected ? "Connecting…" : "Disconnecting…");
+        withButtonBusy(button, true, state[serviceId].connected ? "Connecting..." : "Disconnecting...");
         try {
           await persistJSON("meshIntegrations", state);
           render();
@@ -1128,7 +1128,7 @@ function initBilling() {
   }
 
   async function persistState(nextState, triggerButton) {
-    withButtonBusy(triggerButton, true, "Saving…");
+    withButtonBusy(triggerButton, true, "Saving...");
     try {
       await persistJSON("meshBillingState", nextState);
       let summary;

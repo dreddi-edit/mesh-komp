@@ -111,7 +111,7 @@
     const meta = $('#repoDocsMeta');
     if (!meta) return;
     const docsCount = Array.isArray(index.docs) ? index.docs.length : 0;
-    meta.textContent = `${docsCount} docs indexed • generated ${new Date(index.generatedAt).toLocaleString()}`;
+    meta.textContent = `${docsCount} docs indexed - generated ${new Date(index.generatedAt).toLocaleString()}`;
   }
 
   function renderBreadcrumbs(filePath) {
@@ -135,7 +135,7 @@
     const content = $('#repoDocsContent');
     if (welcome) welcome.hidden = true;
     if (content) content.hidden = false;
-    if (content) content.innerHTML = '<div class="repo-docs-path">Loading…</div>';
+    if (content) content.innerHTML = '<div class="repo-docs-path">Loading...</div>';
 
     try {
       const data = await loadFile(filePath);

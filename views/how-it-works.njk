@@ -1,6 +1,6 @@
 {% extends "layouts/base.njk" %}
 
-{% block title %}So funktioniert es - Mesh{% endblock %}
+{% block title %}How It Works - Mesh{% endblock %}
 
 {% block head %}
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
@@ -574,21 +574,8 @@
 
   <canvas id="bg-canvas"></canvas>
 
-  <nav class="docs-nav" id="navbar">
-    <a class="nav-logo" href="index" aria-label="Mesh Startseite"><img src="/assets/brand/lockup-color.svg" alt="Mesh"/></a>
-    <div class="nav-divider"></div>
-    <div class="nav-links">
-      <a href="index">Start</a>
-      <a class="active" href="how-it-works">So funktioniert es</a>
-      <a href="statistics">Statistiken</a>
-      <a href="docs">Dokumentation</a>
-      <a href="terminal">Terminal</a>
-    </div>
-    <div class="nav-actions">
-      <a class="nav-btn-ghost" href="app?login=1">Anmelden</a>
-      <a class="nav-btn-primary" href="app?login=1">Workspace</a>
-    </div>
-  </nav>
+  {% set activePage = "how-it-works" %}
+  {% include "partials/site-nav.njk" %}
 
   <main>
     <header class="hero reveal" id="pipeline">
@@ -598,64 +585,64 @@
         <div class="aurora-band aurora-band-3"></div>
         <div class="aurora-band aurora-band-4"></div>
       </div>
-      <div class="eyebrow">Methodik &amp; Ablauf</div>
-      <h1>Vom Upload zur verifizierbaren Antwort</h1>
-      <p>Mesh verarbeitet jede Datei in klaren Schritten: Sichtbarkeit schaffen, automatisch verdichten und bei Bedarf Originalzeilen nachladen.</p>
+      <div class="eyebrow">Methodology &amp; Flow</div>
+      <h1>From upload to verifiable answer</h1>
+      <p>Mesh processes every file in clear stages: make it visible, compress it automatically, and recover original source lines when needed.</p>
     </header>
 
     <div class="page-inner">
 
       <div class="section">
-        <p class="section-label reveal">Ablauf</p>
-        <h2 class="section-title reveal reveal-delay-1">Die vier Kernstufen der Mesh-Engine</h2>
+        <p class="section-label reveal">Flow</p>
+        <h2 class="section-title reveal reveal-delay-1">The four core stages of the Mesh engine</h2>
         <div class="grid-cards">
           <div class="card reveal reveal-delay-1">
             <div class="icon-pill">01</div>
             <h3>Manifest</h3>
-            <p>Dateien erscheinen sofort als <code>pending</code>. Du siehst die Struktur, bevor die Verarbeitung abgeschlossen ist.</p>
+            <p>Files appear immediately as <code>pending</code>. You can inspect structure before processing is complete.</p>
           </div>
           <div class="card reveal reveal-delay-2">
             <div class="icon-pill">02</div>
             <h3>Worker Tunnel Indexing</h3>
-            <p>Delegierung an den Mesh-Worker per Tunnel. AST-Parsing wandelt Quellcode in strukturiertes Wissen um.</p>
+            <p>Mesh delegates processing to the worker tunnel. AST parsing turns source code into structured knowledge.</p>
           </div>
           <div class="card reveal reveal-delay-1">
             <div class="icon-pill">03</div>
             <h3>Capsule Sync</h3>
-            <p>Strukturierte Kurzfassung mit Verweisen auf die Originalstellen. Kontext bleibt klein, Bezug bleibt da.</p>
+            <p>A structured summary with references to original source locations. Context stays small while traceability remains intact.</p>
           </div>
           <div class="card reveal reveal-delay-2">
             <div class="icon-pill">04</div>
             <h3>Answer Logic</h3>
-            <p>Focused Ansichten zeigen nur Relevantes. Recovery lädt exakte Quellzeilen für Belege nach.</p>
+            <p>Focused views show only what matters. Recovery retrieves exact source lines for evidence.</p>
           </div>
         </div>
       </div>
 
       <div class="section" id="status">
-        <p class="section-label reveal">Dateilebenszyklus</p>
-        <h2 class="section-title reveal reveal-delay-1">Statusmodell und Fehlersicherheit</h2>
+        <p class="section-label reveal">File Lifecycle</p>
+        <h2 class="section-title reveal reveal-delay-1">Status model and failure safety</h2>
         <div class="grid-cards">
           <div class="card reveal reveal-delay-1">
             <h3>Pending</h3>
-            <p>Manifest-Eintrag vorhanden, Inhalt wird noch verarbeitet oder wartet auf Worker.</p>
+            <p>Manifest entry exists, content is still processing or waiting for a worker.</p>
           </div>
           <div class="card reveal reveal-delay-2">
             <h3>Completed</h3>
-            <p>Vollständig indexiert. Capsule, focused-Ansichten und Recovery-Spans sind bereit.</p>
+            <p>Fully indexed. Capsule, focused views, and recovery spans are ready.</p>
           </div>
           <div class="card reveal reveal-delay-1">
             <h3>Failed</h3>
-            <p>Verarbeitung abgebrochen. Der Fehlergrund wird für das Team im Log persistiert.</p>
+            <p>Processing stopped. The failure reason is persisted in the team log.</p>
           </div>
         </div>
       </div>
 
       <div class="code-wrap reveal" id="details">
         <div class="code-header">
-          <span>Hintergrund-Flow (Pseudo)</span>
+          <span>Background Flow (Pseudo)</span>
         </div>
-        <pre class="code-pre">workspace.select -> Dateien sichtbar machen
+        <pre class="code-pre">workspace.select -> make files visible
 aws s3 upload -> Background Jobs (Lambda/EC2)
 buildWorkspaceFileRecord(path, text) via mesh-worker
 upsertWorkspaceFileRecord(status=completed) in DynamoDB
@@ -664,35 +651,35 @@ query -> buildFocusedView() -> recoveryViaSpanId()</pre>
 
       <div class="section">
         <p class="section-label reveal">Deep Dive</p>
-        <h2 class="section-title reveal reveal-delay-1">Capsule-Erstellung im Detail</h2>
+        <h2 class="section-title reveal reveal-delay-1">How capsules are created</h2>
         <div class="timeline reveal reveal-delay-1">
           <div class="step">
             <div class="step-n">A</div>
-            <div class="step-t">Erkennung von Dateitypen (Code, Config, SQL, Markdown etc.).</div>
+            <div class="step-t">Detect file types (code, config, SQL, Markdown, etc.).</div>
           </div>
           <div class="step">
             <div class="step-n">B</div>
-            <div class="step-t">Strukturierte Extraktion mit AST-basierten Parsern für Code-Präzision.</div>
+            <div class="step-t">Structured extraction with AST-based parsers for code precision.</div>
           </div>
           <div class="step">
             <div class="step-n">C</div>
-            <div class="step-t">Sektions-Building mit Priorisierung basierend auf Importen &amp; Funktionsköpfen.</div>
+            <div class="step-t">Section building prioritized by imports and function signatures.</div>
           </div>
         </div>
       </div>
 
-      <div class="section" id="strategie">
-        <p class="section-label reveal">Evidenz</p>
-        <h2 class="section-title reveal reveal-delay-1">Recovery und Belegführung</h2>
+      <div class="section" id="evidence">
+        <p class="section-label reveal">Evidence</p>
+        <h2 class="section-title reveal reveal-delay-1">Recovery and source attribution</h2>
         <div class="matrix reveal reveal-delay-1">
           <div class="matrix-row head">
-            <div>Ansicht</div><div>Trigger</div><div>Ausgabe</div>
+            <div>View</div><div>Trigger</div><div>Output</div>
           </div>
           <div class="matrix-row">
-            <div>Kurzfassung</div><div>Übersicht</div><div>Capsule-Text</div>
+            <div>Capsule</div><div>Overview</div><div>Capsule text</div>
           </div>
           <div class="matrix-row">
-            <div>Quellansicht</div><div>Exakter Beleg</div><div>Original-Text (Span-IDs/Zeilen/Bytes)</div>
+            <div>Source View</div><div>Exact Evidence</div><div>Original text (span IDs, lines, bytes)</div>
           </div>
         </div>
       </div>
@@ -700,18 +687,7 @@ query -> buildFocusedView() -> recoveryViaSpanId()</pre>
     </div>
   </main>
 
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-logo"><img src="/assets/brand/wordmark-black.svg" alt="Mesh"/></div>
-      <div class="footer-links">
-        <a href="docs">Dokumentation</a>
-        <a href="how-it-works">So funktioniert es</a>
-        <a href="statistics">Statistiken</a>
-        <a href="app">Arbeitsbereich</a>
-      </div>
-      <p class="footer-copy">2026 Mesh. Kontext-Infrastruktur für Engineering-Teams.</p>
-    </div>
-  </footer>
+  {% include "partials/site-footer.njk" %}
 
   <script>
     (function initBackground() {
