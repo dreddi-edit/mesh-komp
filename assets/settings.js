@@ -139,6 +139,31 @@ async function persistJSON(key, value) {
   return value;
 }
 
+function showSettingsAuthWarning() {
+  if (document.getElementById('settings-auth-warning')) return;
+  const banner = document.createElement('div');
+  banner.id = 'settings-auth-warning';
+  banner.style.cssText = 'position:fixed;top:52px;left:0;right:0;z-index:100;background:var(--amber-bg);border-bottom:1px solid var(--amber);color:var(--amber);padding:8px 24px;font-size:0.8rem;display:flex;align-items:center;gap:8px;';
+
+  const icon = document.createElement('span');
+  icon.className = 'material-symbols-outlined';
+  icon.style.fontSize = '16px';
+  icon.textContent = 'warning';
+
+  const msg = document.createElement('span');
+  msg.textContent = "Not signed in \u2014 changes won't be saved to your account. ";
+
+  const link = document.createElement('a');
+  link.href = '/app';
+  link.style.cssText = 'color:inherit;text-decoration:underline;margin-left:4px;';
+  link.textContent = 'Sign in';
+
+  banner.appendChild(icon);
+  banner.appendChild(msg);
+  banner.appendChild(link);
+  document.body.appendChild(banner);
+}
+
 async function preloadUserStoreCache() {
   if (USER_STORE_READY) return;
 
@@ -156,7 +181,9 @@ async function preloadUserStoreCache() {
   try {
     const query = encodeURIComponent(SAFE_USER_STORE_KEYS.join(","));
     const response = await fetch(`/api/user/store?keys=${query}`, { credentials: "same-origin" });
-    if (response.ok) {
+    if (response.status === 401) {
+      showSettingsAuthWarning();
+    } else if (response.ok) {
       const body = await response.json().catch(() => ({}));
       const remote = body?.data && typeof body.data === "object" ? body.data : {};
       for (const key of SAFE_USER_STORE_KEYS) {
@@ -1184,13 +1211,21 @@ function initAppearance() {
   // Restore selects
   if (form) {
     qsa("select", form).forEach(sel => { if (state[sel.name] !== undefined) sel.value = state[sel.name]; });
-    form.addEventListener("submit", e => {
+    form.addEventListener("submit", async e => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(form));
-      saveJSON("meshAppearance", data);
-      updatePreviews(data);
-      applySettingsTheme();
-      showToast("Saved", "Appearance preferences saved.");
+      const submit = form.querySelector("button[type='submit']");
+      withButtonBusy(submit, true, "Saving...");
+      try {
+        await persistJSON("meshAppearance", data);
+        updatePreviews(data);
+        applySettingsTheme();
+        showToast("Saved", "Appearance preferences saved.");
+      } catch (error) {
+        showToast("Save failed", error.message || "Could not save appearance settings.");
+      } finally {
+        withButtonBusy(submit, false);
+      }
     });
     form.addEventListener("change", () => {
       const next = Object.fromEntries(new FormData(form));
