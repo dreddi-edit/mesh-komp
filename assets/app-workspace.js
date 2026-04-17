@@ -529,7 +529,28 @@ function auditShellWiring() {
 }
 
 /* ═══ API ═══ */
-async function api(u,o){const c=o||{};const r=await fetch(u,{method:c.method||'GET',headers:c.headers||{},body:c.body,credentials:'same-origin'});const d=await r.json().catch(()=>({}));if(!r.ok){if(r.status===401&&!c.skip)setAuth(true,'Session expired.');throw new Error(d?.error||'Error '+r.status);}return d;}
+async function api(u,o){
+  const c=o||{};
+  const method=(c.method||'GET').toUpperCase();
+  const headers={...(c.headers||{})};
+  if(['POST','PUT','PATCH','DELETE'].includes(method)&&window.MeshCsrf){
+    try{headers['X-CSRF-Token']=await window.MeshCsrf.getToken();}catch{}
+  }
+  const r=await fetch(u,{method,headers,body:c.body,credentials:'same-origin'});
+  if(r.status===403&&window.MeshCsrf&&['POST','PUT','PATCH','DELETE'].includes(method)){
+    try{
+      const fresh=await window.MeshCsrf.getToken();
+      headers['X-CSRF-Token']=fresh;
+      const retry=await fetch(u,{method,headers,body:c.body,credentials:'same-origin'});
+      const d2=await retry.json().catch(()=>({}));
+      if(!retry.ok){if(retry.status===401&&!c.skip)setAuth(true,'Session expired.');throw new Error(d2?.error||'Error '+retry.status);}
+      return d2;
+    }catch(retryErr){throw retryErr;}
+  }
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){if(r.status===401&&!c.skip)setAuth(true,'Session expired.');throw new Error(d?.error||'Error '+r.status);}
+  return d;
+}
 
 /* ═══ AUTH ═══ */
 function setAuth(s,e){$('#authOverlay')?.classList.toggle('is-visible',!!s);const er=$('#loginErr');if(er)er.textContent=e||'';}
@@ -547,7 +568,7 @@ function showView(v){
   [$('#monaco'),$('#welcomeScr'),$('#opsView'),$('#marketplaceView'),$('#graphView'),$('#voiceCodingView'),$('#terminalSurfaceView')].forEach(e=>{if(e)e.style.display='none';});
   $$('.tab[data-t="settings"],.tab[data-t="ops"],.tab[data-t="marketplace"],.tab[data-t="graph"],.tab[data-t="voice"],.tab[data-t="terminal"]').forEach(t=>t.remove());
   if(v==='ops'){$('#opsView').style.display='block';loadCompressionMap().then(()=>{renderOps();renderTree();});addViewTab('ops','📊 Operations');}
-  else if(v==='marketplace'){$('#marketplaceView').style.display='block';addViewTab('marketplace','🛍 Marketplace');}
+  else if(v==='marketplace'){$('#marketplaceView').style.display='block';const mf=$('#marketplaceFrame');if(mf&&!mf.src&&mf.dataset.src)mf.src=mf.dataset.src;addViewTab('marketplace','🛍 Marketplace');}
   else if(v==='graph'){$('#graphView').style.display='block';if(window.initWorkspaceGraph)window.initWorkspaceGraph('graphView');addViewTab('graph','🕸 Mesh Graph');}
   else if(v==='voice'){$('#voiceCodingView').style.display='block';}
   else if(v==='terminal'){$('#terminalSurfaceView').style.display='block';}
@@ -633,9 +654,9 @@ async function openFolder(){
     const h=await window.showDirectoryPicker({mode:'readwrite'});
     S.dirHandle=h;S.dirName=h.name;S.workspaceId='';S.compressionMap.clear();
     resetWorkspaceIndexState();
-    const title=$('#tbTitle');if(title)title.textContent='Mesh AI — '+h.name;
+    const title=$('#tbTitle');if(title)title.textContent='Mesh AI - '+h.name;
     const prog=$('#scanProg');if(prog)prog.style.display='inline';
-    toast('Scanning','"'+h.name+'"…');
+    toast('Scanning','"'+h.name+'"...');
     updateIndexProgressState('scanning', { ratio: 0.08, label: 'Preparing workspace scan...' });
     S.tree=await fullScan(h);
     seedCompressionMapFromTree();
@@ -647,7 +668,7 @@ async function openFolder(){
     const scanAbort = { aborted: false };
     const scanTimeout = setTimeout(() => {
       scanAbort.aborted = true;
-      toast('Mesh', 'Scan timeout — indexing partial workspace');
+      toast('Mesh', 'Scan timeout - indexing partial workspace');
     }, DEEP_SCAN_TIMEOUT_MS);
     deepScanAll(S.tree, null, scanAbort).then(async()=>{
       clearTimeout(scanTimeout);
@@ -887,7 +908,7 @@ async function restoreFolder(options = {}) {
     }
     S.dirHandle = h; S.dirName = h.name; S.workspaceId = '';
     resetWorkspaceIndexState();
-    const title = $('#tbTitle'); if (title) title.textContent = 'Mesh AI — ' + h.name;
+    const title = $('#tbTitle'); if (title) title.textContent = 'Mesh AI - ' + h.name;
     const prog = $('#scanProg'); if (prog) prog.style.display = 'inline';
     updateIndexProgressState('scanning', { ratio: 0.08, label: 'Preparing workspace scan...' });
     S.tree = await fullScan(h);
@@ -1568,7 +1589,8 @@ function renderOpsPanel(container){
       lvl.textContent=entry.level||'info';
       const msg=document.createElement('span');msg.style.color='var(--tx2)';msg.textContent=entry.message||'';
       const ts=document.createElement('span');ts.style.cssText='margin-left:auto;color:var(--tx3);white-space:nowrap';
-      ts.textContent=entry.timestamp?new Date(entry.timestamp).toLocaleTimeString():'';
+      const entryTime=entry.createdAt||entry.timestamp;
+      ts.textContent=entryTime?new Date(entryTime).toLocaleTimeString():'';
       line.append(lvl,msg,ts);logWrap.appendChild(line);
     }
     sec.appendChild(logWrap);wrap.appendChild(sec);
@@ -1681,7 +1703,7 @@ function renderOps(){
   const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');circ.setAttribute('cx','11');circ.setAttribute('cy','11');circ.setAttribute('r','8');
   const ln=document.createElementNS('http://www.w3.org/2000/svg','line');ln.setAttribute('x1','21');ln.setAttribute('y1','21');ln.setAttribute('x2','16.65');ln.setAttribute('y2','16.65');
   searchSvg.append(circ,ln);
-  const searchInput=document.createElement('input');searchInput.className='ops-search';searchInput.type='text';searchInput.placeholder='Filter files…';searchInput.value=opsFilter;
+  const searchInput=document.createElement('input');searchInput.className='ops-search';searchInput.type='text';searchInput.placeholder='Filter files...';searchInput.value=opsFilter;
   searchWrap.append(searchSvg,searchInput);
   const searchCount=document.createElement('span');searchCount.className='ops-search-count';
   searchCount.textContent=filtered.length+' / '+allData.length;

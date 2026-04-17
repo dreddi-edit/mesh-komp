@@ -116,9 +116,13 @@ waitForReady(function() {
       const messages = [...S.chat];
       if (ctx) messages[messages.length - 1] = { role: 'user', content: text + ctx };
 
+      const streamHeaders = { 'Content-Type': 'application/json' };
+      if (window.MeshCsrf) {
+        try { streamHeaders['X-CSRF-Token'] = await window.MeshCsrf.getToken(); } catch {}
+      }
       const resp = await fetch(STREAM_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: streamHeaders,
         body: JSON.stringify({ model, messages, activeFilePath: S.activeTab || '' }),
         credentials: 'same-origin',
       });
