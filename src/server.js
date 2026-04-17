@@ -309,4 +309,8 @@ try {
 const PORT = config.PORT;
 server.listen(PORT, () => {
   logger.info('Server started', { port: PORT });
+  core.appendOperationLog('ok', `Server listening on port ${PORT}`, {
+    region: config.MESH_REGION || 'local',
+    source: 'system',
+  });
 });

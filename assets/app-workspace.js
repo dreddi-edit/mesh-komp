@@ -661,6 +661,7 @@ async function openFolder(){
       await runWorkspaceIndexCycle('background', { scanEpoch: S.workspaceIndex.scanEpoch, complete: true, deferReadyState: true });
       await initMeshMetadata(h, { force: true, phase: 'background-complete', attachToTree: true });
       updateIndexProgressState('graph-ready', { ratio: 1 });
+      await refreshOps();
       loadCompressionMap().then(() => { renderTree(); if (S.currentView === 'ops') renderOps(); });
     });
     if (window.idbKeyval) await idbKeyval.set('last-folder', h);

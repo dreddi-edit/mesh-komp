@@ -546,6 +546,13 @@ async function syncWorkspaceFiles({ workspaceId = '', folderName, files, deleted
     return { path: p, rawBytes: raw, capsuleBytes: capsule };
   }).filter((e) => e.rawBytes > 0);
 
+  if (complete === true) {
+    appendOperationLog('ok', `Workspace indexed: ${normalizedFolderName} (${localAssistantWorkspace.files.size} files)`, {
+      region: config.MESH_REGION || 'local',
+      source: 'workspace',
+    });
+  }
+
   return {
     ok: true,
     folderName: localAssistantWorkspace.folderName,
@@ -565,6 +572,10 @@ async function syncWorkspaceFiles({ workspaceId = '', folderName, files, deleted
 (async () => { await auth.loadAuthStore(); })();
 restoreLocalWorkspaceState();
 loadOperationsStore();
+appendOperationLog('info', 'Mesh server started', {
+  region: config.MESH_REGION || 'local',
+  source: 'system',
+});
 
 // ── Exports ──────────────────────────────────────────────────────────────────
 module.exports = {
