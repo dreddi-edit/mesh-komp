@@ -41,13 +41,13 @@ Backend quality sweep: error classes, security middleware, code splitting, servi
 - ✓ Welcome screen with real recent workspaces — dual storage (idb-keyval + server) survives cache clears, shows last 3 workspaces
 - ✓ Remove false "Indexing..." status bar indicator on startup — `S.dirHandle` guard in `updateIndexProgressState`
 
-### UI Elements
-- Fix pause button (top right, currently non-functional)
-- Fix agent chat close leaving a gap in the layout
-- Fix "Open Agent Manager" button (non-functional)
-- Fix context window display (currently shows max output tokens, not context window size)
-- Fix duplicate model selection dropdown
-- Fix duplicate agent/planning mode options above chat input
+### UI Elements (Validated in Phase 31)
+- ✓ Stop/pause button — AbortController wired to btnSend; transforms to stop square during streaming, restores on complete/abort
+- ✓ Chat panel gap — toggleChat/applyShellSnapshot manage --ch-w CSS var (0px when hidden)
+- ✓ Agent Manager button — openAgentManagerStub wired to #btnOpenAgentMgr and #wAgentMgr
+- ✓ Context window display — recalc() called immediately on init so label shows 0k/200k not 0k/128k
+- ✓ Duplicate model dropdown — .chat-in-row select{display:none!important} hides native selects
+- ✓ Duplicate mode options — same CSS rule eliminates both native selects from .chat-in-row
 
 ### Voice Agent
 - Implement actual speech-to-speech (currently text-only responses)
@@ -83,3 +83,5 @@ This document evolves at phase transitions and milestone boundaries.
 2. Core Value check — still the right priority?
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
+
+*Last updated: 2026-04-17 — Phase 31 complete*
