@@ -83,6 +83,7 @@ function createAuthRouter(core) {
     readAuthTokenFromRequest,
     requireAuth,
     reportAuthStoreError,
+    createAgentToken,
   } = core;
 
   const router = express.Router();
@@ -168,6 +169,44 @@ function createAuthRouter(core) {
     }
     clearAuthCookie(res);
     res.json({ ok: true });
+  });
+
+  /**
+   * POST /api/v1/terminal/agent-token
+   * Creates or returns an existing long-lived agent token for the authenticated user.
+   * Used by the connect dialog to generate the npx mesh-local command.
+   */
+  router.post("/api/v1/terminal/agent-token", requireAuth, async (req, res) => {
+    try {
+      const userId = req.authUser?.id || req.authUser?.userId || req.authUser?.email;
+      const token = await createAgentToken(userId);
+      const serverUrl = `${req.protocol}://${req.get('host')}`;
+      return res.json({
+        data: {
+          token,
+          command: `npx mesh-local --token=${token} --server=${serverUrl}`,
+          meshUrl: `mesh://launch-agent?token=${token}&server=${encodeURIComponent(serverUrl)}`,
+        },
+        error: null,
+      });
+    } catch (err) {
+      return res.status(500).json({ error: { code: 'AGENT_TOKEN_ERROR', message: 'Failed to generate agent token' }, data: null });
+    }
+  });
+
+  /**
+   * GET /api/v1/terminal/agent-status
+   * Returns whether a local agent is currently connected for the authenticated user.
+   * Polled by the browser connect dialog (every 1.5s) to detect when agent connects.
+   */
+  router.get("/api/v1/terminal/agent-status", requireAuth, async (req, res) => {
+    try {
+      const userId = req.authUser?.id || req.authUser?.userId || req.authUser?.email;
+      const isConnected = req.app.locals.agentConnections?.has(userId) ?? false;
+      return res.json({ data: { connected: isConnected }, error: null });
+    } catch (err) {
+      return res.status(500).json({ error: { code: 'STATUS_ERROR', message: 'Failed to check agent status' }, data: null });
+    }
   });
 
   return router;

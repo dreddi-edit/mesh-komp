@@ -15,6 +15,11 @@ const path = require('path');
 const os   = require('os');
 const { WebSocketServer } = require('ws');
 const config = require('../config');
+const { findAgentToken } = require('../../secure-db');
+
+// Module-level maps so auth.routes.js can inspect agent connection status
+const agentConnections = new Map();       // Map<userId, WebSocket>
+const pendingBrowserSessions = new Map(); // Map<userId, WebSocket>
 
 const TERMINAL_UPLOAD_ROOT = config.MESH_TERMINAL_UPLOAD_ROOT
   || path.join(os.tmpdir(), 'mesh-terminal-workspaces');
@@ -217,9 +222,33 @@ function setupTerminalRelay(server, { projectRoot, core }) {
   try { nodePty = require('node-pty'); } catch { nodePty = null; }
 
   const wss = new WebSocketServer({ noServer: true });
+  const wssAgent = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', async (req, socket, head) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
+
+    if (url.pathname === '/terminal-agent') {
+      const agentToken = url.searchParams.get('token');
+      if (!agentToken) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      let agentUserId;
+      try {
+        agentUserId = await findAgentToken(agentToken);
+      } catch {
+        agentUserId = null;
+      }
+      if (!agentUserId) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      wssAgent.handleUpgrade(req, socket, head, (ws) => wssAgent.emit('connection', ws, req, agentUserId));
+      return;
+    }
+
     if (url.pathname !== '/terminal') return;
 
     try {
@@ -244,6 +273,27 @@ function setupTerminalRelay(server, { projectRoot, core }) {
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
   });
 
+  wssAgent.on('connection', (agentWs, req, userId) => {
+    const existing = agentConnections.get(userId);
+    if (existing) {
+      try { existing.close(); } catch {}
+    }
+    agentConnections.set(userId, agentWs);
+
+    agentWs.on('close', () => {
+      if (agentConnections.get(userId) === agentWs) {
+        agentConnections.delete(userId);
+      }
+    });
+
+    agentWs.on('message', (msg) => {
+      const browserWs = pendingBrowserSessions.get(userId);
+      if (browserWs?.readyState === 1) {
+        try { browserWs.send(msg); } catch {}
+      }
+    });
+  });
+
   wss.on('connection', async (ws, req) => {
     if (!nodePty) {
       try { ws.send(JSON.stringify({ type: 'output', data: '\r\n\x1b[31m● node-pty not available on this server.\x1b[0m\r\n' })); } catch {}
@@ -255,6 +305,30 @@ function setupTerminalRelay(server, { projectRoot, core }) {
     const shellPref = urlParams.get('shell');
     const clientFolder = urlParams.get('folder') || '';
     const clientWorkspaceId = urlParams.get('workspaceId') || '';
+
+    // Check if a local agent is connected — proxy through agent instead of spawning EC2 shell
+    const resolved = await resolveAuthUserFromRequest(req).catch(() => null);
+    const browserUserId = resolved?.id || resolved?.userId || resolved?.email;
+    const agentWs = browserUserId ? agentConnections.get(browserUserId) : null;
+    if (agentWs && agentWs.readyState === 1) {
+      pendingBrowserSessions.set(browserUserId, ws);
+      ws.on('close', () => {
+        if (pendingBrowserSessions.get(browserUserId) === ws) {
+          pendingBrowserSessions.delete(browserUserId);
+        }
+        try { agentWs.send(JSON.stringify({ type: 'browser-disconnected' })); } catch {}
+      });
+      ws.on('message', (msg) => {
+        if (agentWs.readyState === 1) {
+          try { agentWs.send(msg); } catch {}
+        }
+      });
+      try {
+        ws.send(JSON.stringify({ type: 'output', data: '\r\n\x1b[36m● Local terminal connected\x1b[0m\r\n' }));
+        agentWs.send(JSON.stringify({ type: 'spawn', shell: shellPref || '' }));
+      } catch {}
+      return;
+    }
 
     // Allowlist of acceptable shell names — never pass unvalidated client input to spawn().
     // node-pty uses execvp (no shell expansion), but restricting to known shells prevents
@@ -317,4 +391,4 @@ function setupTerminalRelay(server, { projectRoot, core }) {
   });
 }
 
-module.exports = { setupTerminalRelay, listMaterializableWorkspaceFiles, resolveTerminalCwd };
+module.exports = { setupTerminalRelay, listMaterializableWorkspaceFiles, resolveTerminalCwd, agentConnections };

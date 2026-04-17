@@ -500,6 +500,107 @@ async function migrateLegacyAuthStore() {
   return 0;
 }
 
+// ── Agent Tokens ──────────────────────────────────────────────────────────────
+
+/**
+ * Finds an existing agent token for a user.
+ * Scans in-memory or queries DynamoDB by userId index.
+ *
+ * @param {string} userId
+ * @returns {Promise<string|null>} raw token or null
+ */
+async function findAgentTokenByUserId(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) return null;
+
+  if (!dynamoEnabled) {
+    for (const [, doc] of memSessions) {
+      if (doc.type === 'agent-token' && doc.userId === uid) {
+        return doc.rawToken || null;
+      }
+    }
+    return null;
+  }
+
+  try {
+    const result = await getDocClient().send(new QueryCommand({
+      TableName: DYNAMO_SESSIONS_TABLE,
+      IndexName: 'userId-index',
+      KeyConditionExpression: 'userId = :uid',
+      FilterExpression: '#t = :type',
+      ExpressionAttributeNames: { '#t': 'type' },
+      ExpressionAttributeValues: { ':uid': uid, ':type': 'agent-token' },
+      Limit: 1,
+    }));
+    const item = result.Items?.[0];
+    return item?.rawToken || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Creates a long-lived agent token for a user (idempotent).
+ * Stored in the sessions table with type='agent-token'.
+ * Returns existing token if one already exists.
+ *
+ * @param {string} userId
+ * @returns {Promise<string>} raw token
+ */
+async function createAgentToken(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) throw new Error('userId is required');
+
+  const existing = await findAgentTokenByUserId(uid);
+  if (existing) return existing;
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const hashId = hashSessionToken(token);
+  const doc = {
+    id: hashId,
+    type: 'agent-token',
+    userId: uid,
+    rawToken: token,
+    createdAt: toIsoNow(),
+  };
+
+  if (!dynamoEnabled) {
+    memSessions.set(hashId, doc);
+    return token;
+  }
+
+  await getDocClient().send(new PutCommand({ TableName: DYNAMO_SESSIONS_TABLE, Item: doc }));
+  return token;
+}
+
+/**
+ * Verifies an agent token and returns the associated userId.
+ *
+ * @param {string} rawToken
+ * @returns {Promise<string|null>} userId or null if invalid
+ */
+async function findAgentToken(rawToken) {
+  const token = String(rawToken || '').trim();
+  if (!token) return null;
+  const hashId = hashSessionToken(token);
+
+  if (!dynamoEnabled) {
+    const doc = memSessions.get(hashId);
+    return (doc?.type === 'agent-token') ? doc.userId : null;
+  }
+
+  try {
+    const result = await getDocClient().send(new GetCommand({
+      TableName: DYNAMO_SESSIONS_TABLE,
+      Key: { id: hashId },
+    }));
+    const doc = result.Item;
+    return (doc?.type === 'agent-token') ? doc.userId : null;
+  } catch {
+    return null;
+  }
+}
+
 module.exports = {
   DB_FILE: 'aws-dynamodb',
   KEY_ENV_NAME,
@@ -518,4 +619,6 @@ module.exports = {
   getUserStoreValue,
   getUserStoreValues,
   migrateLegacyAuthStore,
+  createAgentToken,
+  findAgentToken,
 };

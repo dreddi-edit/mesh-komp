@@ -20,6 +20,7 @@ const { LRUCache } = require('lru-cache');
 
 const config   = require('../config');
 const secureDb = require('../../secure-db');
+const { createAgentToken, findAgentToken } = secureDb;
 const {
   buildStructuralEditFallback,
   classifyTerminalCommandGuard,
@@ -655,6 +656,10 @@ module.exports = {
   clearLocalWorkspaceFiles,
   canonicalWorkspaceId,
   syncWorkspaceFiles,
+
+  // Agent token helpers (from secure-db)
+  createAgentToken,
+  findAgentToken,
 
   // Domain modules — spread so callers get a flat namespace
   ...auth,

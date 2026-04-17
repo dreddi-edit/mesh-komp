@@ -287,8 +287,9 @@ app.use('/', createAssistantRouter(core));
 /* ─────────────────────────────────────────
    WebSocket terminal — ws://localhost:8080/terminal
 ───────────────────────────────────────── */
-const { setupTerminalRelay } = require('./routes/terminal.routes');
+const { setupTerminalRelay, agentConnections } = require('./routes/terminal.routes');
 setupTerminalRelay(server, { projectRoot: REPO_ROOT, core });
+app.locals.agentConnections = agentConnections;
 
 // ── Centralized error handler (must be last middleware) ──────────────────────
 const { errorHandler } = require('./middleware/error-handler');
