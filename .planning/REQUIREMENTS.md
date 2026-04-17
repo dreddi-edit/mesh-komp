@@ -15,9 +15,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Terminal
 
-- [ ] **TERM-01**: User can see terminal text clearly (proper foreground color contrast)
-- [ ] **TERM-02**: User can select and copy text from the terminal
-- [ ] **TERM-03**: Terminal connects to the user's local machine, not the EC2 instance
+- [x] **TERM-01**: User can see terminal text clearly (proper foreground color contrast)
+- [x] **TERM-02**: User can select and copy text from the terminal
+- [x] **TERM-03**: Terminal connects to the user's local machine, not the EC2 instance
 
 ### Editor
 
@@ -82,9 +82,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SETT-01 | Phase 28 | Complete |
 | SETT-02 | Phase 28 | Complete |
 | SETT-03 | Phase 28 | Complete |
-| TERM-01 | Phase 29 | Pending |
-| TERM-02 | Phase 29 | Pending |
-| TERM-03 | Phase 29 | Pending |
+| TERM-01 | Phase 29 | Complete |
+| TERM-02 | Phase 29 | Complete |
+| TERM-03 | Phase 29 | Complete |
 | EDIT-01 | Phase 30 | Pending |
 | EDIT-02 | Phase 30 | Pending |
 | EDIT-03 | Phase 30 | Pending |
