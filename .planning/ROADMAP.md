@@ -189,6 +189,26 @@
 
 ---
 
+### Phase 28: Core Functionality — Monaco Editor, Local Terminal, Analytics, Indexing
+
+**Goal:** Fix the four critical functionality bugs that prevent Mesh from being usable: Monaco editor not interactive (just displaying truncated code), terminal connecting to EC2 instead of user's local machine, operations/compression analytics showing placeholder data instead of real metrics, and workspace indexing stalling at ~55%.
+
+**Status:** planned
+**Depends on:** None (critical bug fixes, independent of quality sweep)
+**Requirements:** FUNC-01, FUNC-02, FUNC-03, FUNC-04
+**UI hint:** yes
+
+**Success Criteria:**
+1. Monaco editor is a fully interactive editor instance (not a static code display) with syntax highlighting, editing, save, and undo/redo working
+2. Code files load completely without truncation regardless of file size
+3. Terminal WebSocket connects to the user's local machine terminal, not the EC2 server
+4. Operations panel shows real deployment/operation data from actual system state
+5. Compression analytics displays real compression ratios, file sizes, and language breakdowns from actual workspace data
+6. Workspace indexing completes to 100% without stalling — the ~55% hang is resolved
+7. All four fixes verified in browser on localhost before deploy
+
+---
+
 ## Phase Dependency Graph
 
 ```

@@ -62,6 +62,13 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **INFRA-04**: `npm audit` runs in CI; build fails on high/critical severity vulnerabilities
 - [ ] **INFRA-05**: DynamoDB schema documented with version tracking; migration strategy for schema changes
 
+### Core Functionality
+
+- [ ] **FUNC-01**: Monaco editor is a fully interactive editor instance with editing, syntax highlighting, save, undo/redo — not a static code display; files load without truncation
+- [ ] **FUNC-02**: Terminal WebSocket connects to user's local machine terminal, not the EC2 server
+- [ ] **FUNC-03**: Operations panel and compression analytics show real data from actual system state, not placeholders
+- [ ] **FUNC-04**: Workspace indexing completes to 100% without stalling at ~55%
+
 ## v2 Requirements
 
 Deferred to future milestone. Tracked but not in current roadmap.
