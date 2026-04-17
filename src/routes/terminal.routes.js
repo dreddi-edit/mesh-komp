@@ -175,6 +175,10 @@ async function resolveTerminalCwd(projectRoot, deps = {}) {
     return { cwd: workspace.rootPath, note: workspace.rootPath };
   }
 
+  if (workspace.rootPath && workspace.rootPath !== '') {
+    return { cwd: workspace.rootPath, note: workspace.rootPath };
+  }
+
   if (String(workspace.workspaceId || '').trim() && String(workspace.folderName || '').trim()) {
     const cwd = await materializeUploadWorkspaceRoot(workspace, deps);
     return { cwd, note: `${cwd} (materialized from uploaded workspace)` };
@@ -249,6 +253,8 @@ function setupTerminalRelay(server, { projectRoot, core }) {
 
     const urlParams = new URL(req.url, 'http://localhost').searchParams;
     const shellPref = urlParams.get('shell');
+    const clientFolder = urlParams.get('folder') || '';
+    const clientWorkspaceId = urlParams.get('workspaceId') || '';
 
     // Allowlist of acceptable shell names — never pass unvalidated client input to spawn().
     // node-pty uses execvp (no shell expansion), but restricting to known shells prevents
@@ -266,6 +272,8 @@ function setupTerminalRelay(server, { projectRoot, core }) {
       // Access core.localAssistantWorkspace directly for live state (not a snapshot from setup time)
       cwdInfo = await resolveTerminalCwd(projectRoot, {
         localAssistantWorkspace: core.localAssistantWorkspace,
+        clientFolder,
+        clientWorkspaceId,
         ...materialDeps,
       });
     } catch (error) {
@@ -288,8 +296,13 @@ function setupTerminalRelay(server, { projectRoot, core }) {
     proc.onData((data) => { try { ws.send(JSON.stringify({ type: 'output', data })); } catch {} });
     proc.onExit(() => { try { ws.send(JSON.stringify({ type: 'exit' })); ws.close(); } catch {} });
 
+    const isLocalServer = !process.env.EC2_INSTANCE_ID && !process.env.AWS_EXECUTION_ENV && (
+      os.hostname().includes('.local') || os.hostname().includes('localhost') ||
+      cwdInfo.cwd.startsWith('/Users/') || cwdInfo.cwd.startsWith('/home/')
+    );
+    const modeLabel = isLocalServer ? 'Local Terminal' : 'Remote Terminal';
     try {
-      ws.send(JSON.stringify({ type: 'output', data: `\r\n\x1b[36m● Workspace root: ${cwdInfo.note}\x1b[0m\r\n` }));
+      ws.send(JSON.stringify({ type: 'output', data: `\r\n\x1b[36m● ${modeLabel} — ${cwdInfo.note}\x1b[0m\r\n` }));
     } catch {}
 
     ws.on('message', (msg) => {

@@ -1425,7 +1425,10 @@ function openTerminal(forceCloud=false, options={}){
     /* Terminal host resolution — always connect to the server that served the page */
     const tHost = location.host;
     const prot = location.protocol==='https:'?'wss:':'ws:';
-    const ws=new WebSocket(prot+'//'+tHost+'/terminal');S.termWs=ws;
+    const wsUrl = new URL(prot + '//' + tHost + '/terminal');
+    if(S.dirName) wsUrl.searchParams.set('folder', S.dirName);
+    if(S.workspaceId) wsUrl.searchParams.set('workspaceId', S.workspaceId);
+    const ws=new WebSocket(wsUrl.toString());S.termWs=ws;
     ws.onopen=()=>{
       S.term.writeln('\x1b[36m\u25cf Terminal connected\x1b[0m');
       const {cols,rows}=S.term;ws.send(JSON.stringify({type:'resize',cols,rows}));
