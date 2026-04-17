@@ -76,11 +76,16 @@ jobs:
             echo "Deploy successful"
 
       - name: Invalidate CloudFront cache
+        continue-on-error: true
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+            echo "AWS credentials not configured — skipping CloudFront invalidation"
+            exit 0
+          fi
           aws cloudfront create-invalidation \
             --distribution-id E2YB5DP2ZI4FHD \
             --paths "/*"
