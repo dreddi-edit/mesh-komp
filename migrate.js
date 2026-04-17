@@ -9,11 +9,11 @@ if (!fs.existsSync(layoutsDir)) {
 }
 
 const baseNjk = `<!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{% block title %}Mesh - Kontext-Kompressionsplattform{% endblock %}</title>
+  <title>{% block title %}Mesh - Context Compression Platform{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/assets/brand/icon-color.svg"/>
   <link rel="apple-touch-icon" href="/assets/brand/icon-color.svg"/>
   <script src="/assets/anime.min.js"></script>
