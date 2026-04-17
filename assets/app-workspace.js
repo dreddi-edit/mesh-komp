@@ -1111,6 +1111,7 @@ async function refreshTree(){
 function initMonaco(cb){if(typeof require==='undefined')return;require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs'}});require(['vs/editor/editor.main'],()=>{S.monacoReady=true;cb();});}
 function createEditor(){
   if(S.editor||!S.monacoReady)return;const el=$('#monaco');if(!el)return;el.style.display='block';$('#welcomeScr')?.remove();
+  if(el.offsetWidth===0||el.offsetHeight===0){requestAnimationFrame(()=>createEditor());return;}
   S.editor=monaco.editor.create(el,{value:'',language:'plaintext',theme:S.settings.theme==='light'?'vs':'vs-dark',fontSize:S.settings.fontSize,fontFamily:"'JetBrains Mono',monospace",minimap:{enabled:S.settings.minimap},automaticLayout:true,wordWrap:S.settings.wordWrap?'on':'off',padding:{top:8},scrollBeyondLastLine:false,renderLineHighlight:'all',cursorBlinking:'smooth',smoothScrolling:true,bracketPairColorization:{enabled:true}});
   S.editor.onDidChangeCursorPosition(e=>{$('#stPos')&&($('#stPos').textContent='Ln '+e.position.lineNumber+', Col '+e.position.column);});
   S.editor.onDidChangeModelContent(()=>{if(S.activeTab){S.modified.add(S.activeTab);renderTabs();refreshGitStatus();}});
@@ -1206,7 +1207,12 @@ function closeTab(path){
 }
 async function openFile(item){
   if(S.tabs.find(x=>x.path===item.path)){switchTab(item.path);return;}
-  try{const f=await item.handle.getFile();const txt=await f.text();S.tabs.push({path:item.path,content:txt,model:null,handle:item.handle});switchTab(item.path);}catch(e){toast('Error','Cannot read '+item.name);}
+  try{
+    const f=await item.handle.getFile();const txt=await f.text();
+    if(txt.length<f.size*0.9)console.warn('[mesh] File content may be truncated:',item.path,'read:',txt.length,'expected:',f.size);
+    const model=S.monacoReady?monaco.editor.createModel(txt,langOf(item.path)):null;
+    S.tabs.push({path:item.path,content:txt,model,handle:item.handle});switchTab(item.path);
+  }catch(e){toast('Error','Cannot read '+item.name);}
 }
 window.openFileByPath = function(path) {
   const item = findInTree(S.tree, path);

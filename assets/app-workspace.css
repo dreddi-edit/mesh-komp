@@ -166,7 +166,7 @@ button{border:none;background:none;font:inherit;cursor:pointer;color:inherit}inp
 .tab .dot{width:5px;height:5px;border-radius:50%;background:var(--org)}.tab-x{width:15px;height:15px;display:grid;place-items:center;border-radius:2px;font-size:.6rem;color:var(--tx3);margin-left:2px}.tab-x:hover{background:rgba(255,255,255,.1);color:var(--txw)}
 .breadcrumb{padding:2px 12px;font-size:.72rem;color:var(--tx3);border-bottom:1px solid var(--bd);background:var(--bg);flex-shrink:0;display:flex;align-items:center;gap:4px;min-height:20px}
 .bc-item{cursor:pointer}.bc-item:hover{color:var(--ac)}.bc-sep{color:var(--tx3)}
-.ed-pane{flex:1;position:relative;overflow:hidden}.monaco-el{position:absolute;inset:0}
+.ed-pane{flex:1;position:relative;overflow:hidden;min-height:200px}.monaco-el{position:absolute;inset:0}
 /* FEATURE VIEWS */
 .fv{height:100%;display:flex;flex-direction:column;overflow:hidden}
 .fv-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--bd);flex-shrink:0;height:40px}

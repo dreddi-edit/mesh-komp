@@ -53,12 +53,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "blob:", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://unpkg.com", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
+      scriptSrc: ["'self'", "'unsafe-eval'", "blob:", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://unpkg.com", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
       styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
       imgSrc: ["'self'", "data:", "blob:"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       connectSrc: ["'self'", "ws:", "wss:"],
       workerSrc: ["'self'", "blob:"],
+      childSrc: ["'self'", "blob:"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       frameAncestors: ["'none'"],
