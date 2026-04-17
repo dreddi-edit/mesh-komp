@@ -21,18 +21,18 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Editor
 
-- [ ] **EDIT-01**: User sees syntax-highlighted, properly spaced code in the Monaco editor
-- [ ] **EDIT-02**: User sees a welcome screen with recent workspaces when no file is open
-- [ ] **EDIT-03**: Status bar does not show "Indexing..." when no folder is open
+- [x] **EDIT-01**: User sees syntax-highlighted, properly spaced code in the Monaco editor
+- [x] **EDIT-02**: User sees a welcome screen with recent workspaces when no file is open
+- [x] **EDIT-03**: Status bar does not show "Indexing..." when no folder is open
 
 ### UI Elements
 
 - [ ] **UIEL-01**: Pause button (top right) performs its intended action when clicked
-- [ ] **UIEL-02**: Closing the agent chat panel does not leave a gap in the layout
-- [ ] **UIEL-03**: "Open Agent Manager" button opens the agent manager
-- [ ] **UIEL-04**: Context window indicator shows actual context window size, not max output tokens
-- [ ] **UIEL-05**: Model selection dropdown appears only once (remove duplicate)
-- [ ] **UIEL-06**: Agent/planning mode options appear only once above chat input (remove duplicate)
+- [x] **UIEL-02**: Closing the agent chat panel does not leave a gap in the layout
+- [x] **UIEL-03**: "Open Agent Manager" button opens the agent manager
+- [x] **UIEL-04**: Context window indicator shows actual context window size, not max output tokens
+- [x] **UIEL-05**: Model selection dropdown appears only once (remove duplicate)
+- [x] **UIEL-06**: Agent/planning mode options appear only once above chat input (remove duplicate)
 
 ### Voice Agent
 
@@ -85,15 +85,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TERM-01 | Phase 29 | Complete |
 | TERM-02 | Phase 29 | Complete |
 | TERM-03 | Phase 29 | Complete |
-| EDIT-01 | Phase 30 | Pending |
-| EDIT-02 | Phase 30 | Pending |
-| EDIT-03 | Phase 30 | Pending |
+| EDIT-01 | Phase 30 | Complete |
+| EDIT-02 | Phase 30 | Complete |
+| EDIT-03 | Phase 30 | Complete |
 | UIEL-01 | Phase 31 | Pending |
-| UIEL-02 | Phase 31 | Pending |
-| UIEL-03 | Phase 31 | Pending |
-| UIEL-04 | Phase 31 | Pending |
-| UIEL-05 | Phase 31 | Pending |
-| UIEL-06 | Phase 31 | Pending |
+| UIEL-02 | Phase 31 | Complete |
+| UIEL-03 | Phase 31 | Complete |
+| UIEL-04 | Phase 31 | Complete |
+| UIEL-05 | Phase 31 | Complete |
+| UIEL-06 | Phase 31 | Complete |
 | VOIC-01 | Phase 32 | Pending |
 | VOIC-02 | Phase 32 | Pending |
 | ANLY-01 | Phase 33 | Pending |
