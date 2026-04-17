@@ -83,7 +83,7 @@ async function callBedrockDirect({ model, messages, maxTokens = 4096 }) {
 
   const payload = { anthropic_version: 'bedrock-2023-05-31', max_tokens: maxTokens, messages: conversation };
   if (systemText) {
-    payload.system = [{ text: systemText, cache_control: [{ type: 'default' }] }];
+    payload.system = [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }];
   }
 
   const cmd = new InvokeModelCommand({

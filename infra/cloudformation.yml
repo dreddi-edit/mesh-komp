@@ -317,7 +317,7 @@ Resources:
 
             # ── System packages ──────────────────────────────────────────────
             dnf update -y
-            dnf install -y git
+            dnf install -y git gcc-c++ make python3
 
             # ── Node.js 22 via NodeSource ────────────────────────────────────
             curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
@@ -332,6 +332,9 @@ Resources:
             cd /home/ec2-user/app
             sudo -u ec2-user git clone ${AppRepoUrl} .
             sudo -u ec2-user npm ci --ignore-scripts
+            # Rebuild node-pty native addon — must run after npm ci --ignore-scripts
+            # which skips postinstall build steps. node-pty has no Linux prebuilts.
+            sudo -u ec2-user npm rebuild node-pty --build-from-source
 
             # Pull env file from S3 (contains secrets — never commit these)
             aws s3 cp s3://${S3BucketName}/${EnvFileS3Key} /home/ec2-user/app/.env

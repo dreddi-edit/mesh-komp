@@ -1866,7 +1866,7 @@ function bind(){
 async function refreshOps(){try{const d=await api('/api/app/ops');S.ops=d||{};}catch{}}
 async function bootstrap(){loadS();await Promise.allSettled([refreshOps(),loadUserStore(),refreshGitStatus()]);setInterval(()=>refreshOps().catch(()=>{}),15000);}
 async function init(){
-  bind();loadS();renderChat();initMonaco(()=>{});
+  bind();loadS();renderChat();initMonaco(()=>{createEditor();if(S.activeTab)switchTab(S.activeTab);});
 
   // Strip ?login=1 from the URL immediately — it was a one-time signal from settings
   // that the session expired. Always verify the session regardless; the param must
