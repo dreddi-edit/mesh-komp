@@ -478,6 +478,18 @@
 </div>
 <div class="toast-stack" id="toasts"></div>
 
+<script>
+window.MonacoEnvironment = {
+  getWorkerUrl: function(_moduleId, label) {
+    const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs';
+    if (label === 'json') return base + '/language/json/jsonWorker.js';
+    if (label === 'css' || label === 'scss' || label === 'less') return base + '/language/css/cssWorker.js';
+    if (label === 'html' || label === 'handlebars' || label === 'razor') return base + '/language/html/htmlWorker.js';
+    if (label === 'typescript' || label === 'javascript') return base + '/language/typescript/tsWorker.js';
+    return base + '/editor/editor.worker.js';
+  }
+};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd/idb-keyval-min.js" defer></script>
 <script type="module">

@@ -1448,13 +1448,16 @@ async function loadCompressionMap(){
           if(!f.path) continue;
           const existing=S.compressionMap.get(f.path);
           const incomingRaw=f.rawBytes||f.originalSize||0;
-          // Only overwrite if server has better data (real byte counts)
-          if(!existing || incomingRaw>existing.rawBytes){
+          const incomingStatus=f.status||(f.indexed?'indexed':'pending');
+          // Always update status from server (authoritative). Update rawBytes only when server has real data.
+          if(!existing){
+            S.compressionMap.set(f.path,{path:f.path,rawBytes:incomingRaw,capsuleBytes:f.capsuleBytes||f.compressedSize||0,status:incomingStatus});
+          } else {
             S.compressionMap.set(f.path,{
               path:f.path,
-              rawBytes:incomingRaw,
-              capsuleBytes:f.capsuleBytes||f.compressedSize||0,
-              status:f.status||(f.indexed?'indexed':'pending'),
+              rawBytes:incomingRaw>0?incomingRaw:existing.rawBytes,
+              capsuleBytes:f.capsuleBytes||f.compressedSize||existing.capsuleBytes||0,
+              status:incomingStatus,
             });
           }
         }
@@ -1510,7 +1513,7 @@ function renderOps(){
     const saved=o?Math.round((1-c/o)*100):0;
     const dir=f.path.includes('/')?f.path.slice(0,f.path.lastIndexOf('/')):'(root)';
     const name=f.path.includes('/')?f.path.slice(f.path.lastIndexOf('/')+1):f.path;
-    return{path:f.path,name,dir,o,c,saved,status:f.status||'indexed'};
+    return{path:f.path,name,dir,o,c,saved,status:f.status||'pending'};
   });
 
   const filtered=opsFilter
