@@ -415,6 +415,9 @@ function applyShellSnapshot(snapshot) {
     const rsChat = $('#rsChat');
     if (chatPanel) chatPanel.style.display = S.chatVisible ? 'flex' : 'none';
     if (rsChat) rsChat.style.display = S.chatVisible ? 'block' : 'none';
+    if (!S.chatVisible) {
+      document.documentElement.style.setProperty('--ch-w', '0px');
+    }
   }
   if (snapshot.currentView && snapshot.currentView !== 'editor') {
     showView(snapshot.currentView);
@@ -452,6 +455,7 @@ function ensureChatVisible() {
   const rsChat = $('#rsChat');
   if (chatPanel) chatPanel.style.display = 'flex';
   if (rsChat) rsChat.style.display = 'block';
+  document.documentElement.style.setProperty('--ch-w', S._savedChatWidth || '380px');
 }
 
 function triggerVoiceSurfaceStart() {
@@ -2021,7 +2025,22 @@ document.addEventListener('keydown',e=>{
 });
 
 function toggleSidebar(){S.sidebarVisible=!S.sidebarVisible;$('#sidebar').style.display=S.sidebarVisible?'flex':'none';$('#rsSb').style.display=S.sidebarVisible?'block':'none';S.editor?.layout();saveShellSnapshot();}
-function toggleChat(){S.chatVisible=!S.chatVisible;$('#chatPanel').style.display=S.chatVisible?'flex':'none';$('#rsChat').style.display=S.chatVisible?'block':'none';S.editor?.layout();saveShellSnapshot();}
+function toggleChat() {
+  const prevWidth = document.documentElement.style.getPropertyValue('--ch-w') || '380px';
+  S.chatVisible = !S.chatVisible;
+  const chatPanel = $('#chatPanel');
+  const rsChat = $('#rsChat');
+  if (chatPanel) chatPanel.style.display = S.chatVisible ? 'flex' : 'none';
+  if (rsChat) rsChat.style.display = S.chatVisible ? 'block' : 'none';
+  if (S.chatVisible) {
+    document.documentElement.style.setProperty('--ch-w', S._savedChatWidth || '380px');
+  } else {
+    S._savedChatWidth = prevWidth !== '0px' ? prevWidth : (S._savedChatWidth || '380px');
+    document.documentElement.style.setProperty('--ch-w', '0px');
+  }
+  S.editor?.layout();
+  saveShellSnapshot();
+}
 
 function createNewFile() {
   return (async () => {
