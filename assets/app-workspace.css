@@ -373,6 +373,7 @@ button{border:none;background:none;font:inherit;cursor:pointer;color:inherit}inp
 .ci-menu.is-open{display:block}
 .ci-opt{padding:5px 9px;font-size:.72rem;color:var(--tx2);border-radius:4px;cursor:pointer;white-space:nowrap}.ci-opt:hover{background:var(--bg3);color:var(--txw)}
 .ci-opt-active{color:var(--txw);font-weight:600}
+.chat-in-row select{display:none!important}
 .chat-in-box{display:flex;align-items:flex-end;background:var(--bg4);border:1px solid var(--bd);border-radius:6px;padding:4px 4px 4px 8px}
 .chat-in-box:focus-within{border-color:var(--ac)}
 .chat-in-box textarea{flex:1;border:none;background:transparent;outline:none;resize:none;font-size:.8rem;padding:2px 0;max-height:100px;color:var(--txw);font-family:var(--f);line-height:1.3}
