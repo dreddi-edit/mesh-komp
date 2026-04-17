@@ -49,7 +49,7 @@
 
 **Goal:** Restore full Monaco editor functionality with syntax highlighting and proper indentation, add a welcome screen showing recent workspaces, and remove the false "Indexing..." indicator.
 
-**Status:** planned
+**Status:** complete
 **Depends on:** None
 **Requirements:** EDIT-01, EDIT-02, EDIT-03
 **UI hint:** yes
