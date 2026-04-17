@@ -285,7 +285,7 @@ button{border:none;background:none;font:inherit;cursor:pointer;color:inherit}inp
 .ops-card{padding:13px 14px;border-right:1px solid var(--bd);background:var(--bg2)}
 .ops-card:last-child{border-right:none}
 .ops-big{font-size:1.3rem;font-weight:600;color:var(--txw);font-family:var(--m);line-height:1}
-.ops-big.blue{color:var(--ac)}.ops-big.green{color:var(--grn)}
+.ops-big.blue{color:var(--ac)}.ops-big.green{color:var(--grn)}.ops-big.yellow{color:var(--org)}
 .ops-lbl{font-size:.6rem;color:var(--tx3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;font-weight:700}
 .ops-sub{font-size:.65rem;color:var(--tx3);margin-top:2px;font-family:var(--m)}
 

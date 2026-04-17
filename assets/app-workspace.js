@@ -1390,7 +1390,7 @@ function openTerminal(forceCloud=false, options={}){
     }
     const FitClass = window.FitAddon;
     if(!S.term){
-      S.term=new TermClass({theme:{background:'#1a1a1a',foreground:'#ccc',cursor:'#0098ff',cursorAccent:'#1a1a1a'},fontFamily:"'JetBrains Mono',monospace",fontSize:13,cursorBlink:true,scrollback:5000});
+      S.term=new TermClass({theme:{background:'#1a1a1a',foreground:'#d4d4d4',cursor:'#0098ff',cursorAccent:'#1a1a1a',selectionBackground:'#264f78',selectionForeground:'#ffffff',black:'#1a1a1a',red:'#f44747',green:'#6a9955',yellow:'#d7ba7d',blue:'#569cd6',magenta:'#c586c0',cyan:'#4ec9b0',white:'#d4d4d4',brightBlack:'#808080',brightRed:'#f44747',brightGreen:'#b5cea8',brightYellow:'#d7ba7d',brightBlue:'#9cdcfe',brightMagenta:'#c586c0',brightCyan:'#4ec9b0',brightWhite:'#ffffff'},fontFamily:"'JetBrains Mono',monospace",fontSize:13,cursorBlink:true,scrollback:5000});
       if(FitClass){S.termFit=new FitClass();S.term.loadAddon(S.termFit);}
       S.term.open(mountEl);
       S.termMountSelector = mountSelector;
@@ -1474,25 +1474,106 @@ async function loadCompressionMap(){
   }catch(e){console.error('[compression] load failed',e);}
 }
 
+function renderOpsPanel(container){
+  const ops=S.ops||{};
+  const pending=ops.pending||[];
+  const history=ops.history||[];
+  const policies=ops.policies||[];
+  const logs=ops.logs||[];
+
+  const wrap=document.createElement('div');wrap.className='fv-scr';
+  const h=document.createElement('h2');h.className='fv-t';h.textContent='Operations & Compression Analytics';
+  wrap.appendChild(h);
+
+  const grid=document.createElement('div');grid.className='ops-stats';
+  const summaryCards=[
+    {big:String(pending.length),bigCls:'yellow',lbl:'Pending Deploys',sub:history.length+' completed'},
+    {big:String(policies.length),bigCls:'blue',lbl:'Policies',sub:policies.filter(p=>p.status==='active').length+' active'},
+    {big:String(logs.length),bigCls:'',lbl:'Log Entries',sub:logs.filter(l=>l.level==='error').length+' errors'},
+  ];
+  for(const c of summaryCards){
+    const card=document.createElement('div');card.className='ops-card';
+    const lbl=document.createElement('div');lbl.className='ops-lbl';lbl.textContent=c.lbl;
+    const big=document.createElement('div');big.className='ops-big'+(c.bigCls?' '+c.bigCls:'');big.textContent=c.big;
+    const sub=document.createElement('div');sub.className='ops-sub';sub.textContent=c.sub;
+    card.append(lbl,big,sub);grid.appendChild(card);
+  }
+  wrap.appendChild(grid);
+
+  if(pending.length){
+    const sec=document.createElement('div');sec.style.cssText='margin-top:16px';
+    const sh=document.createElement('h3');sh.style.cssText='font-size:.8rem;color:var(--tx2);margin-bottom:8px';sh.textContent='Pending Deployments';
+    sec.appendChild(sh);
+    const tbl=document.createElement('table');tbl.className='ops-tbl';
+    const thead=document.createElement('thead');const tr=document.createElement('tr');
+    for(const col of ['Route','Title','Risk','Region','Requested By']){const th=document.createElement('th');th.textContent=col;tr.appendChild(th);}
+    thead.appendChild(tr);tbl.appendChild(thead);
+    const tbody=document.createElement('tbody');
+    for(const d of pending.slice(0,10)){
+      const row=document.createElement('tr');
+      for(const val of [d.route||'',d.title||'',d.risk||'low',d.region||'',d.requestedBy||'']){
+        const td=document.createElement('td');td.textContent=val;
+        if(val==='high')td.style.color='var(--red)';
+        else if(val==='moderate')td.style.color='var(--org)';
+        row.appendChild(td);
+      }
+      tbody.appendChild(row);
+    }
+    tbl.appendChild(tbody);
+    const tw=document.createElement('div');tw.className='ops-tbl-wrap';tw.appendChild(tbl);
+    sec.appendChild(tw);wrap.appendChild(sec);
+  }
+
+  if(logs.length){
+    const sec=document.createElement('div');sec.style.cssText='margin-top:16px';
+    const sh=document.createElement('h3');sh.style.cssText='font-size:.8rem;color:var(--tx2);margin-bottom:8px';sh.textContent='Recent Logs';
+    sec.appendChild(sh);
+    const logWrap=document.createElement('div');logWrap.style.cssText='max-height:180px;overflow-y:auto;font-size:.72rem;font-family:var(--m);background:var(--bg2);border-radius:6px;padding:8px 12px';
+    const recentLogs=logs.slice(-30).reverse();
+    for(const entry of recentLogs){
+      const line=document.createElement('div');line.style.cssText='padding:2px 0;display:flex;gap:8px';
+      const lvl=document.createElement('span');
+      const colorMap={error:'var(--red)',warn:'var(--org)',ok:'var(--grn)',info:'var(--tx3)'};
+      lvl.style.cssText='min-width:36px;color:'+(colorMap[entry.level]||'var(--tx3)');
+      lvl.textContent=entry.level||'info';
+      const msg=document.createElement('span');msg.style.color='var(--tx2)';msg.textContent=entry.message||'';
+      const ts=document.createElement('span');ts.style.cssText='margin-left:auto;color:var(--tx3);white-space:nowrap';
+      ts.textContent=entry.timestamp?new Date(entry.timestamp).toLocaleTimeString():'';
+      line.append(lvl,msg,ts);logWrap.appendChild(line);
+    }
+    sec.appendChild(logWrap);wrap.appendChild(sec);
+  }
+
+  if(!pending.length&&!history.length&&!policies.length&&!logs.length){
+    const empty=document.createElement('p');empty.style.cssText='color:var(--tx3);padding:12px 0;font-size:.78rem';
+    empty.textContent='No operations activity yet. Deployments, policies, and logs will appear here as they occur.';
+    wrap.appendChild(empty);
+  }
+
+  container.appendChild(wrap);
+}
+
 let opsSort={col:'path',asc:true}; // default: group by directory alphabetically
 let opsFilter='';
 let opsCollapsed=new Set();
 
 function renderOps(){
   const v=$('#opsView');if(!v)return;
+  v.textContent='';
+
+  renderOpsPanel(v);
+
   if(!S.dirName){
-    v.textContent='';
-    const wrap=document.createElement('div');wrap.className='fv-scr';
-    const h=document.createElement('h2');h.className='fv-t';h.textContent='Operations & Compression Analytics';
-    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:20px 0';p.textContent='No folder open. Open a workspace folder to see compression analytics.';
+    const wrap=document.createElement('div');wrap.className='fv-scr';wrap.style.cssText='padding:20px 0';
+    const h=document.createElement('h3');h.className='fv-t';h.textContent='Compression Analytics';
+    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:12px 0';p.textContent='Open a workspace folder to see compression analytics.';
     wrap.append(h,p);v.appendChild(wrap);
     return;
   }
   if(!S.compressionMap.size){
-    v.textContent='';
-    const wrap=document.createElement('div');wrap.className='fv-scr';
-    const h=document.createElement('h2');h.className='fv-t';h.textContent='Operations & Compression Analytics';
-    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:20px 0';
+    const wrap=document.createElement('div');wrap.className='fv-scr';wrap.style.cssText='padding:20px 0';
+    const h=document.createElement('h3');h.className='fv-t';h.textContent='Compression Analytics';
+    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:12px 0';
     const b=document.createElement('strong');b.textContent=S.dirName;
     p.append(b,' is open — compression data will appear once files finish indexing.');
     wrap.append(h,p);v.appendChild(wrap);
@@ -1539,7 +1620,9 @@ function renderOps(){
     dirs.get(d.dir).push(d);
   }
 
-  v.textContent='';
+  // ── Compression section header ──
+  const compHead=document.createElement('h3');compHead.style.cssText='font-size:.8rem;color:var(--tx2);margin:20px 0 12px';compHead.textContent='Compression Analytics';
+  v.appendChild(compHead);
 
   // ── Summary cards ──
   const indexedCount=allData.filter(d=>d.status==='indexed'||d.status==='completed').length;

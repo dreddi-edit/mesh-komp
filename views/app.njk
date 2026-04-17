@@ -481,12 +481,14 @@
 <script>
 window.MonacoEnvironment = {
   getWorkerUrl: function(_moduleId, label) {
-    const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs';
-    if (label === 'json') return base + '/language/json/jsonWorker.js';
-    if (label === 'css' || label === 'scss' || label === 'less') return base + '/language/css/cssWorker.js';
-    if (label === 'html' || label === 'handlebars' || label === 'razor') return base + '/language/html/htmlWorker.js';
-    if (label === 'typescript' || label === 'javascript') return base + '/language/typescript/tsWorker.js';
-    return base + '/editor/editor.worker.js';
+    var base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs';
+    var workerPath = '/editor/editor.worker.js';
+    if (label === 'json') workerPath = '/language/json/jsonWorker.js';
+    else if (label === 'css' || label === 'scss' || label === 'less') workerPath = '/language/css/cssWorker.js';
+    else if (label === 'html' || label === 'handlebars' || label === 'razor') workerPath = '/language/html/htmlWorker.js';
+    else if (label === 'typescript' || label === 'javascript') workerPath = '/language/typescript/tsWorker.js';
+    var blob = new Blob(["importScripts('" + base + workerPath + "');"], { type: 'text/javascript' });
+    return URL.createObjectURL(blob);
   }
 };
 </script>
