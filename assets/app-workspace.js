@@ -686,6 +686,7 @@ async function openFolder(){
       loadCompressionMap().then(() => { renderTree(); if (S.currentView === 'ops') renderOps(); });
     });
     if (window.idbKeyval) await idbKeyval.set('last-folder', h);
+    saveRecentWorkspace(h).catch(() => {});
     await initMeshMetadata(h, { attachToTree: false, phase: 'initial' });
   }catch(e){if(e.name!=='AbortError')toast('Error',e.message);}
 }
@@ -2096,7 +2097,6 @@ function bind(){
   wireShellAction('#btnStTerm', 'terminal:toggle');
   wireShellAction('#wRestore', 'workspace:restore-folder');
   wireShellAction('#btnRestore2', 'workspace:restore-folder');
-  $$('.ws-item').forEach(el => el.addEventListener('click', openFolder));
   $('#abUser')?.addEventListener('click',()=>openStandaloneSettings('account',{from:'avatar'}));
   $('#wChat')?.addEventListener('click',()=>$('#chatIn')?.focus());
   $('#btnVoiceSurfaceStart')?.addEventListener('click', triggerVoiceSurfaceStart);
@@ -2152,9 +2152,123 @@ function bind(){
   updateWorkspaceSurfaceUI();
 }
 
+/* ═══ RECENT WORKSPACES ═══ */
+async function saveRecentWorkspace(h) {
+  if (!window.idbKeyval || !h) return;
+  try {
+    const prev0 = await idbKeyval.get('recent-folder-0').catch(() => null);
+    const prev1 = await idbKeyval.get('recent-folder-1').catch(() => null);
+    if (prev1) await idbKeyval.set('recent-folder-2', prev1);
+    if (prev0) await idbKeyval.set('recent-folder-1', prev0);
+    await idbKeyval.set('recent-folder-0', h);
+  } catch (e) {
+    console.warn('[mesh] saveRecentWorkspace idb error:', e.message);
+  }
+  try {
+    const stored = await api('/api/user/store/meshRecentWorkspaces').catch(() => ({ value: {} }));
+    const existing = stored?.value?.list ?? [];
+    const entry = { name: h.name, path: '(local)', timestamp: Date.now() };
+    const updated = [entry, ...existing.filter(w => w.name !== h.name)].slice(0, 3);
+    await api('/api/user/store/meshRecentWorkspaces', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: { list: updated }, merge: false }),
+    });
+  } catch (e) {
+    console.warn('[mesh] saveRecentWorkspace server error:', e.message);
+  }
+}
+
+async function loadRecentWorkspaces() {
+  try {
+    const d = await api('/api/user/store/meshRecentWorkspaces');
+    return d?.value?.list ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function renderRecentWorkspaces(recents) {
+  const container = document.getElementById('recentWsList');
+  if (!container) return;
+  const nodes = container.querySelectorAll('.ws-item');
+  nodes.forEach(n => n.remove());
+  if (!recents || recents.length === 0) return;
+  recents.slice(0, 3).forEach((ws, i) => {
+    const el = document.createElement('div');
+    el.className = 'ws-item';
+    el.dataset.idbKey = 'recent-folder-' + i;
+    const name = document.createElement('span');
+    name.className = 'ws-name';
+    name.textContent = ws.name;
+    const path = document.createElement('span');
+    path.className = 'ws-path';
+    path.textContent = ws.path || '(local)';
+    el.appendChild(name);
+    el.appendChild(path);
+    el.addEventListener('click', () => openRecentWorkspace(i));
+    container.appendChild(el);
+  });
+}
+
+async function openRecentWorkspace(index) {
+  if (!window.idbKeyval) { openFolder(); return; }
+  let h = null;
+  try {
+    h = await idbKeyval.get('recent-folder-' + index);
+  } catch { /* idb unavailable */ }
+  if (!h) { toast('Info', 'Folder handle expired — please re-select'); openFolder(); return; }
+  try {
+    const perm = await h.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') {
+      const req = await h.requestPermission({ mode: 'readwrite' });
+      if (req !== 'granted') { toast('Error', 'Folder access denied'); return; }
+    }
+    S.dirHandle = h;
+    S.dirName = h.name;
+    S.workspaceId = '';
+    resetWorkspaceIndexState();
+    const title = $('#tbTitle');
+    if (title) title.textContent = 'Mesh AI - ' + h.name;
+    toast('Scanning', '"' + h.name + '"...');
+    updateIndexProgressState('scanning', { ratio: 0.08, label: 'Preparing workspace scan...' });
+    S.tree = await fullScan(h);
+    seedCompressionMapFromTree();
+    renderTree();
+    const f = $('#fileFoot');
+    if (f) f.style.display = 'flex';
+    await runWorkspaceIndexCycle('initial', { scanEpoch: S.workspaceIndex.scanEpoch, complete: false });
+    deepScanAll(S.tree).then(async () => {
+      S.totalFiles = countLoaded(S.tree);
+      const n = $('#fileNum');
+      if (n) n.textContent = S.totalFiles + ' files';
+      seedCompressionMapFromTree();
+      renderTree();
+      if (S.currentView === 'ops') renderOps();
+      await runWorkspaceIndexCycle('background', { scanEpoch: S.workspaceIndex.scanEpoch, complete: true, deferReadyState: true });
+      await initMeshMetadata(h, { force: true, phase: 'background-complete', attachToTree: true });
+      updateIndexProgressState('graph-ready', { ratio: 1 });
+      loadCompressionMap().then(() => { renderTree(); if (S.currentView === 'ops') renderOps(); });
+    });
+    await initMeshMetadata(h, { attachToTree: false, phase: 'initial' });
+    if (window.idbKeyval) await idbKeyval.set('last-folder', h);
+    const wRestore = $('#wRestore');
+    if (wRestore) wRestore.style.display = 'none';
+  } catch (e) {
+    S.dirHandle = null;
+    updateIndexProgressState('idle');
+    toast('Error', 'Could not open folder: ' + e.message);
+  }
+}
+
 /* ═══ BOOTSTRAP ═══ */
 async function refreshOps(){try{const d=await api('/api/app/ops');S.ops=d||{};}catch{}}
-async function bootstrap(){loadS();await Promise.allSettled([refreshOps(),loadUserStore(),refreshGitStatus()]);setInterval(()=>refreshOps().catch(()=>{}),15000);}
+async function bootstrap() {
+  loadS();
+  await Promise.allSettled([refreshOps(), loadUserStore(), refreshGitStatus()]);
+  setInterval(() => refreshOps().catch(() => {}), 15000);
+  loadRecentWorkspaces().then(recents => renderRecentWorkspaces(recents)).catch(() => {});
+}
 async function init(){
   bind();loadS();renderChat();initMonaco(()=>{createEditor();if(S.activeTab)switchTab(S.activeTab);});
 
