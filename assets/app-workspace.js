@@ -643,7 +643,14 @@ async function openFolder(){
     const f=$('#fileFoot');if(f)f.style.display='flex';
     await runWorkspaceIndexCycle('initial', { scanEpoch: S.workspaceIndex.scanEpoch, complete: false });
     /* Deep scan in background, then re-index the rest */
-    deepScanAll(S.tree).then(async()=>{
+    const DEEP_SCAN_TIMEOUT_MS = 30000;
+    const scanAbort = { aborted: false };
+    const scanTimeout = setTimeout(() => {
+      scanAbort.aborted = true;
+      toast('Mesh', 'Scan timeout — indexing partial workspace');
+    }, DEEP_SCAN_TIMEOUT_MS);
+    deepScanAll(S.tree, null, scanAbort).then(async()=>{
+      clearTimeout(scanTimeout);
       S.totalFiles=countLoaded(S.tree);
       if(prog)prog.style.display='none';
       const n=$('#fileNum');if(n)n.textContent=S.totalFiles+' files';
@@ -920,19 +927,22 @@ async function indexWorkspace(handle, tree) {
   });
 }
 
-// Recursively scan ALL directories to count everything
-async function deepScanAll(items, progress = null){
+// Recursively scan indexable directories (skips node_modules etc — file explorer still shows all)
+async function deepScanAll(items, progress = null, abort = null){
   const tracker = progress || createDeepScanProgress(items);
   paintDeepScanProgress(tracker, { force: true });
   for(const item of items){
     if(!item) continue;
+    if(abort?.aborted) break;
     tracker.visitedUnits += 1;
     if(item.isDir){
+      if(INDEX_SKIP_DIRS.test(item.path)){
+        paintDeepScanProgress(tracker);
+        continue;
+      }
       await ensureChildren(item);
       const childCount = Array.isArray(item.children) ? item.children.length : 0;
       tracker.discoveredUnits += childCount;
-      // Seed newly discovered files into compressionMap immediately so Ops view
-      // shows all files as pending without waiting for the full sync cycle.
       if(item.children){
         for(const child of item.children){
           if(!child.isDir && child.path && isIndexableWorkspacePath(child.path) && !S.compressionMap.has(child.path)){
@@ -942,7 +952,7 @@ async function deepScanAll(items, progress = null){
       }
     }
     paintDeepScanProgress(tracker);
-    if(item.isDir && item.children)await deepScanAll(item.children, tracker);
+    if(item.isDir && item.children && !INDEX_SKIP_DIRS.test(item.path))await deepScanAll(item.children, tracker, abort);
   }
   paintDeepScanProgress(tracker, { force: true });
   return tracker;
