@@ -597,6 +597,10 @@ export const config = envSchema.parse(process.env);
 ### Credential Resolution
 <!-- GSD:architecture-end -->
 
+## Deployment
+
+**Before every deploy (push to `main`), read `DEPLOY.md` first.** It contains the current EC2 IP, required GitHub Secrets, CI/CD pipeline steps, common failure fixes, and post-deploy checks. The deploy is automatic on push to `main` via GitHub Actions — never deploy manually unless Actions is down.
+
 <!-- GSD:workflow-start source:GSD defaults -->
 ## GSD Workflow Enforcement
 
