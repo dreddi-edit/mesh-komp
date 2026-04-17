@@ -2064,6 +2064,31 @@ function collapseAllFolders() {
   renderTree();
 }
 
+function openAgentManagerStub() {
+  if ($('#agentMgrOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'agentMgrOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:center;justify-content:center';
+  const modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:28px 32px;min-width:320px;max-width:420px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+  const title = document.createElement('div');
+  title.textContent = 'Agent Manager';
+  title.style.cssText = 'font-size:1rem;font-weight:600;color:var(--txw);margin-bottom:8px';
+  const desc = document.createElement('div');
+  desc.textContent = 'Manage and monitor your connected AI agents. Coming in a future update.';
+  desc.style.cssText = 'font-size:.8rem;color:var(--tx3);line-height:1.5;margin-bottom:20px';
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Close';
+  closeBtn.style.cssText = 'padding:6px 20px;border:1px solid var(--bd);border-radius:5px;background:var(--bg3);color:var(--tx2);font-size:.8rem;cursor:pointer';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  modal.appendChild(title);
+  modal.appendChild(desc);
+  modal.appendChild(closeBtn);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
 function registerDefaultShellActions() {
   ['explorer','search','scm','debug','extensions'].forEach((panel) => {
     registerShellAction(`panel:${panel}`, () => {
@@ -2089,6 +2114,7 @@ function registerDefaultShellActions() {
   registerShellAction('shell:toggle-chat', () => toggleChat());
   registerShellAction('shell:focus-search', () => { setPanel('search'); $('#searchIn')?.focus(); if (S.currentView !== 'editor') showView('editor'); });
   registerShellAction('terminal:toggle', () => toggleTerm());
+  registerShellAction('agent-manager:open', openAgentManagerStub);
 }
 
 /* ═══ BINDINGS ═══ */
@@ -2112,6 +2138,8 @@ function bind(){
   wireShellAction('#btnOpenMarketplace', 'view:marketplace');
   wireShellAction('#btnToggleSB', 'shell:toggle-sidebar');
   wireShellAction('#btnToggleChat', 'shell:toggle-chat');
+  wireShellAction('#btnOpenAgentMgr', 'agent-manager:open');
+  wireShellAction('#wAgentMgr', 'agent-manager:open');
   wireShellAction('#btnGSearch', 'shell:focus-search');
   wireShellAction('#btnStTerm', 'terminal:toggle');
   wireShellAction('#wRestore', 'workspace:restore-folder');
