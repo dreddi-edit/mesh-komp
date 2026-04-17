@@ -62,6 +62,7 @@ jobs:
           timeout: 300s
           script: |
             set -e
+            sudo dnf install -y gcc-c++ make python3 2>/dev/null || sudo yum install -y gcc-c++ make python3 2>/dev/null || true
             cd /home/ec2-user/app
             npm ci --ignore-scripts
             npm rebuild node-pty --build-from-source
