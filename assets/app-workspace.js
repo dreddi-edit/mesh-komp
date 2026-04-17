@@ -266,23 +266,33 @@ async function syncWorkspaceIndexDiff(diff, options = {}) {
     const slice = changedEntries.slice(i, i + batchSize);
     const batchFiles = [];
     for (const entry of slice) {
-      const content = await entry.file.text();
-      batchFiles.push({ path: entry.path, content });
+      try {
+        const content = await entry.file.text();
+        batchFiles.push({ path: entry.path, content });
+      } catch (readErr) {
+        console.warn('[mesh-index] file read failed, skipping:', entry.path, readErr);
+      }
     }
-    const syncResult = await api('/api/assistant/workspace/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        workspaceId,
-        folderName: S.dirName,
-        files: batchFiles,
-        deletedPaths: i === 0 ? deletedPaths : [],
-        append: true,
-        mode,
-        scanEpoch,
-        complete: Boolean(options.complete && i + batchSize >= changedEntries.length),
-      }),
-    });
+    if (!batchFiles.length) { synced += slice.length; continue; }
+    let syncResult = null;
+    try {
+      syncResult = await api('/api/assistant/workspace/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId,
+          folderName: S.dirName,
+          files: batchFiles,
+          deletedPaths: i === 0 ? deletedPaths : [],
+          append: true,
+          mode,
+          scanEpoch,
+          complete: Boolean(options.complete && i + batchSize >= changedEntries.length),
+        }),
+      });
+    } catch (syncErr) {
+      console.warn('[mesh-index] batch sync failed, continuing:', syncErr?.message || syncErr);
+    }
     if (syncResult?.workspaceId) S.workspaceId = syncResult.workspaceId;
     if (Array.isArray(syncResult?.compressionStats)) {
       syncResult.compressionStats.forEach(e => { if (e.rawBytes > 0) S.compressionMap.set(e.path, e); });

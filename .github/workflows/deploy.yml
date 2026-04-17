@@ -64,8 +64,11 @@ jobs:
             set -e
             sudo dnf install -y gcc-c++ make python3 2>/dev/null || sudo yum install -y gcc-c++ make python3 2>/dev/null || true
             cd /home/ec2-user/app
+            echo "Node: $(node --version) | Arch: $(uname -m)"
             npm ci --ignore-scripts
-            npm rebuild node-pty --build-from-source
+            npm rebuild node-pty --build-from-source 2>&1 || echo "WARN: node-pty rebuild failed"
+            npm rebuild better-sqlite3 --build-from-source 2>&1 || echo "WARN: better-sqlite3 rebuild failed"
+            node -e "try{require('node-pty');console.log('node-pty: OK')}catch(e){console.error('node-pty: FAIL -',e.message);process.exit(1)}"
             pm2 reload ecosystem.config.js --env production 2>/dev/null || pm2 start ecosystem.config.js --env production
             pm2 save
             sleep 3
