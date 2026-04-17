@@ -36,7 +36,7 @@ jobs:
             --exclude='docs/benchmark-results'
           path: ./
           remote_path: /home/ec2-user/app/
-          remote_host: 54.242.44.159
+          remote_host: 44.212.48.148
           remote_user: ec2-user
           remote_key: ${{ secrets.EC2_SSH_KEY }}
 
@@ -56,7 +56,7 @@ jobs:
       - name: Install deps and reload
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 54.242.44.159
+          host: 44.212.48.148
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           timeout: 300s
