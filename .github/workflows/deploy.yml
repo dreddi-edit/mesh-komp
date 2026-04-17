@@ -64,6 +64,7 @@ jobs:
             set -e
             cd /home/ec2-user/app
             npm ci --ignore-scripts
+            npm rebuild node-pty --build-from-source
             pm2 reload ecosystem.config.js --env production 2>/dev/null || pm2 start ecosystem.config.js --env production
             pm2 save
             sleep 3
