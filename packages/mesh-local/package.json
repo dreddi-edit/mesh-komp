@@ -1,0 +1,18 @@
+{
+  "name": "mesh-local",
+  "version": "0.1.0",
+  "description": "Local agent that connects your machine's shell to the Mesh web app",
+  "main": "src/agent.js",
+  "bin": {
+    "mesh-local": "bin/mesh-local.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "node-pty": "^1.1.0",
+    "ws": "^8.20.0"
+  },
+  "keywords": ["mesh", "terminal", "local-agent"],
+  "license": "MIT"
+}
