@@ -11,7 +11,47 @@ function waitForReady(fn) {
 waitForReady(function() {
   const S = window.MeshState;
   const A = window.MeshActions;
-  const api = window.MeshAPI;
+  const api = window.MeshAPI; // eslint-disable-line no-unused-vars
+
+  let activeStreamAbort = null;
+
+  function setSendIcon(btn) {
+    btn.title = 'Send';
+    btn.onclick = null;
+    /* safe: no user content, SVG elements only */
+    btn.textContent = '';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', '12'); line.setAttribute('y1', '19');
+    line.setAttribute('x2', '12'); line.setAttribute('y2', '5');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly.setAttribute('points', '5 12 12 5 19 12');
+    svg.appendChild(line); svg.appendChild(poly);
+    btn.appendChild(svg);
+  }
+
+  function setStopIcon(btn) {
+    btn.title = 'Stop generating';
+    /* safe: no user content, SVG elements only */
+    btn.textContent = '';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'currentColor');
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', '4'); rect.setAttribute('y', '4');
+    rect.setAttribute('width', '16'); rect.setAttribute('height', '16');
+    rect.setAttribute('rx', '2');
+    svg.appendChild(rect);
+    btn.appendChild(svg);
+  }
 
   /* ── markdown renderer (reuse from core) ── */
   function renderMd(text) {
@@ -65,13 +105,20 @@ waitForReady(function() {
   }
 
   async function streamChat(text) {
+    if (activeStreamAbort) return;
     if (!text.trim()) return;
     S.chat.push({ role: 'user', content: text });
     A.appendMsg('user', text);
 
     const msgs = document.querySelector('#chatMsgs');
     const btn = document.querySelector('#btnSend');
-    if (btn) btn.disabled = true;
+    const ctrl = new AbortController();
+    activeStreamAbort = ctrl;
+    if (btn) {
+      btn.disabled = false;
+      setStopIcon(btn);
+      btn.onclick = () => { ctrl.abort(); };
+    }
 
     /* Create streaming message element */
     const el = document.createElement('div');
@@ -125,6 +172,7 @@ waitForReady(function() {
         headers: streamHeaders,
         body: JSON.stringify({ model, messages, activeFilePath: S.activeTab || '' }),
         credentials: 'same-origin',
+        signal: ctrl.signal,
       });
 
       if (!resp.ok || !resp.body) {
@@ -197,16 +245,44 @@ waitForReady(function() {
       if (window.MeshBus) window.MeshBus.emit('chat:response', { content: accumulated });
 
     } catch (e) {
-      /* Network error — fallback */
-      el.remove();
-      S.chat.pop();
-      try { await A.sendChat(text); } catch (e2) {
-        accumulated = 'Error: ' + (e2.message || e.message || 'Chat failed');
-        if (txEl) txEl.innerHTML = renderMd(accumulated);
-        S.chat.push({ role: 'assistant', content: accumulated });
+      if (e.name === 'AbortError') {
+        if (accumulated) {
+          let tokenBadge = '';
+          if (showTokens) {
+            const approxTokens = Math.round(accumulated.length / 4);
+            const badgeEl = document.createElement('div');
+            const spanEl = document.createElement('span');
+            spanEl.className = 'msg-tokens';
+            spanEl.textContent = approxTokens + ' tokens';
+            badgeEl.appendChild(spanEl);
+            tokenBadge = badgeEl.outerHTML;
+          }
+          if (txEl) {
+            /* renderMd output is sanitized via A.esc(); makeFeedbackHtml is static trusted HTML */
+            txEl.innerHTML = renderMd(accumulated) + makeFeedbackHtml() + tokenBadge;
+            bindApplyButtons(el, accumulated);
+          }
+          S.chat.push({ role: 'assistant', content: accumulated });
+        } else {
+          el.remove();
+          S.chat.pop();
+        }
+      } else {
+        /* Network error — fallback */
+        el.remove();
+        S.chat.pop();
+        try { await A.sendChat(text); } catch (e2) {
+          accumulated = 'Error: ' + (e2.message || e.message || 'Chat failed');
+          if (txEl) txEl.innerHTML = renderMd(accumulated);
+          S.chat.push({ role: 'assistant', content: accumulated });
+        }
       }
     } finally {
-      if (btn) btn.disabled = false;
+      activeStreamAbort = null;
+      if (btn) {
+        btn.disabled = false;
+        setSendIcon(btn);
+      }
     }
   }
 
