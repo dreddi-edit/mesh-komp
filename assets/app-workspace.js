@@ -104,6 +104,7 @@ function isIndexableWorkspacePath(path) {
 }
 
 function updateIndexProgressState(state, detail = {}) {
+  if (state !== 'idle' && !S.dirHandle) return;
   const wrap = $('#idxProgWrap');
   const fill = $('#idxProgFill');
   const txt = $('#idxProgText');
