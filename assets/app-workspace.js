@@ -1436,10 +1436,46 @@ function openTerminal(forceCloud=false, options={}){
     }
     const FitClass = window.FitAddon;
     if(!S.term){
-      S.term=new TermClass({theme:{background:'#1a1a1a',foreground:'#d4d4d4',cursor:'#0098ff',cursorAccent:'#1a1a1a',selectionBackground:'#264f78',selectionForeground:'#ffffff',black:'#1a1a1a',red:'#f44747',green:'#6a9955',yellow:'#d7ba7d',blue:'#569cd6',magenta:'#c586c0',cyan:'#4ec9b0',white:'#d4d4d4',brightBlack:'#808080',brightRed:'#f44747',brightGreen:'#b5cea8',brightYellow:'#d7ba7d',brightBlue:'#9cdcfe',brightMagenta:'#c586c0',brightCyan:'#4ec9b0',brightWhite:'#ffffff'},fontFamily:"'JetBrains Mono',monospace",fontSize:13,cursorBlink:true,scrollback:5000});
+      S.term=new TermClass({theme:{background:'#0d1820',foreground:'#c8e6f0',cursor:'#00d4ff',cursorAccent:'#0d1820',selectionBackground:'#1a4a6b',selectionForeground:'#ffffff',black:'#0d1820',red:'#f47070',green:'#6ecfb0',yellow:'#f0c070',blue:'#72b8d8',magenta:'#c090d0',cyan:'#4ec9b0',white:'#c8e6f0',brightBlack:'#6a8898',brightRed:'#f47070',brightGreen:'#a0e8d0',brightYellow:'#f0d090',brightBlue:'#9cdcfe',brightMagenta:'#d0a8e0',brightCyan:'#80e8e0',brightWhite:'#e8f4ff'},fontFamily:"'JetBrains Mono',monospace",fontSize:13,cursorBlink:true,scrollback:5000});
       if(FitClass){S.termFit=new FitClass();S.term.loadAddon(S.termFit);}
       S.term.open(mountEl);
+      S.term.attachCustomKeyEventHandler((e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'c' && e.type === 'keydown' && S.term.hasSelection()) {
+          const selected = S.term.getSelection();
+          if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(selected).catch(() => {
+              const ta = document.createElement('textarea');
+              ta.value = selected;
+              ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+            });
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = selected;
+            ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          return false;
+        }
+        return true;
+      });
       S.termMountSelector = mountSelector;
+      if (S.termResizeObserver) {
+        S.termResizeObserver.disconnect();
+        S.termResizeObserver = null;
+      }
+      if (FitClass && S.termFit) {
+        S.termResizeObserver = new ResizeObserver(() => {
+          S.termFit?.fit();
+        });
+        S.termResizeObserver.observe(mountEl);
+      }
     }
     setTimeout(()=>S.termFit?.fit(),100);
     /* Terminal host resolution — always connect to the server that served the page */
@@ -1462,7 +1498,7 @@ function openTerminal(forceCloud=false, options={}){
     S.term.onResize(({cols,rows})=>{if(ws.readyState===1)ws.send(JSON.stringify({type:'resize',cols,rows}));});
   }catch(e){console.error(e);toast('Error','Terminal init failed: '+e.message);}
 }
-function closeTerminal(){$('#bottomPanel')&&($('#bottomPanel').style.display='none');$('#rsTerm')&&($('#rsTerm').style.display='none');if(S.termWs){try{S.termWs.close();}catch{}}if(S.term){S.term.dispose();S.term=null;S.termFit=null;S.termWs=null;S.termMountSelector='';}if(S.surfaceMode==='terminal')updateWorkspaceSurfaceUI();}
+function closeTerminal(){$('#bottomPanel')&&($('#bottomPanel').style.display='none');$('#rsTerm')&&($('#rsTerm').style.display='none');if(S.termWs){try{S.termWs.close();}catch{}}if(S.termResizeObserver){try{S.termResizeObserver.disconnect();}catch{} S.termResizeObserver=null;}if(S.term){S.term.dispose();S.term=null;S.termFit=null;S.termWs=null;S.termMountSelector='';}if(S.surfaceMode==='terminal')updateWorkspaceSurfaceUI();}
 function toggleTerm(){const p=$('#bottomPanel');if(p&&p.style.display!=='none'&&p.style.display!=='')closeTerminal();else openTerminal();}
 
 /* ═══ OPS VIEW ═══ */
