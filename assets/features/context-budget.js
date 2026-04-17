@@ -85,6 +85,7 @@ function init() {
       recalc();
     });
     budgetData.limit = getActiveModelLimit();
+    recalc();
   }
 
   /* Listen for chat events to update budget */
