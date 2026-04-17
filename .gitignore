@@ -23,3 +23,15 @@ mesh-secure-v2.db
 .planning/
 .superpowers/
 .playwright-mcp/
+.playwright-cli/
+
+# Local docs & tools (not needed for app runtime)
+CLAUDE.md
+DEPLOY.md
+CURRENT-SYSTEM-OVERVIEW.md
+claude-overview.md
+ccmon-web/
+mesh-vault/
+pitch/
+AGENTS.md
+get-shit-done/
