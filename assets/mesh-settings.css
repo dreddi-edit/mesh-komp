@@ -126,7 +126,7 @@ button, input, select, textarea { font: inherit; }
 .stat-card p       { font-size: 0.74rem; color: var(--text-lo); line-height: 1.5; }
 
 /* Panels */
-.settings-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-xs), var(--inset); overflow: hidden; }
+.settings-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: var(--shadow-xs), var(--inset); overflow: hidden; }
 .panel-head { padding: 18px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .panel-kicker { font-size: 0.66rem; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-xlo); margin-bottom: 4px; }
 .panel-head h2 { font-size: 0.96rem; font-weight: 700; letter-spacing: -0.03em; color: var(--text-hi); font-family: var(--font-display); }
@@ -147,13 +147,13 @@ button, input, select, textarea { font: inherit; }
 /* Buttons */
 .btn-primary, .btn-secondary, .btn-ghost, .btn-danger {
   appearance: none; display: inline-flex; align-items: center; gap: 6px;
-  border-radius: var(--r-sm); cursor: pointer; font-size: 0.8rem; font-weight: 600;
+  border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;
   padding: 8px 16px; border: 1px solid transparent;
   transition: background 140ms, opacity 140ms, transform 120ms; white-space: nowrap;
 }
 .btn-primary:active, .btn-secondary:active, .btn-ghost:active { transform: scale(0.97); }
-.btn-primary   { background: var(--text-hi); color: #fff; }
-.btn-primary:hover { opacity: 0.86; }
+.btn-primary   { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-2); opacity: 1; }
 .btn-secondary { background: var(--panel); border-color: var(--line-hi); color: var(--text-hi); box-shadow: var(--shadow-xs), var(--inset); }
 .btn-secondary:hover { background: var(--panel-hi); }
 .btn-ghost  { background: transparent; border-color: var(--line); color: var(--text); }
