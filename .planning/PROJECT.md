@@ -36,12 +36,10 @@ Backend quality sweep: error classes, security middleware, code splitting, servi
 - ✓ Enable text selection and copy — Cmd+C handler with clipboard API + fallback
 - ✓ Connect terminal to user's local machine — mesh-local agent package + /terminal-agent WebSocket + connect dialog UI
 
-### Editor
-- Restore Monaco Editor functionality (syntax highlighting, proper spacing, code coloring)
-- Fix editor showing blank on launch — show welcome screen with recent workspaces
-
-### Status Bar
-- Remove "Indexing..." message when no folder is open
+### Editor (Validated in Phase 30)
+- ✓ Restore Monaco Editor reliability — polling-based loader fixes race condition with AMD `require`
+- ✓ Welcome screen with real recent workspaces — dual storage (idb-keyval + server) survives cache clears, shows last 3 workspaces
+- ✓ Remove false "Indexing..." status bar indicator on startup — `S.dirHandle` guard in `updateIndexProgressState`
 
 ### UI Elements
 - Fix pause button (top right, currently non-functional)
