@@ -16,6 +16,7 @@ const S={
   workspaceConfig:{},
   accountProfile:null,
   termWs:null,term:null,termFit:null,
+  termAgentPollInterval:null,termAgentToken:null,termAgentMeshUrl:null,
   currentView:'editor',
   surfaceMode:'editor',
   sidebarVisible:true,chatVisible:true,
@@ -1400,7 +1401,97 @@ function terminalMountSelector() {
   return S.surfaceMode === 'terminal' ? '#terminalSurfacePrimary' : '#termContainer';
 }
 
-function openTerminal(forceCloud=false, options={}){
+async function fetchAgentToken() {
+  try {
+    const res = await fetch('/api/v1/terminal/agent-token', { method: 'POST', credentials: 'include' });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body.data || null;
+  } catch {
+    return null;
+  }
+}
+
+async function checkAgentStatus() {
+  try {
+    const res = await fetch('/api/v1/terminal/agent-status', { credentials: 'include' });
+    if (!res.ok) return false;
+    const body = await res.json();
+    return body.data?.connected === true;
+  } catch {
+    return false;
+  }
+}
+
+function updateTerminalStatus(state) {
+  const dot = $('#termStatusDot');
+  const label = $('#terminalSurfaceStatus');
+  if (!dot || !label) return;
+  dot.className = 'term-status-dot';
+  if (state === 'connected') {
+    dot.classList.add('is-connected');
+    label.childNodes[label.childNodes.length - 1].textContent = 'Connected \u2022 local';
+  } else if (state === 'waiting') {
+    dot.classList.add('is-waiting');
+    label.childNodes[label.childNodes.length - 1].textContent = 'Waiting for agent\u2026';
+  } else {
+    dot.classList.add('is-disconnected');
+    label.childNodes[label.childNodes.length - 1].textContent = 'Primary terminal';
+  }
+}
+
+function showAgentConnectDialog(tokenData) {
+  const dialog = $('#termAgentDialog');
+  if (!dialog) return;
+  const cmdEl = $('#termAgentCmd');
+  const meshUrlEl = $('#termAgentMeshUrl');
+  const copyBtn = $('#btnCopyAgentCmd');
+  const cancelBtn = $('#btnCancelAgentDialog');
+
+  if (cmdEl && tokenData?.command) cmdEl.textContent = tokenData.command;
+  if (meshUrlEl && tokenData?.meshUrl) meshUrlEl.href = tokenData.meshUrl;
+
+  dialog.style.display = 'flex';
+  updateTerminalStatus('waiting');
+
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      const cmd = tokenData?.command || '';
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(cmd).catch(() => {});
+      }
+      copyBtn.querySelector('.material-symbols-outlined').textContent = 'check';
+      setTimeout(() => { copyBtn.querySelector('.material-symbols-outlined').textContent = 'content_copy'; }, 1500);
+    };
+  }
+
+  if (cancelBtn) {
+    cancelBtn.onclick = () => hideAgentConnectDialog();
+  }
+
+  if (S.termAgentPollInterval) clearInterval(S.termAgentPollInterval);
+  S.termAgentPollInterval = setInterval(async () => {
+    const connected = await checkAgentStatus();
+    if (connected) {
+      clearInterval(S.termAgentPollInterval);
+      S.termAgentPollInterval = null;
+      hideAgentConnectDialog();
+      openTerminal(false, { skipAgentCheck: true });
+    }
+  }, 1500);
+}
+
+function hideAgentConnectDialog() {
+  const dialog = $('#termAgentDialog');
+  if (dialog) dialog.style.display = 'none';
+  if (S.termAgentPollInterval) {
+    clearInterval(S.termAgentPollInterval);
+    S.termAgentPollInterval = null;
+  }
+  updateTerminalStatus('disconnected');
+}
+
+async function openTerminal(forceCloud=false, options={}){
   const mountSelector = options.mount || terminalMountSelector();
   const mountEl = $(mountSelector);
   if (!mountEl) {
@@ -1435,6 +1526,17 @@ function openTerminal(forceCloud=false, options={}){
       return;
     }
     const FitClass = window.FitAddon;
+    // Check for local agent unless this call is explicitly post-agent-connect
+    if (!options.skipAgentCheck) {
+      const connected = await checkAgentStatus().catch(() => false);
+      if (!connected) {
+        const tokenData = S.termAgentToken || await fetchAgentToken();
+        S.termAgentToken = tokenData;
+        showAgentConnectDialog(tokenData);
+        return;
+      }
+      updateTerminalStatus('connected');
+    }
     if(!S.term){
       S.term=new TermClass({theme:{background:'#0d1820',foreground:'#c8e6f0',cursor:'#00d4ff',cursorAccent:'#0d1820',selectionBackground:'#1a4a6b',selectionForeground:'#ffffff',black:'#0d1820',red:'#f47070',green:'#6ecfb0',yellow:'#f0c070',blue:'#72b8d8',magenta:'#c090d0',cyan:'#4ec9b0',white:'#c8e6f0',brightBlack:'#6a8898',brightRed:'#f47070',brightGreen:'#a0e8d0',brightYellow:'#f0d090',brightBlue:'#9cdcfe',brightMagenta:'#d0a8e0',brightCyan:'#80e8e0',brightWhite:'#e8f4ff'},fontFamily:"'JetBrains Mono',monospace",fontSize:13,cursorBlink:true,scrollback:5000});
       if(FitClass){S.termFit=new FitClass();S.term.loadAddon(S.termFit);}
@@ -1498,7 +1600,7 @@ function openTerminal(forceCloud=false, options={}){
     S.term.onResize(({cols,rows})=>{if(ws.readyState===1)ws.send(JSON.stringify({type:'resize',cols,rows}));});
   }catch(e){console.error(e);toast('Error','Terminal init failed: '+e.message);}
 }
-function closeTerminal(){$('#bottomPanel')&&($('#bottomPanel').style.display='none');$('#rsTerm')&&($('#rsTerm').style.display='none');if(S.termWs){try{S.termWs.close();}catch{}}if(S.termResizeObserver){try{S.termResizeObserver.disconnect();}catch{} S.termResizeObserver=null;}if(S.term){S.term.dispose();S.term=null;S.termFit=null;S.termWs=null;S.termMountSelector='';}if(S.surfaceMode==='terminal')updateWorkspaceSurfaceUI();}
+function closeTerminal(){$('#bottomPanel')&&($('#bottomPanel').style.display='none');$('#rsTerm')&&($('#rsTerm').style.display='none');if(S.termAgentPollInterval){clearInterval(S.termAgentPollInterval);S.termAgentPollInterval=null;}if(S.termWs){try{S.termWs.close();}catch{}}if(S.termResizeObserver){try{S.termResizeObserver.disconnect();}catch{} S.termResizeObserver=null;}if(S.term){S.term.dispose();S.term=null;S.termFit=null;S.termWs=null;S.termMountSelector='';}updateTerminalStatus('disconnected');if(S.surfaceMode==='terminal')updateWorkspaceSurfaceUI();}
 function toggleTerm(){const p=$('#bottomPanel');if(p&&p.style.display!=='none'&&p.style.display!=='')closeTerminal();else openTerminal();}
 
 /* ═══ OPS VIEW ═══ */

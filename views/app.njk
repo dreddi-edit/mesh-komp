@@ -287,7 +287,7 @@
         <div class="terminal-pane terminal-pane-live">
           <div class="terminal-pane-bar">
             <span>Session A</span>
-            <span id="terminalSurfaceStatus">Primary terminal</span>
+            <span id="terminalSurfaceStatus"><span class="term-status-dot is-disconnected" id="termStatusDot"></span>Primary terminal</span>
           </div>
           <div id="terminalSurfacePrimary" class="terminal-surface-body"></div>
         </div>
@@ -302,6 +302,32 @@
         <div class="terminal-pane terminal-pane-placeholder" data-split="4">
           <div class="terminal-pane-bar"><span>Split D</span><span>Reserved</span></div>
           <div class="terminal-pane-empty">Keep commands visible while the editor stays one click away in the top bar.</div>
+        </div>
+      </div>
+      <!-- Local agent connect dialog -->
+      <div id="termAgentDialog" class="term-agent-dialog" style="display:none" role="dialog" aria-modal="true" aria-labelledby="termAgentDialogTitle">
+        <div class="term-agent-dialog-inner">
+          <div class="term-agent-dialog-icon">
+            <span class="material-symbols-outlined">terminal</span>
+          </div>
+          <h3 id="termAgentDialogTitle">Connect your local terminal</h3>
+          <p>Run this command on your machine to connect your local shell to Mesh:</p>
+          <div class="term-agent-cmd-block">
+            <code id="termAgentCmd" class="term-agent-cmd"></code>
+            <button class="term-agent-copy-btn" id="btnCopyAgentCmd" type="button" aria-label="Copy command">
+              <span class="material-symbols-outlined">content_copy</span>
+            </button>
+          </div>
+          <div class="term-agent-or">or</div>
+          <a id="termAgentMeshUrl" href="#" class="btn-primary term-agent-launch-btn">
+            <span class="material-symbols-outlined">open_in_new</span>
+            Launch Mesh Local Agent
+          </a>
+          <p class="term-agent-status" id="termAgentStatus">
+            <span class="term-status-dot is-waiting"></span>
+            Waiting for agent to connect...
+          </p>
+          <button class="term-agent-cancel-btn" id="btnCancelAgentDialog" type="button">Cancel</button>
         </div>
       </div>
     </div>
