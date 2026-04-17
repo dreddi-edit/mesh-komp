@@ -27,7 +27,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### UI Elements
 
-- [ ] **UIEL-01**: Pause button (top right) performs its intended action when clicked
+- [x] **UIEL-01**: Pause button (top right) performs its intended action when clicked
 - [x] **UIEL-02**: Closing the agent chat panel does not leave a gap in the layout
 - [x] **UIEL-03**: "Open Agent Manager" button opens the agent manager
 - [x] **UIEL-04**: Context window indicator shows actual context window size, not max output tokens
@@ -88,7 +88,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EDIT-01 | Phase 30 | Complete |
 | EDIT-02 | Phase 30 | Complete |
 | EDIT-03 | Phase 30 | Complete |
-| UIEL-01 | Phase 31 | Pending |
+| UIEL-01 | Phase 31 | Complete |
 | UIEL-02 | Phase 31 | Complete |
 | UIEL-03 | Phase 31 | Complete |
 | UIEL-04 | Phase 31 | Complete |
