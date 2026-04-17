@@ -538,14 +538,12 @@ async function api(u,o){
   }
   const r=await fetch(u,{method,headers,body:c.body,credentials:'same-origin'});
   if(r.status===403&&window.MeshCsrf&&['POST','PUT','PATCH','DELETE'].includes(method)){
-    try{
-      const fresh=await window.MeshCsrf.getToken();
-      headers['X-CSRF-Token']=fresh;
-      const retry=await fetch(u,{method,headers,body:c.body,credentials:'same-origin'});
-      const d2=await retry.json().catch(()=>({}));
-      if(!retry.ok){if(retry.status===401&&!c.skip)setAuth(true,'Session expired.');throw new Error(d2?.error||'Error '+retry.status);}
-      return d2;
-    }catch(retryErr){throw retryErr;}
+    const fresh=await window.MeshCsrf.getToken();
+    headers['X-CSRF-Token']=fresh;
+    const retry=await fetch(u,{method,headers,body:c.body,credentials:'same-origin'});
+    const d2=await retry.json().catch(()=>({}));
+    if(!retry.ok){if(retry.status===401&&!c.skip)setAuth(true,'Session expired.');throw new Error(d2?.error||'Error '+retry.status);}
+    return d2;
   }
   const d=await r.json().catch(()=>({}));
   if(!r.ok){if(r.status===401&&!c.skip)setAuth(true,'Session expired.');throw new Error(d?.error||'Error '+r.status);}
