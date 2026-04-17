@@ -71,3 +71,13 @@ jobs:
             sleep 3
             curl -sf http://localhost:8080/healthz | grep '"service"'
             echo "Deploy successful"
+
+      - name: Invalidate CloudFront cache
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E2YB5DP2ZI4FHD \
+            --paths "/*"
