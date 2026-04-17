@@ -45,6 +45,7 @@ const USER_STORE_ALLOWED_KEYS = new Set([
   'meshBillingState',
   'meshIntegrations',
   'meshAssistantEditFlow',
+  'meshRecentWorkspaces',
 ]);
 const USER_STORE_MAX_JSON_BYTES = 1024 * 1024;
 
