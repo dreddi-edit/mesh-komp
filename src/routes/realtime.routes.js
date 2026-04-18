@@ -266,6 +266,7 @@ async function handleSession(clientWs, options = {}) {
   let sessionConfigured = false;
   let clientClosed = false;
   let conversationMessages = [];
+  let postResponseDeadZoneUntil = 0;
   const speechState = createSpeechState();
   const sessionStartedAt = Date.now();
   const sessionAbort = new AbortController();
@@ -399,12 +400,8 @@ async function handleSession(clientWs, options = {}) {
 
       const transcript = String(transcription.text || '').trim();
       if (!transcript) {
-        sendClientEvent({
-          type: 'voice.narration',
-          text: 'I did not catch that. Please try again.',
-          appendToChat: false,
-        });
-        await streamSpeechResponse('I did not catch that. Please try again.');
+        sendClientEvent({ type: 'voice.state.empty_transcription' });
+        postResponseDeadZoneUntil = Date.now() + 1500;
         return;
       }
 
@@ -450,6 +447,7 @@ async function handleSession(clientWs, options = {}) {
 
       const replyText = buildAssistantResponseText(result);
       await streamSpeechResponse(replyText);
+      postResponseDeadZoneUntil = Date.now() + 1500;
     } catch (error) {
       if (sessionAbort.signal.aborted) return;
       const detail = String(error?.message || 'Voice processing failed');
@@ -462,6 +460,7 @@ async function handleSession(clientWs, options = {}) {
 
   function handleAudioAppend(base64) {
     if (speechState.processing || sessionAbort.signal.aborted) return;
+    if (Date.now() < postResponseDeadZoneUntil) return;
     const pcmBuffer = decodeAudioChunk(base64);
     if (!pcmBuffer.length) return;
 
