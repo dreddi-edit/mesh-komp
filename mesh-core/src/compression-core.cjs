@@ -635,6 +635,52 @@ function extractCallSites(tree, rawText, parserFamily) {
 }
 
 /**
+ * Extract string literals from a parsed AST tree for query index building.
+ * Returns {value, lineStart} entries for non-trivial string values.
+ *
+ * @param {Object} tree - tree-sitter parse tree (may be null)
+ * @param {string} rawText - raw file text
+ * @returns {{ value: string, lineStart: number }[]}
+ */
+function extractStringLiterals(tree, rawText) {
+  const literals = [];
+  if (!tree?.rootNode) return literals;
+
+  const STRING_NODE_TYPES = new Set([
+    'string',
+    'string_fragment',
+    'template_string',
+    'interpreted_string_literal',
+    'raw_string_literal',
+  ]);
+
+  let walked = 0;
+  const MAX_WALK = 100000;
+
+  walkTree(tree.rootNode, (node) => {
+    walked += 1;
+    if (walked > MAX_WALK) return false;
+    if (literals.length >= MAX_QUERY_TOKENS_PER_FILE) return false;
+
+    const type = String(node.type || '');
+    if (!STRING_NODE_TYPES.has(type)) return true;
+
+    const raw = nodeText(node, rawText).replace(/^["'`]|["'`]$/g, '').trim();
+    if (raw.length < 4) return true;
+    if (/^[0-9]+$/.test(raw)) return true;
+    if (/^[^a-zA-Z]+$/.test(raw)) return true;
+
+    literals.push({
+      value: raw.slice(0, 80),
+      lineStart: Number((node.startPosition?.row ?? 0) + 1),
+    });
+    return true;
+  });
+
+  return literals;
+}
+
+/**
  * Extract the callee function name from a call_expression / call node.
  *
  * @param {Object} callNode - tree-sitter call node
