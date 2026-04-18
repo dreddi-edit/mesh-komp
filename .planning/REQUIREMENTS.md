@@ -79,9 +79,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SETT-01 | Phase 28 | Complete |
-| SETT-02 | Phase 28 | Complete |
-| SETT-03 | Phase 28 | Complete |
+| SETT-01 | Phase 28 (verified: Phase 35) | Pending |
+| SETT-02 | Phase 28 (verified: Phase 35) | Pending |
+| SETT-03 | Phase 28 (verified: Phase 35) | Pending |
 | TERM-01 | Phase 29 | Complete |
 | TERM-02 | Phase 29 | Complete |
 | TERM-03 | Phase 29 | Complete |
@@ -96,9 +96,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UIEL-06 | Phase 31 | Complete |
 | VOIC-01 | Phase 32 | Complete |
 | VOIC-02 | Phase 32 | Complete |
-| ANLY-01 | Phase 33 | Pending |
-| ANLY-02 | Phase 33 | Pending |
-| GRPH-01 | Phase 33 | Pending |
+| ANLY-01 | Phase 33 (verified: Phase 35) | Pending |
+| ANLY-02 | Phase 33 (verified: Phase 35) | Pending |
+| GRPH-01 | Phase 33 (verified: Phase 35) | Pending |
 | MESH-01 | Phase 34 | Complete |
 
 **Coverage:**

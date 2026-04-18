@@ -4,7 +4,7 @@
 
 **Goal:** Fix all broken and non-functional surfaces in the Mesh IDE so the app works end-to-end — settings, terminal, editor, UI controls, voice agent, analytics, graph, and .mesh output.
 
-**Phases:** 7 (Phase 28–34, continuing from v2.0)
+**Phases:** 8 (Phase 28–35, continuing from v2.0)
 **Requirements:** 21 mapped
 
 ---
@@ -136,13 +136,31 @@
 
 ---
 
+### Phase 35: Verification Sweep — Retroactive Verification & Browser UAT
+
+**Goal:** Close the 6 verification gaps identified by the v2.1 milestone audit: create retroactive Phase 28 VERIFICATION.md for SETT-01/02/03, and complete browser UAT for Phase 33's ANLY-01/ANLY-02/GRPH-01.
+
+**Status:** planned
+**Depends on:** Phase 28, Phase 33 (both code-complete)
+**Requirements:** SETT-01, SETT-02, SETT-03, ANLY-01, ANLY-02, GRPH-01
+**UI hint:** yes
+**Gap Closure:** Closes gaps from v2.1 milestone audit
+
+**Success Criteria:**
+1. 28-VERIFICATION.md exists with passed status covering SETT-01, SETT-02, SETT-03
+2. 33-VERIFICATION.md updated from human_needed to passed after browser UAT
+3. All 6 requirements checkboxes checked in REQUIREMENTS.md
+4. Re-audit shows 21/21 requirements satisfied
+
+---
+
 ## Traceability
 
 | Requirement | Phase | Category |
 |-------------|-------|----------|
-| SETT-01 | Phase 28 | Settings |
-| SETT-02 | Phase 28 | Settings |
-| SETT-03 | Phase 28 | Settings |
+| SETT-01 | Phase 28 (verified: Phase 35) | Settings |
+| SETT-02 | Phase 28 (verified: Phase 35) | Settings |
+| SETT-03 | Phase 28 (verified: Phase 35) | Settings |
 | TERM-01 | Phase 29 | Terminal |
 | TERM-02 | Phase 29 | Terminal |
 | TERM-03 | Phase 29 | Terminal |
@@ -157,9 +175,9 @@
 | UIEL-06 | Phase 31 | UI Elements |
 | VOIC-01 | Phase 32 | Voice Agent |
 | VOIC-02 | Phase 32 | Voice Agent |
-| ANLY-01 | Phase 33 | Analytics |
-| ANLY-02 | Phase 33 | Analytics |
-| GRPH-01 | Phase 33 | Graph |
+| ANLY-01 | Phase 33 (verified: Phase 35) | Analytics |
+| ANLY-02 | Phase 33 (verified: Phase 35) | Analytics |
+| GRPH-01 | Phase 33 (verified: Phase 35) | Graph |
 | MESH-01 | Phase 34 | .mesh Folder |
 
 **Coverage:** 21/21 requirements mapped ✓
