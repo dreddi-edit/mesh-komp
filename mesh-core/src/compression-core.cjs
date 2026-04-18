@@ -88,6 +88,12 @@ const MAX_CALL_SITES_PER_FILE = (() => {
   const normalized = Number.isFinite(configured) ? Math.trunc(configured) : fallback;
   return Math.max(10, Math.min(normalized, 2000));
 })();
+const MAX_QUERY_TOKENS_PER_FILE = (() => {
+  const configured = Number(process.env.MESH_CAPSULE_MAX_QUERY_TOKENS);
+  const fallback = 300;
+  const normalized = Number.isFinite(configured) ? Math.trunc(configured) : fallback;
+  return Math.max(10, Math.min(normalized, 5000));
+})();
 const MAX_LLM_FALLBACK_SOURCE_BYTES = (() => {
   const configured = Number(process.env.MESH_CAPSULE_MAX_LLM_FALLBACK_BYTES);
   const fallback = 800 * 1024; // Increased from 220 KB
