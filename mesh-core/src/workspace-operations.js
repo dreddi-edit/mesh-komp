@@ -111,6 +111,7 @@ const {
     TRANSPORT_ENVELOPE_VERSION,
     WORKSPACE_RECORD_VERSION,
     MAX_CALL_SITES_PER_FILE,
+    MAX_QUERY_TOKENS_PER_FILE,
     buildWorkspaceFileRecord,
     buildWorkspaceFileView,
     decodeRawStorage,
@@ -120,6 +121,13 @@ const {
     serializeWorkspaceFileRecord,
     suggestRecoverySpanIds,
 } = compressionCore;
+
+const MAX_QUERY_SNIPPETS = (() => {
+    const configured = Number(process.env.MESH_CAPSULE_MAX_QUERY_SNIPPETS);
+    const fallback = 5;
+    const normalized = Number.isFinite(configured) ? Math.trunc(configured) : fallback;
+    return Math.max(1, Math.min(normalized, 20));
+})();
 
 async function compressWorkspaceChunkFiles(incomingFiles, options = {}) {
     const recordMode = String(options.recordMode || 'initial').trim().toLowerCase() === 'full' ? 'full' : 'initial';
