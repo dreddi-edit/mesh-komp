@@ -169,6 +169,7 @@ let wsSessionReady = false;
 let isActive = false;
 let mode = 'vad';
 let state = 'idle';
+let muteSpeaker = false;
 let userTranscript = '';
 let aiTranscript = '';
 let animFrame = null;
@@ -471,6 +472,7 @@ function recoverVoiceStateAfterError() {
 }
 
 function stop() {
+  muteSpeaker = false;
   if (voiceRuntime.currentRun && ['running', 'awaiting_approval'].includes(String(voiceRuntime.currentRun.status || ''))) {
     appendChatMessage('assistant', `Voice session closed. Run ${voiceRuntime.currentRun.id || voiceRuntime.currentRunId} may still be active in the workspace.`);
   }
@@ -531,6 +533,7 @@ function setState(s) {
 
 /* ── Audio ── */
 async function startAudio() {
+  muteSpeaker = false;
   audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
   await audioCtx.resume();
   await audioCtx.audioWorklet.addModule('/assets/features/voice-audio-worklet.js');
@@ -604,6 +607,7 @@ async function connectWebSocket() {
           if (modelEl) modelEl.textContent = voiceRuntime.selectedCodingModel;
           break;
         case 'input_audio_buffer.speech_started':
+          muteSpeaker = false;
           setState('listening');
           speakerNode?.port.postMessage({ type: 'clear' });
           aiTranscript = '';
@@ -738,6 +742,7 @@ async function connectWebSocket() {
 
 function playAudioDelta(base64) {
   if (!speakerNode || !base64) return;
+  if (muteSpeaker) return;
   if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
   const pcm16 = base64ToInt16(base64);
   const float32 = new Float32Array(pcm16.length);
@@ -795,7 +800,15 @@ function createOrb() {
   const closeBtn = document.createElement('button');
   closeBtn.className = 'vc-orb-close';
   closeBtn.textContent = '\u2715';
-  closeBtn.addEventListener('click', (e) => { e.stopPropagation(); stop(); });
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state === 'speaking') {
+      muteSpeaker = true;
+      setState('ready');
+    } else {
+      stop();
+    }
+  });
 
   const txWrap = document.createElement('div');
   txWrap.className = 'vc-orb-tx';
