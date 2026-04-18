@@ -1682,6 +1682,7 @@ async function searchWorkspace(data = {}) {
     const limit = Math.min(Math.max(Number(data?.limit) || 12, 1), 50);
     const extensionHints = extractQueryExtensionHints(q);
     const queryContext = buildWorkspaceQueryContext(q);
+    const snippets = resolveQueryIndexSnippets(q, MAX_QUERY_SNIPPETS);
 
     if (workspaceMetadataStore.enabled && isUploadWorkspace()) {
         const workspaceId = selectedWorkspaceId(data);
@@ -1714,6 +1715,7 @@ async function searchWorkspace(data = {}) {
             limit,
             matches: matches.slice(0, limit),
             total: matches.length,
+            snippets,
         };
     }
 
@@ -1747,6 +1749,7 @@ async function searchWorkspace(data = {}) {
         limit,
         matches: matches.slice(0, limit),
         total: matches.length,
+        snippets,
     };
 }
 
