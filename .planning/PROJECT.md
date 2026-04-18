@@ -51,6 +51,10 @@ Mesh is a full-stack AI-native IDE and context-compression platform. The fronten
 
 ## Current State
 
+**Phase 36 complete** — Monaco Editor neueinbau (2026-04-18)
+
+Monaco 0.52.2 self-hosted: AMD loader synchron aus node_modules, data: URL workers (CSP-safe), polling-free initMonaco(). Kein CDN, kein Race Condition. Validated in Phase 36: EDIT-07 ✓ (code), EDIT-04/05/06 pending browser verify.
+
 **Last shipped:** v2.1 App Functionality & UX Fix Sweep (2026-04-18)
 
 v2.1 hat 21 Requirements in 8 Phasen abgedeckt, aber die Live-App zeigt, dass viele Fixes code-technisch korrekt aber funktional unvollständig waren. v2.2 schließt diese Lücke.
