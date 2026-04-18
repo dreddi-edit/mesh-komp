@@ -170,6 +170,7 @@ function dispatchToTreeSitterWorker(pathValue, text, fileType) {
         maxTreeWalkNodes: MAX_TREE_WALK_NODES,
         maxSymbols: MAX_SYMBOL_DISCOVERY,
         maxCallSites: MAX_CALL_SITES_PER_FILE,
+        maxQueryTokens: MAX_QUERY_TOKENS_PER_FILE,
         maxLlmFallbackBytes: MAX_LLM_FALLBACK_SOURCE_BYTES,
       },
     });
