@@ -2,30 +2,31 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Live App Bug Fix & Editor Overhaul
-status: planning
-last_updated: "2026-04-18T13:00:00.000Z"
+status: executing
+last_updated: "2026-04-18T11:44:07.780Z"
 last_activity: 2026-04-18
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 7
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-04-18 — Milestone v2.2 started
+Phase: 37
+Plan: Not started
+Status: Executing Phase 36
+Last activity: 2026-04-18
 
 ## Accumulated Context
 
 ### From v2.2 (Live App Bug Fix & Editor Overhaul)
 
 Starting. Key decisions:
+
 - Monaco komplett neu (kein CDN/AMD-Polling mehr)
 - Terminal Server-PTY-Fallback (node-pty bereits installiert)
 - Marketplace CORS via Backend-Proxy

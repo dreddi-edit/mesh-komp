@@ -7,10 +7,10 @@
 
 ### Editor (Monaco — kompletter Neueinbau)
 
-- [ ] **EDIT-04**: Monaco Editor lädt zuverlässig ohne Lade-Spinner oder Race Conditions beim App-Start
-- [ ] **EDIT-05**: Monaco Worker (TypeScript, JSON, CSS) funktionieren korrekt — keine grauen Lade-Kreise
-- [ ] **EDIT-06**: Syntax Highlighting für JS, TS, Python, CSS, HTML, JSON, Markdown funktioniert korrekt
-- [ ] **EDIT-07**: Monaco lädt ohne externe CDN-Abhängigkeit (self-hosted aus node_modules)
+- [x] **EDIT-04**: Monaco Editor lädt zuverlässig ohne Lade-Spinner oder Race Conditions beim App-Start
+- [x] **EDIT-05**: Monaco Worker (TypeScript, JSON, CSS) funktionieren korrekt — keine grauen Lade-Kreise
+- [x] **EDIT-06**: Syntax Highlighting für JS, TS, Python, CSS, HTML, JSON, Markdown funktioniert korrekt
+- [x] **EDIT-07**: Monaco lädt ohne externe CDN-Abhängigkeit (self-hosted aus node_modules)
 
 ### Terminal
 
