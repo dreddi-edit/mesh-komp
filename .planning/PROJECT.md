@@ -53,11 +53,11 @@ Backend quality sweep: error classes, security middleware, code splitting, servi
 - ✓ Implement actual speech-to-speech — AudioContext auto-suspend fixed via `audioCtx.resume()` in `startAudio()` and defensive guard in `playAudioDelta()`
 - ✓ Fix "keeps listening" spam — backend dead zone (1500ms), new `ready` orb state, visual-only empty transcription, `muteSpeaker` flag for mute-during-playback
 
-### Operations & Analytics (Validated in Phase 33)
+### Operations & Analytics (Validated in Phase 33, UAT confirmed Phase 35)
 - ✓ Show real compression analytics — ops panel hidden when no data, title reflects content
 - ✓ Remove fake log seed — operationsStore no longer seeds placeholder entries
 
-### Mesh Graph (Validated in Phase 33)
+### Mesh Graph (Validated in Phase 33, UAT confirmed Phase 35)
 - ✓ Muted teal-harmonized node colors — replaced bright yellow/orange with subdued palette
 - ✓ Softer edges — thinner strokes (0.6px), lower opacity (0.3)
 - ✓ Hover glow filter — prominent ring on hover, connected edge highlighting
@@ -89,4 +89,8 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-*Last updated: 2026-04-18 — Phase 34 complete (milestone v2.1 final phase)*
+### Verification Sweep (Validated in Phase 35)
+- ✓ Retroactive Phase 28 verification — SETT-01/02/03 confirmed against codebase
+- ✓ Phase 33 browser UAT — ANLY-01/ANLY-02/GRPH-01 visually confirmed
+
+*Last updated: 2026-04-18 — Phase 35 complete (all v2.1 audit gaps closed, 21/21 requirements satisfied)*
