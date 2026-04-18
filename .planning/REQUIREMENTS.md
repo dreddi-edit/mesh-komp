@@ -36,8 +36,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Voice Agent
 
-- [ ] **VOIC-01**: Voice agent responds with synthesized speech, not just text
-- [ ] **VOIC-02**: Voice agent stops listening gracefully after a response instead of spamming "sorry I didn't get that"
+- [x] **VOIC-01**: Voice agent responds with synthesized speech, not just text
+- [x] **VOIC-02**: Voice agent stops listening gracefully after a response instead of spamming "sorry I didn't get that"
 
 ### Analytics
 
@@ -94,8 +94,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UIEL-04 | Phase 31 | Complete |
 | UIEL-05 | Phase 31 | Complete |
 | UIEL-06 | Phase 31 | Complete |
-| VOIC-01 | Phase 32 | Pending |
-| VOIC-02 | Phase 32 | Pending |
+| VOIC-01 | Phase 32 | Complete |
+| VOIC-02 | Phase 32 | Complete |
 | ANLY-01 | Phase 33 | Pending |
 | ANLY-02 | Phase 33 | Pending |
 | GRPH-01 | Phase 33 | Pending |
