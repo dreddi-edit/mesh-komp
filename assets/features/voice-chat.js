@@ -211,6 +211,7 @@ const PALETTES = {
   running:    { r: 0,   g: 148, b: 255, r2: 108, g2: 205, b2: 255 },
   approval:   { r: 255, g: 188, b: 54,  r2: 255, g2: 227, b2: 128 },
   error:      { r: 255, g: 88,  b: 88,  r2: 255, g2: 146, b2: 146 },
+  ready:      { r: 48,  g: 90,  b: 160, r2: 80,  g2: 130, b2: 200 },
 };
 
 const voiceRuntime = {
@@ -466,7 +467,7 @@ function recoverVoiceStateAfterError() {
     setState('running');
     return;
   }
-  setState('listening');
+  setState('ready');
 }
 
 function stop() {
@@ -507,6 +508,7 @@ function setState(s) {
       running: 'Running Tools',
       approval: 'Awaiting Approval',
       error: 'Disconnected',
+      ready: 'Ready',
     };
     orbLabel.textContent = labels[s] || s;
   }
@@ -521,6 +523,7 @@ function setState(s) {
       running: 'Running tools',
       approval: 'Awaiting approval',
       error: 'Voice issue',
+      ready: 'Waiting for you',
     };
     surfaceState.textContent = surfaceLabels[s] || s;
   }
@@ -642,6 +645,13 @@ async function connectWebSocket() {
             else appendVoiceViewerEntry('assistant', msg.text);
           }
           break;
+        case 'voice.state.empty_transcription':
+          if (orbLabel) {
+            const prev = orbLabel.textContent;
+            orbLabel.textContent = '?';
+            setTimeout(() => { if (orbLabel) orbLabel.textContent = prev; }, 600);
+          }
+          break;
         case 'voice.file.open':
           if (msg.path) {
             appendVoiceViewerEntry('system', `Opened ${msg.path}`, { kind: 'tool', label: 'Open File' });
@@ -669,7 +679,7 @@ async function connectWebSocket() {
           break;
         case 'voice.run.completed':
           syncVoiceRun(msg.run);
-          if (state !== 'speaking') setState('listening');
+          if (state !== 'speaking') setState('ready');
           appendVoiceViewerEntry('assistant', msg.run?.reply || 'Run completed.', { kind: 'run', label: 'Run Complete' });
           break;
         case 'voice.action.requires_approval':
@@ -695,7 +705,7 @@ async function connectWebSocket() {
             if (state === 'speaking') {
               if (voiceRuntime.pendingActionIds.length) setState('approval');
               else if (voiceRuntime.currentRun && ['running', 'awaiting_approval'].includes(String(voiceRuntime.currentRun.status || ''))) setState('running');
-              else setState('listening');
+              else setState('ready');
             }
           }, 500);
           break;
@@ -923,6 +933,7 @@ function startVisualization() {
     /* Fallback breathing when no audio context */
     if (state === 'connecting') rawEnergy = 0.15 + Math.sin(t * 2.0) * 0.08;
     if (!isActive || state === 'idle') rawEnergy = 0.05 + Math.sin(t * 1.4) * 0.025;
+    if (state === 'ready') rawEnergy = 0.06 + Math.sin(t * 0.9) * 0.025;
 
     /* Snappy attack, slow decay — eruptions feel crisp */
     const lerpSpeed = rawEnergy > smoothEnergy ? 0.22 : 0.045;
