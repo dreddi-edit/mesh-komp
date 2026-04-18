@@ -53,15 +53,20 @@ Backend quality sweep: error classes, security middleware, code splitting, servi
 - ✓ Implement actual speech-to-speech — AudioContext auto-suspend fixed via `audioCtx.resume()` in `startAudio()` and defensive guard in `playAudioDelta()`
 - ✓ Fix "keeps listening" spam — backend dead zone (1500ms), new `ready` orb state, visual-only empty transcription, `muteSpeaker` flag for mute-during-playback
 
-### Operations & Analytics
-- Show real, meaningful compression analytics data
-- Remove nonsensical local server log entries
+### Operations & Analytics (Validated in Phase 33)
+- ✓ Show real compression analytics — ops panel hidden when no data, title reflects content
+- ✓ Remove fake log seed — operationsStore no longer seeds placeholder entries
 
-### Mesh Graph
-- Align graph visual design (colors, typography, layout) with the rest of the app
+### Mesh Graph (Validated in Phase 33)
+- ✓ Muted teal-harmonized node colors — replaced bright yellow/orange with subdued palette
+- ✓ Softer edges — thinner strokes (0.6px), lower opacity (0.3)
+- ✓ Hover glow filter — prominent ring on hover, connected edge highlighting
 
-### .mesh Folder
-- Drastically improve quality and structure of auto-generated .mesh files
+### .mesh Folder (Validated in Phase 34)
+- ✓ Consolidated 3 scattered generators into single provisionMeshFolder() outputting project.json, files.md, rules.md
+- ✓ Clean format: structured JSON + YAML-frontmatter markdown, no emojis
+- ✓ Secret scrubbing on package.json scripts
+- ✓ Regenerates on every indexing completion (early-return guard removed)
 
 ## Constraint
 - Brownfield: all improvements layered onto working v1.0 codebase
@@ -84,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-*Last updated: 2026-04-18 — Phase 32 complete*
+*Last updated: 2026-04-18 — Phase 34 complete (milestone v2.1 final phase)*
