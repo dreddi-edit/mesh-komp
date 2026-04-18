@@ -26,6 +26,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
 <link rel="stylesheet" href="/assets/app-workspace.css?v=20260408b">
+<link rel="stylesheet" href="/assets/monaco/vs/editor/editor.main.css">
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 <script src="/assets/dom-utils.js"></script>
@@ -503,18 +504,16 @@
 <script>
 window.MonacoEnvironment = {
   getWorkerUrl: function(_moduleId, label) {
-    var base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs';
-    var workerPath = '/editor/editor.worker.js';
+    var base = '/assets/monaco/vs';
+    var workerPath = '/language/typescript/tsWorker.js';
     if (label === 'json') workerPath = '/language/json/jsonWorker.js';
     else if (label === 'css' || label === 'scss' || label === 'less') workerPath = '/language/css/cssWorker.js';
     else if (label === 'html' || label === 'handlebars' || label === 'razor') workerPath = '/language/html/htmlWorker.js';
-    else if (label === 'typescript' || label === 'javascript') workerPath = '/language/typescript/tsWorker.js';
-    var blob = new Blob(["importScripts('" + base + workerPath + "');"], { type: 'text/javascript' });
-    return URL.createObjectURL(blob);
+    return 'data:text/javascript;charset=utf-8,' + encodeURIComponent('importScripts("' + base + workerPath + '");');
   }
 };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js" defer></script>
+<script src="/assets/monaco/vs/loader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/umd/idb-keyval-min.js" defer></script>
 <script type="module">
   import { Terminal } from 'https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/+esm';

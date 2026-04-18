@@ -1136,20 +1136,8 @@ async function refreshTree(){
 
 /* ═══ MONACO ═══ */
 function initMonaco(cb) {
-  const VS_BASE = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs';
-  const POLL_INTERVAL_MS = 50;
-  const MAX_WAIT_MS = 8000;
-  let elapsed = 0;
-  const tid = setInterval(() => {
-    elapsed += POLL_INTERVAL_MS;
-    if (typeof require !== 'undefined') {
-      clearInterval(tid);
-      require.config({ paths: { vs: VS_BASE } });
-      require(['vs/editor/editor.main'], () => { S.monacoReady = true; cb(); });
-    } else if (elapsed >= MAX_WAIT_MS) {
-      clearInterval(tid);
-    }
-  }, POLL_INTERVAL_MS);
+  require.config({ paths: { vs: '/assets/monaco/vs' } });
+  require(['vs/editor/editor.main'], () => { S.monacoReady = true; cb(); });
 }
 function createEditor(){
   if(S.editor||!S.monacoReady)return;const el=$('#monaco');if(!el)return;el.style.display='block';$('#welcomeScr')?.remove();
