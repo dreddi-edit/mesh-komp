@@ -49,9 +49,9 @@ Backend quality sweep: error classes, security middleware, code splitting, servi
 - ✓ Duplicate model dropdown — .chat-in-row select{display:none!important} hides native selects
 - ✓ Duplicate mode options — same CSS rule eliminates both native selects from .chat-in-row
 
-### Voice Agent
-- Implement actual speech-to-speech (currently text-only responses)
-- Fix "keeps listening" behavior that spams "sorry I didn't get that"
+### Voice Agent (Validated in Phase 32)
+- ✓ Implement actual speech-to-speech — AudioContext auto-suspend fixed via `audioCtx.resume()` in `startAudio()` and defensive guard in `playAudioDelta()`
+- ✓ Fix "keeps listening" spam — backend dead zone (1500ms), new `ready` orb state, visual-only empty transcription, `muteSpeaker` flag for mute-during-playback
 
 ### Operations & Analytics
 - Show real, meaningful compression analytics data
@@ -84,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-*Last updated: 2026-04-17 — Phase 31 complete*
+*Last updated: 2026-04-18 — Phase 32 complete*
