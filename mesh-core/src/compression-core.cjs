@@ -2398,6 +2398,7 @@ async function buildWorkspaceFileRecord(pathValue, rawText, options = {}) {
     })(),
     symbols,
     callSites: Array.isArray(baseCapsule.callSitesRaw) ? baseCapsule.callSitesRaw : [],
+    stringLiterals: Array.isArray(baseCapsule.stringLiteralsRaw) ? baseCapsule.stringLiteralsRaw : [],
     compressionStats: null,
     originalSize: Number(options.originalSizeOverride || rawStorage.rawBytes),
     compressedSize: transportEnvelope.compressedBytes || 0,
