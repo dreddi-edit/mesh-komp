@@ -244,6 +244,7 @@ app.use('/assets', express.static(path.join(REPO_ROOT, 'assets'), IMMUTABLE_CACH
 app.use('/pitch', express.static(path.join(REPO_ROOT, 'pitch'), STATIC_CACHE));
 app.use('/ccmon-web', express.static(path.join(REPO_ROOT, 'ccmon-web'), STATIC_CACHE));
 app.use('/node_modules/animejs', express.static(path.join(REPO_ROOT, 'node_modules', 'animejs'), STATIC_CACHE));
+app.use('/assets/monaco', express.static(path.join(REPO_ROOT, 'node_modules', 'monaco-editor', 'min'), STATIC_CACHE));
 
 
 // ── API documentation (Swagger UI at /api/docs) ──────────────────────────────

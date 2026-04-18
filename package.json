@@ -49,6 +49,7 @@
     "ini": "^6.0.0",
     "lru-cache": "^11.3.5",
     "marked": "^17.0.5",
+    "monaco-editor": "0.52.2",
     "neo-blessed": "^0.2.0",
     "node-pty": "^1.1.0",
     "node-sql-parser": "^5.4.0",
