@@ -1302,6 +1302,8 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
 
   const seenNames = new Set();
   const heuristicSymbolDeclarations = [];
+  const heuristicStringLiterals = [];
+  const STRING_LITERAL_RE = /["'`]([^"'`\n]{4,80})["'`]/g;
   const lines = rawText.split(/\r?\n/g);
 
   for (let i = 0; i < lines.length && symbolsSection.items.length < MAX_SYMBOL_DISCOVERY; i += 1) {
@@ -1329,6 +1331,14 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
     }
   }
 
+  for (const match of rawText.matchAll(STRING_LITERAL_RE)) {
+    const value = String(match[1] || '').trim();
+    if (!value || /^[0-9]+$/.test(value) || /^[^a-zA-Z]+$/.test(value)) continue;
+    const lineNum = rawText.slice(0, match.index).split('\n').length;
+    heuristicStringLiterals.push({ value: value.slice(0, 80), lineStart: lineNum });
+    if (heuristicStringLiterals.length >= MAX_QUERY_TOKENS_PER_FILE) break;
+  }
+
   if (symbolsSection.items.length === 0) {
     lines.filter(Boolean).slice(0, 12).forEach((line, index) => {
       const spanId = spanManager.addLineSpan(index + 1, "line", line);
@@ -1352,6 +1362,7 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
       ? "heuristic symbol extraction (no tree-sitter grammar for this language)"
       : "plain text fallback — no recognizable symbol patterns found",
     symbolDeclarations: heuristicSymbolDeclarations,
+    stringLiteralsRaw: heuristicStringLiterals,
     sections,
     spanMap: spanManager.spans,
   };
