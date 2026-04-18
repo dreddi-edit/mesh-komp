@@ -112,6 +112,7 @@ const {
     WORKSPACE_RECORD_VERSION,
     MAX_CALL_SITES_PER_FILE,
     MAX_QUERY_TOKENS_PER_FILE,
+    buildQueryIndexEntries,
     buildWorkspaceFileRecord,
     buildWorkspaceFileView,
     decodeRawStorage,
