@@ -52,8 +52,9 @@ const REPO_DOCS_PRIORITY = [
   'DEPLOY.md',
   'CLAUDE.md',
   'claude-overview.md',
-  '.mesh/instructions.md',
-  '.mesh/dependency-map.md',
+  '.mesh/project.json',
+  '.mesh/files.md',
+  '.mesh/rules.md',
 ];
 
 function escapeHtml(value) {

@@ -266,10 +266,7 @@ async function openLocalWorkspace(data = {}) {
     workspaceState.indexedAt = new Date().toISOString();
     persistWorkspaceState();
 
-    // Generate dependency map and single .mesh intelligence file after local indexing is complete
-    provisionDependencyMap({ rootPath, folderName }).catch(() => {});
-    provisionMeshFile({ rootPath, folderName }).catch(() => {});
-    enqueueIntelligenceJob({ rootPath, folderName });
+    provisionMeshFolder({ rootPath, folderName }).catch(() => {});
     enqueueWorkspaceEnrichment({ rootPath, folderName, workspaceId: workspaceState.workspaceId || '' });
     perf.flush({ discovered: files.length, indexed: next.size });
 
@@ -423,9 +420,7 @@ async function runIndexerForWorkspace(workspaceId) {
             indexerQueues.delete(workspaceId);
             // Final summary update
             try { await syncUploadWorkspaceSummary(workspaceId, { folderName }); } catch {}
-            // Generate dependency map after indexing is complete
-            provisionDependencyMap({ workspaceId, folderName }).catch(() => {});
-            enqueueIntelligenceJob({ workspaceId, folderName });
+            provisionMeshFolder({ workspaceId, folderName }).catch(() => {});
             enqueueWorkspaceEnrichment({ workspaceId, folderName });
         }
         perf.flush({ completed: totalCompleted, failed: totalFailed });
@@ -1472,6 +1467,291 @@ async function provisionMeshFile(ctx = {}) {
     console.log(`[mesh] Provisioned .mesh intelligence file at ${targetPath}`);
 }
 
+// ── Consolidated .mesh folder generator ──────────────────────────────────────
+
+const FRAMEWORK_PATTERNS = [
+    [/express/i, 'Express.js'], [/fastify/i, 'Fastify'], [/react/i, 'React'],
+    [/vue/i, 'Vue.js'], [/angular/i, 'Angular'], [/next[\\/]/i, 'Next.js'],
+    [/d3/i, 'D3.js'], [/monaco/i, 'Monaco Editor'], [/prisma/i, 'Prisma'],
+    [/drizzle/i, 'Drizzle ORM'], [/tailwind/i, 'Tailwind CSS'],
+    [/@azure/i, 'Azure SDK'], [/@anthropic/i, 'Anthropic SDK'],
+    [/openai/i, 'OpenAI SDK'], [/cosmos/i, 'Azure Cosmos DB'],
+    [/socket\.io/i, 'Socket.IO'], [/graphql/i, 'GraphQL'],
+    [/jest/i, 'Jest'], [/vitest/i, 'Vitest'], [/playwright/i, 'Playwright'],
+    [/webpack/i, 'Webpack'], [/vite/i, 'Vite'], [/esbuild/i, 'esbuild'],
+];
+
+const SECRET_RE = /(\$[A-Z_]*(?:TOKEN|SECRET|KEY|PASSWORD|CREDENTIAL)[A-Z_]*|(?:password|secret|token|api_key)\s*=\s*\S+)/gi;
+
+/**
+ * Builds project.json content — structured machine-readable data for the .mesh folder.
+ * @param {object[]} files - Workspace file records.
+ * @param {string} folderName - Human-readable workspace name.
+ * @param {object|null} packageJson - Parsed package.json or null.
+ * @returns {string} JSON string.
+ */
+function buildProjectJson(files, folderName, packageJson) {
+    const langCounts = {};
+    const frameworkHints = new Set();
+    for (const f of files) {
+        const lang = f.fileType || f.parserFamily || 'unknown';
+        langCounts[lang] = (langCounts[lang] || 0) + 1;
+        const sections = f.capsuleCache?.capsule?.sections || f.capsuleBase?.sections || [];
+        for (const s of sections) {
+            if (s.name !== 'imports' || !Array.isArray(s.items)) continue;
+            for (const item of s.items) {
+                const src = item.metadata?.source || item.label || '';
+                for (const [re, fw] of FRAMEWORK_PATTERNS) {
+                    if (re.test(src)) frameworkHints.add(fw);
+                }
+            }
+        }
+    }
+
+    const scrubSecrets = (str) => str.replace(SECRET_RE, '[REDACTED]');
+
+    const scripts = {};
+    if (packageJson?.scripts && typeof packageJson.scripts === 'object') {
+        for (const [k, v] of Object.entries(packageJson.scripts)) {
+            scripts[k] = scrubSecrets(String(v));
+        }
+    }
+
+    const deps = packageJson?.dependencies && typeof packageJson.dependencies === 'object'
+        ? Object.keys(packageJson.dependencies) : [];
+    const devDeps = packageJson?.devDependencies && typeof packageJson.devDependencies === 'object'
+        ? Object.keys(packageJson.devDependencies) : [];
+
+    return JSON.stringify({
+        metadata: {
+            generatedAt: new Date().toISOString(),
+            workspace: folderName,
+            fileCount: files.length,
+            generator: 'mesh-ide',
+        },
+        languages: langCounts,
+        frameworks: [...frameworkHints],
+        scripts,
+        dependencies: deps.slice(0, 30),
+        devDependencies: devDeps.slice(0, 20),
+    }, null, 2);
+}
+
+/**
+ * Builds files.md content — directory tree, dependency hubs, and API surface.
+ * @param {object[]} files - Workspace file records.
+ * @param {string} folderName - Human-readable workspace name.
+ * @returns {string} Markdown string with YAML frontmatter.
+ */
+function buildFilesMd(files, folderName) {
+    const now = new Date().toISOString();
+    const lines = [
+        '---',
+        `generated: "${now}"`,
+        `workspace: "${folderName}"`,
+        `files: ${files.length}`,
+        '---',
+        '',
+        `# ${folderName} -- File Index`,
+        '',
+    ];
+
+    const topDirs = new Map();
+    const fileList = [];
+    for (const f of files) {
+        const rawPath = String(f.path || '');
+        const relPath = rawPath.startsWith(`${folderName}/`) ? rawPath.slice(folderName.length + 1) : rawPath;
+        if (!relPath) continue;
+        fileList.push(relPath);
+        const firstSeg = relPath.split('/')[0];
+        if (relPath.includes('/')) topDirs.set(firstSeg, (topDirs.get(firstSeg) || 0) + 1);
+    }
+    fileList.sort();
+
+    lines.push('## Directory Structure', '');
+    const rootFiles = fileList.filter(fp => !fp.includes('/'));
+    for (const [dir, count] of [...topDirs.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        lines.push(`- ${dir}/ (${count} file${count !== 1 ? 's' : ''})`);
+    }
+    for (const rf of rootFiles) lines.push(`- ${rf}`);
+    lines.push('');
+
+    const importedByCount = new Map();
+    for (const f of files) {
+        if (!Array.isArray(f.dependencies)) continue;
+        for (const dep of f.dependencies) importedByCount.set(dep, (importedByCount.get(dep) || 0) + 1);
+    }
+    const hubs = [...importedByCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15);
+    if (hubs.length > 0) {
+        lines.push('## Dependency Hubs', '', '| File | Imported by |', '|------|------------|');
+        for (const [fp, count] of hubs) {
+            const relFp = fp.startsWith(`${folderName}/`) ? fp.slice(folderName.length + 1) : fp;
+            lines.push(`| \`${relFp}\` | ${count} file${count !== 1 ? 's' : ''} |`);
+        }
+        lines.push('');
+    }
+
+    const exports = [];
+    const endpoints = [];
+    for (const f of files) {
+        const relFp = String(f.path || '').startsWith(`${folderName}/`) ? String(f.path).slice(folderName.length + 1) : String(f.path || '');
+        const sections = f.capsuleCache?.capsule?.sections || f.capsuleBase?.sections || [];
+        for (const s of sections) {
+            if (!Array.isArray(s.items)) continue;
+            if (s.name === 'exports' || s.name === 'functions' || s.name === 'classes') {
+                for (const item of s.items) {
+                    const label = item.label || item.name || '';
+                    if (label && exports.length < 60) exports.push(`- \`${label}\` -- ${relFp}`);
+                }
+            }
+            if (s.name === 'routes' || s.name === 'endpoints') {
+                for (const item of s.items) {
+                    const method = item.metadata?.method ? `${item.metadata.method} ` : '';
+                    const label = item.label || '';
+                    if (label && endpoints.length < 40) endpoints.push(`- \`${method}${label}\` -- ${relFp}`);
+                }
+            }
+        }
+    }
+    if (exports.length > 0 || endpoints.length > 0) {
+        lines.push('## API Surface', '');
+        if (exports.length > 0) { lines.push('### Exports', '', ...exports, ''); }
+        if (endpoints.length > 0) { lines.push('### HTTP Endpoints', '', ...endpoints, ''); }
+    }
+
+    return lines.join('\n');
+}
+
+/**
+ * Builds rules.md content — detected coding conventions and workspace-specific rules.
+ * @param {object[]} files - Workspace file records.
+ * @param {string} folderName - Human-readable workspace name.
+ * @returns {string} Markdown string with YAML frontmatter.
+ */
+function buildRulesMd(files, folderName) {
+    const now = new Date().toISOString();
+    const jsFiles = files.filter(f => /\.(js|ts|jsx|tsx)$/.test(f.path || ''));
+    const indentSamples = [];
+    for (const f of files.slice(0, 20)) {
+        const raw = f.rawStorage?.content || f.modelContent || '';
+        const m = raw.match(/^(  |\t)/m);
+        if (m) indentSamples.push(m[1] === '\t' ? 'tabs' : '2-spaces');
+    }
+    const indent = indentSamples.filter(x => x === 'tabs').length > indentSamples.length / 2 ? 'tabs' : '2 spaces';
+
+    const langCounts = {};
+    for (const f of files) {
+        const lang = f.fileType || f.parserFamily || 'unknown';
+        langCounts[lang] = (langCounts[lang] || 0) + 1;
+    }
+    const topLangs = Object.entries(langCounts).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([l, c]) => `${l} (${c})`).join(', ');
+
+    const lines = [
+        '---',
+        `generated: "${now}"`,
+        `workspace: "${folderName}"`,
+        '---',
+        '',
+        `# ${folderName} -- Coding Rules`,
+        '',
+        '## Detected Conventions',
+        '',
+        `- **Indentation:** ${indent}`,
+        `- **Primary languages:** ${topLangs || 'unknown'}`,
+        `- **JS/TS files:** ${jsFiles.length}`,
+        '',
+        '## Rules',
+        '',
+        '- Match the indentation style of the file being edited.',
+        '- Prefer editing existing files over creating new ones.',
+        '- Keep changes minimal and focused on the task.',
+        '- Write complete, production-ready code. No TODOs or placeholders.',
+        '- Do not add comments unless the logic is non-obvious.',
+        '- Security: never hardcode secrets, always use parameterized queries, validate all external input.',
+        '',
+    ];
+
+    return lines.join('\n');
+}
+
+/**
+ * Provisions the .mesh/ folder with 3 consolidated files: project.json, files.md, rules.md.
+ * Replaces the old scattered generators (provisionMeshFile, provisionIntelligenceArtifacts,
+ * provisionDependencyMap, provisionMeshWorkspaceMetadata).
+ *
+ * @param {object} ctx
+ * @param {string} [ctx.rootPath] - Absolute path to the workspace root (local workspaces).
+ * @param {string} [ctx.workspaceId] - Cloud workspace ID.
+ * @param {string} [ctx.folderName] - Human-readable project name.
+ * @returns {Promise<void>}
+ */
+async function provisionMeshFolder(ctx = {}) {
+    const { rootPath, workspaceId, folderName } = ctx;
+    const name = folderName || workspaceState.folderName || 'workspace';
+
+    let files = [];
+    if (workspaceMetadataStore.enabled && workspaceId) {
+        files = await workspaceMetadataStore.listWorkspaceFiles(workspaceId);
+    } else if (workspaceState.folderName || workspaceState.workspaceId) {
+        files = [...workspaceState.files.values()];
+    }
+    if (!files.length) return;
+
+    let packageJson = null;
+    if (rootPath) {
+        try {
+            const raw = await fs.promises.readFile(path.join(rootPath, 'package.json'), 'utf8');
+            packageJson = JSON.parse(raw);
+        } catch {}
+    }
+
+    const projectJson = buildProjectJson(files, name, packageJson);
+    const filesMd = buildFilesMd(files, name);
+    const rulesMd = buildRulesMd(files, name);
+
+    if (rootPath) {
+        const meshDir = path.join(rootPath, '.mesh');
+        await fs.promises.mkdir(meshDir, { recursive: true });
+        await Promise.all([
+            fs.promises.writeFile(path.join(meshDir, 'project.json'), projectJson, 'utf8'),
+            fs.promises.writeFile(path.join(meshDir, 'files.md'), filesMd, 'utf8'),
+            fs.promises.writeFile(path.join(meshDir, 'rules.md'), rulesMd, 'utf8'),
+        ]);
+        console.log(`[mesh] Provisioned .mesh folder (3 files) at ${meshDir}`);
+        return;
+    }
+
+    if (workspaceMetadataStore.enabled && workspaceId) {
+        const meshFiles = [
+            { filename: 'project.json', content: projectJson, parser: 'json' },
+            { filename: 'files.md', content: filesMd, parser: 'markdown' },
+            { filename: 'rules.md', content: rulesMd, parser: 'markdown' },
+        ];
+        for (const { filename, content, parser } of meshFiles) {
+            const fullPath = `${name}/.mesh/${filename}`;
+            await workspaceMetadataStore.upsertWorkspaceFileRecord({
+                workspaceId,
+                folderName: name,
+                sourceKind: WORKSPACE_SOURCE_UPLOAD,
+                path: fullPath,
+                status: 'completed',
+                record: {
+                    path: fullPath,
+                    kind: 'source',
+                    description: `Mesh AI .mesh/${filename}`,
+                    originalSize: content.length,
+                    compressedSize: content.length,
+                    modelContent: content,
+                    capsuleMode: 'none',
+                    parserFamily: parser,
+                    storage: { provider: 'virtual', blobPath: fullPath },
+                },
+            });
+        }
+        console.log(`[mesh] Provisioned .mesh folder (3 files) for cloud workspace ${workspaceId}`);
+    }
+}
+
 async function openWorkspaceFile(data) {
     const requested = toSafePath(data?.path);
     const viewMode = String(data?.view || 'original');
@@ -2305,6 +2585,10 @@ export {
     drainIntelligenceQueue,
     provisionIntelligenceArtifacts,
     buildIntelligenceArtifacts,
+    provisionMeshFolder,
+    buildProjectJson,
+    buildFilesMd,
+    buildRulesMd,
     openWorkspaceFile,
     recoverWorkspaceSpans,
     saveWorkspaceFile,

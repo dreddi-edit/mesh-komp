@@ -139,16 +139,11 @@ async function provisionMeshWorkspaceMetadata(ctx = {}) {
     let tree = '';
     let pkgSummary = '';
     if (isLocal) {
-      const meshDir = path.join(rootPath, '.mesh');
-      const exists = await fs.promises.access(meshDir).then(() => true).catch(() => false);
-      if (exists) return;
       [tree, pkgSummary] = await Promise.all([
         generateMeshWorkspaceTree(rootPath),
         readPackageJsonSummary(rootPath),
       ]);
     } else if (isCloud) {
-      const existing = await workspaceMetadataStore.getWorkspaceFile(workspaceId, `${folderName}/${meshPath}`);
-      if (existing) return;
       tree = generateMeshWorkspaceTreeFromManifest(manifestFiles || [], folderName);
     } else {
       return;
