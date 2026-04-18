@@ -1645,6 +1645,38 @@ function buildWorkspaceQueryContext(rawQuery) {
     };
 }
 
+function resolveQueryIndexSnippets(q, limit) {
+    if (!q || !(workspaceState.queryIndex instanceof Map) || workspaceState.queryIndex.size === 0) return [];
+    const queryTokens = extractSearchTokens(q);
+    if (!queryTokens.length) return [];
+
+    const scoreMap = new Map(); // key: `${file}:${lineStart}` -> { entry, score }
+    for (const token of queryTokens) {
+        const hits = workspaceState.queryIndex.get(token) || [];
+        for (const hit of hits) {
+            const key = `${hit.file}:${hit.lineStart}`;
+            const existing = scoreMap.get(key);
+            if (existing) {
+                existing.score += 1 + (hit.kindBoost || 0);
+            } else {
+                scoreMap.set(key, { entry: hit, score: 1 + (hit.kindBoost || 0) });
+            }
+        }
+    }
+
+    return [...scoreMap.values()]
+        .sort((a, b) => b.score - a.score || a.entry.lineStart - b.entry.lineStart)
+        .slice(0, Math.max(1, Number(limit) || MAX_QUERY_SNIPPETS))
+        .map((item) => ({
+            file: item.entry.file,
+            lineStart: item.entry.lineStart,
+            lineEnd: item.entry.lineEnd,
+            snippet: item.entry.snippet,
+            kind: item.entry.kind,
+            score: item.score,
+        }));
+}
+
 async function searchWorkspace(data = {}) {
     const q = String(data?.q || data?.query || '').trim();
     const limit = Math.min(Math.max(Number(data?.limit) || 12, 1), 50);
