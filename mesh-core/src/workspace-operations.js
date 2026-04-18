@@ -110,6 +110,7 @@ const {
     LEGACY_WORKSPACE_ENCODING,
     TRANSPORT_ENVELOPE_VERSION,
     WORKSPACE_RECORD_VERSION,
+    MAX_CALL_SITES_PER_FILE,
     buildWorkspaceFileRecord,
     buildWorkspaceFileView,
     decodeRawStorage,
@@ -713,6 +714,29 @@ async function getWorkspaceGraph(data = {}) {
         }
     }
 
+    const symbolEdges = [];
+    if (data?.includeSymbolEdges) {
+        for (const file of files) {
+            if (!Array.isArray(file.callSites)) continue;
+            for (const site of file.callSites) {
+                if (!site.resolvedFile) continue;
+                const fromId = pathToId.get(file.path);
+                const toId = pathToId.get(site.resolvedFile);
+                if (!fromId || !toId || fromId === toId) continue;
+                symbolEdges.push({
+                    from: fromId,
+                    fromFile: file.path,
+                    fromLine: site.callerLine,
+                    callee: site.calleeName,
+                    to: toId,
+                    toFile: site.resolvedFile,
+                    toLine: site.resolvedLine,
+                    kind: 'call',
+                });
+            }
+        }
+    }
+
     return {
         ok: true,
         workspaceId: workspaceId || '',
@@ -721,6 +745,7 @@ async function getWorkspaceGraph(data = {}) {
         hasWorkspace: hasActiveWorkspace,
         nodes,
         edges,
+        symbolEdges,
     };
 }
 
@@ -910,6 +935,65 @@ async function enrichWorkspaceRecords(ctx = {}) {
             path: meta.path,
             kind: 'source',
         });
+    });
+
+    // ── Pass 1 complete: build workspace-wide symbol map ──────────────────────
+    const symbolMap = new Map();
+    const allFiles = workspaceMetadataStore.enabled && workspaceId
+        ? await workspaceMetadataStore.listWorkspaceFiles(workspaceId)
+        : [...workspaceState.files.values()];
+
+    for (const meta of allFiles) {
+        const syms = Array.isArray(meta.symbols) ? meta.symbols : [];
+        for (const sym of syms) {
+            if (!sym.name) continue;
+            const existing = symbolMap.get(sym.name) || [];
+            existing.push({ file: meta.path, lineStart: sym.lineStart, lineEnd: sym.lineEnd, kind: sym.kind });
+            symbolMap.set(sym.name, existing);
+        }
+    }
+    workspaceState.symbolMap = symbolMap;
+
+    // ── Pass 2: resolve call sites against symbol map ─────────────────────────
+    await mapWithConcurrency(allFiles, WORKSPACE_ENRICH_CONCURRENCY, async (meta) => {
+        if (!Array.isArray(meta.callSites) || meta.callSites.length === 0) return;
+
+        const seen = new Set();
+        const resolved = [];
+        for (const site of meta.callSites) {
+            const key = `${site.calleeName}:${site.callerLine}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+
+            const candidates = symbolMap.get(site.calleeName) || [];
+            if (!candidates.length) continue;
+
+            const match = candidates.find(c => c.file === meta.path) || candidates[0];
+            resolved.push({
+                callerLine: site.callerLine,
+                calleeName: site.calleeName,
+                resolvedFile: match.file,
+                resolvedLine: match.lineStart,
+            });
+            if (resolved.length >= MAX_CALL_SITES_PER_FILE) break;
+        }
+
+        const fileRecord = workspaceState.files.get(meta.path);
+        if (fileRecord) {
+            fileRecord.callSites = resolved;
+            workspaceState.files.set(meta.path, fileRecord);
+        }
+
+        if (workspaceMetadataStore.enabled && workspaceId) {
+            await workspaceMetadataStore.upsertWorkspaceFileRecord({
+                workspaceId,
+                folderName,
+                sourceKind: WORKSPACE_SOURCE_UPLOAD,
+                path: meta.path,
+                record: { ...meta, callSites: resolved },
+                status: 'completed',
+            });
+        }
     });
 
     if (!workspaceMetadataStore.enabled || !workspaceId) {

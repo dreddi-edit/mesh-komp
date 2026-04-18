@@ -322,6 +322,7 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
   const MAX_TREE_SITTER_SOURCE_BYTES = limits.maxTreeSitterBytes;
   const MAX_TREE_WALK_NODES = limits.maxTreeWalkNodes;
   const MAX_SYMBOL_DISCOVERY = limits.maxSymbols;
+  const MAX_CALL_SITES_PER_FILE = limits.maxCallSites || 200;
   const MAX_LLM_FALLBACK_SOURCE_BYTES = limits.maxLlmFallbackBytes;
 
   const rawText = String(text || "");
@@ -342,6 +343,7 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
   const literalsSection = createSection("literals", "P1");
   const elisionsSection = createSection("elisions", "P2");
   const seenSymbolNames = new Set();
+  const symbolDeclarations = [];
   let walkedNodes = 0;
 
   // Verbosity limits based on file size
@@ -472,7 +474,59 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
         spanIds: [spanId],
         priority: "P0",
       });
+      symbolDeclarations.push({
+        name: String(name || ''),
+        kind: String(type || ''),
+        lineStart: Number((node.startPosition?.row ?? 0) + 1),
+        lineEnd: Number((node.endPosition?.row ?? 0) + 1),
+        signature: String(signaturePreview(node, rawText) || '').slice(0, 140),
+      });
       if (symbolsSection.items.length >= maxSymbols) return false;
+      return true;
+    });
+  }
+
+  // ── Call site extraction ──────────────────────────────────────────────────
+  const callSitesRaw = [];
+  if (tree?.rootNode) {
+    const CALL_NODE_TYPES = new Set(['call_expression', 'call']);
+    let csWalked = 0;
+    walkTree(tree.rootNode, (node) => {
+      csWalked += 1;
+      if (csWalked > 100000) return false;
+      if (callSitesRaw.length >= MAX_CALL_SITES_PER_FILE) return false;
+      const ntype = String(node.type || '');
+      if (!CALL_NODE_TYPES.has(ntype)) return true;
+      const fnNode = typeof node.childForFieldName === 'function'
+        ? (node.childForFieldName('function') || node.namedChild(0))
+        : node.namedChild(0);
+      if (!fnNode) return true;
+      const fnType = String(fnNode.type || '');
+      let calleeName = null;
+      if (fnType === 'identifier') {
+        calleeName = nodeText(fnNode, rawText).trim();
+      } else if (fnType === 'member_expression') {
+        const propNode = fnNode.childForFieldName
+          ? (fnNode.childForFieldName('property') || fnNode.namedChild(fnNode.namedChildCount - 1))
+          : fnNode.namedChild(fnNode.namedChildCount - 1);
+        calleeName = propNode ? nodeText(propNode, rawText).trim() : null;
+      } else if (fnType === 'attribute') {
+        const attrNode = fnNode.childForFieldName
+          ? (fnNode.childForFieldName('attribute') || fnNode.namedChild(fnNode.namedChildCount - 1))
+          : fnNode.namedChild(fnNode.namedChildCount - 1);
+        calleeName = attrNode ? nodeText(attrNode, rawText).trim() : null;
+      } else if (fnType === 'selector_expression') {
+        const fieldNode = fnNode.childForFieldName
+          ? (fnNode.childForFieldName('field') || fnNode.namedChild(fnNode.namedChildCount - 1))
+          : fnNode.namedChild(fnNode.namedChildCount - 1);
+        calleeName = fieldNode ? nodeText(fieldNode, rawText).trim() : null;
+      }
+      if (calleeName && calleeName.length >= 2) {
+        callSitesRaw.push({
+          callerLine: Number((node.startPosition?.row ?? 0) + 1),
+          calleeName: String(calleeName).slice(0, 64),
+        });
+      }
       return true;
     });
   }
@@ -534,6 +588,8 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
         parserFamily: "heuristic-llm-compress",
         parseOk: true,
         fallbackReason: "",
+        symbolDeclarations,
+        callSitesRaw,
         sections: [section],
         spanMap: fallbackSpanManager.spans,
         isSkeleton: false,
@@ -548,6 +604,8 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
     parseOk,
     isSkeleton,
     fallbackReason: parseOk ? "" : "tree-sitter parse unavailable; heuristic code capsule used",
+    symbolDeclarations,
+    callSitesRaw,
     sections: [
       importsSection,
       symbolsSection,

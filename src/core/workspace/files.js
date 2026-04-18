@@ -384,7 +384,39 @@ async function localWorkspaceSave(pathInput, nextContent) {
     ? await packLocalBlobBackedWorkspaceRecord(requested, normalized, { storage: existing.storage, writeToBlob: true })
     : await packLocalWorkspaceContent(requested, normalized);
 
-  localAssistantWorkspace.files.set(requested, { path: requested, ...packed, kind: "source" });
+  // Update workspace symbolMap incrementally for this file
+  if (localAssistantWorkspace.symbolMap instanceof Map) {
+    for (const [name, entries] of localAssistantWorkspace.symbolMap) {
+      const filtered = entries.filter(e => e.file !== requested);
+      if (filtered.length === 0) {
+        localAssistantWorkspace.symbolMap.delete(name);
+      } else {
+        localAssistantWorkspace.symbolMap.set(name, filtered);
+      }
+    }
+    for (const sym of (packed.symbols || [])) {
+      if (!sym.name) continue;
+      const existing = localAssistantWorkspace.symbolMap.get(sym.name) || [];
+      existing.push({ file: requested, lineStart: sym.lineStart, lineEnd: sym.lineEnd, kind: sym.kind });
+      localAssistantWorkspace.symbolMap.set(sym.name, existing);
+    }
+    // Re-resolve callSites for this file using updated symbolMap
+    const resolvedSites = [];
+    const seen = new Set();
+    for (const site of (packed.callSites || [])) {
+      const key = `${site.calleeName}:${site.callerLine}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const candidates = localAssistantWorkspace.symbolMap.get(site.calleeName) || [];
+      if (!candidates.length) continue;
+      const match = candidates.find(c => c.file === requested) || candidates[0];
+      resolvedSites.push({ callerLine: site.callerLine, calleeName: site.calleeName, resolvedFile: match.file, resolvedLine: match.lineStart });
+    }
+    packed.callSites = resolvedSites;
+    localAssistantWorkspace.files.set(requested, { path: requested, ...packed, kind: 'source' });
+  } else {
+    localAssistantWorkspace.files.set(requested, { path: requested, ...packed, kind: "source" });
+  }
   if (!localAssistantWorkspace.folderName) localAssistantWorkspace.folderName = "workspace";
   localAssistantWorkspace.rootPath = null;
   localAssistantWorkspace.sourceKind = WORKSPACE_SOURCE_UPLOAD;

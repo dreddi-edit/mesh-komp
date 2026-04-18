@@ -82,6 +82,12 @@ const MAX_SYMBOL_DISCOVERY = (() => {
   const normalized = Number.isFinite(configured) ? Math.trunc(configured) : fallback;
   return Math.max(32, Math.min(normalized, 10000));
 })();
+const MAX_CALL_SITES_PER_FILE = (() => {
+  const configured = Number(process.env.MESH_CAPSULE_MAX_CALL_SITES);
+  const fallback = 200;
+  const normalized = Number.isFinite(configured) ? Math.trunc(configured) : fallback;
+  return Math.max(10, Math.min(normalized, 2000));
+})();
 const MAX_LLM_FALLBACK_SOURCE_BYTES = (() => {
   const configured = Number(process.env.MESH_CAPSULE_MAX_LLM_FALLBACK_BYTES);
   const fallback = 800 * 1024; // Increased from 220 KB
@@ -157,6 +163,7 @@ function dispatchToTreeSitterWorker(pathValue, text, fileType) {
         maxTreeSitterBytes: MAX_TREE_SITTER_SOURCE_BYTES,
         maxTreeWalkNodes: MAX_TREE_WALK_NODES,
         maxSymbols: MAX_SYMBOL_DISCOVERY,
+        maxCallSites: MAX_CALL_SITES_PER_FILE,
         maxLlmFallbackBytes: MAX_LLM_FALLBACK_SOURCE_BYTES,
       },
     });
@@ -579,6 +586,95 @@ function resolveWorkspacePath(sourcePath, importString, workspaceFilePaths = [])
   return "";
 }
 
+/**
+ * Extract call sites from a parsed AST tree.
+ * Returns raw call site data (callee names + caller lines) — resolution happens separately.
+ *
+ * @param {Object} tree - tree-sitter parse tree (may be null for non-tree-sitter files)
+ * @param {string} rawText - raw file text
+ * @param {string} parserFamily - 'javascript'|'typescript'|'python'|'go'|other
+ * @returns {{ callerLine: number, calleeName: string }[]}
+ */
+function extractCallSites(tree, rawText, parserFamily) {
+  const callSites = [];
+  if (!tree?.rootNode) return callSites;
+
+  const CALL_NODE_TYPES = new Set([
+    'call_expression', // JS, TS, Go
+    'call',            // Python
+  ]);
+
+  let walked = 0;
+  const MAX_WALK = 100000;
+
+  walkTree(tree.rootNode, (node) => {
+    walked += 1;
+    if (walked > MAX_WALK) return false;
+    if (callSites.length >= MAX_CALL_SITES_PER_FILE) return false;
+
+    const type = String(node.type || '');
+    if (!CALL_NODE_TYPES.has(type)) return true;
+
+    const calleeName = extractCalleeName(node, rawText, parserFamily);
+    if (!calleeName || calleeName.length < 2) return true;
+
+    callSites.push({
+      callerLine: Number((node.startPosition?.row ?? 0) + 1),
+      calleeName: String(calleeName).slice(0, 64),
+    });
+    return true;
+  });
+
+  return callSites;
+}
+
+/**
+ * Extract the callee function name from a call_expression / call node.
+ *
+ * @param {Object} callNode - tree-sitter call node
+ * @param {string} rawText - raw file text
+ * @param {string} parserFamily - grammar family string
+ * @returns {string|null}
+ */
+function extractCalleeName(callNode, rawText, parserFamily) {
+  const fnNode = typeof callNode.childForFieldName === 'function'
+    ? (callNode.childForFieldName('function') || callNode.namedChild(0))
+    : callNode.namedChild(0);
+  if (!fnNode) return null;
+
+  const fnType = String(fnNode.type || '');
+
+  if (fnType === 'identifier') {
+    return nodeText(fnNode, rawText).trim();
+  }
+
+  // JS/TS member_expression: obj.method() → extract 'method'
+  if (fnType === 'member_expression') {
+    const propNode = fnNode.childForFieldName
+      ? (fnNode.childForFieldName('property') || fnNode.namedChild(fnNode.namedChildCount - 1))
+      : fnNode.namedChild(fnNode.namedChildCount - 1);
+    return propNode ? nodeText(propNode, rawText).trim() : null;
+  }
+
+  // Python attribute: obj.method() → attribute node
+  if (fnType === 'attribute') {
+    const attrNode = fnNode.childForFieldName
+      ? (fnNode.childForFieldName('attribute') || fnNode.namedChild(fnNode.namedChildCount - 1))
+      : fnNode.namedChild(fnNode.namedChildCount - 1);
+    return attrNode ? nodeText(attrNode, rawText).trim() : null;
+  }
+
+  // Go selector_expression: pkg.Func() → field_identifier
+  if (fnType === 'selector_expression') {
+    const fieldNode = fnNode.childForFieldName
+      ? (fnNode.childForFieldName('field') || fnNode.namedChild(fnNode.namedChildCount - 1))
+      : fnNode.namedChild(fnNode.namedChildCount - 1);
+    return fieldNode ? nodeText(fieldNode, rawText).trim() : null;
+  }
+
+  return null;
+}
+
 function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
   const rawText = String(text || "");
   const sourceBytes = Buffer.byteLength(rawText, "utf8");
@@ -592,6 +688,7 @@ function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
   const literalsSection = createSection("literals", "P1");
   const elisionsSection = createSection("elisions", "P2");
   const seenSymbolNames = new Set();
+  const symbolDeclarations = [];
   let walkedNodes = 0;
 
   // Modernized Regex for broader coverage (supports indentation, comments, and multiple forms)
@@ -719,10 +816,19 @@ function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
         spanIds: [spanId],
         priority: "P0",
       });
+      symbolDeclarations.push({
+        name: String(name || ''),
+        kind: String(type || ''),
+        lineStart: Number((node.startPosition?.row ?? 0) + 1),
+        lineEnd: Number((node.endPosition?.row ?? 0) + 1),
+        signature: String(signaturePreview(node, rawText) || '').slice(0, 140),
+      });
       if (symbolsSection.items.length >= MAX_SYMBOL_DISCOVERY) return false;
       return true;
     });
   }
+
+  const callSitesRaw = extractCallSites(tree, rawText, fileType?.parserFamily || '');
 
   const routeLines = extractRegexLines(
     rawText,
@@ -770,6 +876,8 @@ function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
     parserFamily: parseOk ? fileType.parserFamily : "heuristic",
     parseOk,
     fallbackReason,
+    symbolDeclarations,
+    callSitesRaw,
     sections: [
       importsSection,
       symbolsSection,
@@ -1139,6 +1247,7 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
   ];
 
   const seenNames = new Set();
+  const heuristicSymbolDeclarations = [];
   const lines = rawText.split(/\r?\n/g);
 
   for (let i = 0; i < lines.length && symbolsSection.items.length < MAX_SYMBOL_DISCOVERY; i += 1) {
@@ -1155,11 +1264,17 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
         spanIds: [spanId],
         priority: "P0",
       });
+      heuristicSymbolDeclarations.push({
+        name: String(name),
+        kind: String(kind === 'class' ? 'class' : 'function'),
+        lineStart: i + 1,
+        lineEnd: i + 1,
+        signature: String(line.trim().slice(0, 140)),
+      });
       break;
     }
   }
 
-  // If no symbols found, fall back to showing the first 12 non-empty lines
   if (symbolsSection.items.length === 0) {
     lines.filter(Boolean).slice(0, 12).forEach((line, index) => {
       const spanId = spanManager.addLineSpan(index + 1, "line", line);
@@ -1182,6 +1297,7 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
     fallbackReason: symbolsSection.items.length > 0
       ? "heuristic symbol extraction (no tree-sitter grammar for this language)"
       : "plain text fallback — no recognizable symbol patterns found",
+    symbolDeclarations: heuristicSymbolDeclarations,
     sections,
     spanMap: spanManager.spans,
   };
@@ -2158,6 +2274,9 @@ async function buildWorkspaceFileRecord(pathValue, rawText, options = {}) {
     });
   const fileTypeInfo = detectFileType(normalizedPath, normalizedText);
   const baseCapsule = await buildBaseCapsule(normalizedPath, normalizedText, fileTypeInfo);
+  const symbols = Array.isArray(baseCapsule.symbolDeclarations)
+    ? baseCapsule.symbolDeclarations.slice(0, MAX_SYMBOL_DISCOVERY)
+    : [];
   const capsuleVariants = buildCapsuleVariants(normalizedPath, normalizedText, fileTypeInfo, baseCapsule, {
     overrideRawBytes: Number(options.originalSizeOverride || rawStorage.rawBytes),
   });
@@ -2223,6 +2342,8 @@ async function buildWorkspaceFileRecord(pathValue, rawText, options = {}) {
       }
       return deps;
     })(),
+    symbols,
+    callSites: Array.isArray(baseCapsule.callSitesRaw) ? baseCapsule.callSitesRaw : [],
     compressionStats: null,
     originalSize: Number(options.originalSizeOverride || rawStorage.rawBytes),
     compressedSize: transportEnvelope.compressedBytes || 0,
@@ -2536,9 +2657,37 @@ function selectTierForBudget(record) {
   return "ultra";
 }
 
+/**
+ * Format a symbol call chain into human-readable strings for AI context injection.
+ *
+ * @param {string} startFile - file path where the chain starts
+ * @param {Array} callSites - callSites[] from the starting file record (must have resolvedFile/resolvedLine)
+ * @param {Map} symbolMap - workspace-wide symbolMap from workspaceState.symbolMap
+ * @param {number} [maxHops=3] - max chain depth
+ * @returns {string[]} array of formatted chain strings, one per resolved call site
+ */
+function formatSymbolChain(startFile, callSites, symbolMap, maxHops = 3) {
+  if (!Array.isArray(callSites) || !symbolMap) return [];
+  const lines = [];
+
+  for (const site of callSites) {
+    if (!site.resolvedFile || !site.resolvedLine) continue;
+
+    const startLabel = `${startFile}:L${site.callerLine}`;
+    const chain = `${startLabel} \u2192 ${site.calleeName}() in ${site.resolvedFile}:L${site.resolvedLine}`;
+    lines.push(chain);
+    if (lines.length >= 20) break;
+  }
+
+  return lines;
+}
+
 module.exports = {
   DEFAULT_CHUNK_SIZE,
   LEGACY_WORKSPACE_ENCODING,
+  MAX_CALL_SITES_PER_FILE,
+  extractCallSites,
+  formatSymbolChain,
   MAX_TRANSPORT_CHUNKS,
   MAX_TRANSPORT_CHUNK_BYTES,
   MAX_TRANSPORT_DECOMPRESSED_BYTES,

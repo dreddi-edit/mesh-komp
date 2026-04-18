@@ -125,6 +125,7 @@ export const workspaceState = {
     sessionId:          null,
     sourceKind:         WORKSPACE_SOURCE_UPLOAD,
     files:              new Map(),
+    symbolMap:          new Map(), // Map<symbolName, {file, lineStart, lineEnd, kind}[]>
     fileCountTotal:     0,
     fileCountCompleted: 0,
     fileCountFailed:    0,
