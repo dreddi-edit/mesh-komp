@@ -2749,11 +2749,88 @@ function formatSymbolChain(startFile, callSites, symbolMap, maxHops = 3) {
   return lines;
 }
 
+/**
+ * Build inverted index entries from a single file record's symbols and string literals.
+ * Returns flat array of {token, file, lineStart, lineEnd, snippet, kind, kindBoost} for
+ * insertion into workspaceState.queryIndex.
+ *
+ * @param {Object} fileRecord - workspace file record with symbols[] and stringLiterals[]
+ * @returns {{ token: string, file: string, lineStart: number, lineEnd: number, snippet: string, kind: string, kindBoost: number }[]}
+ */
+function buildQueryIndexEntries(fileRecord) {
+  const entries = [];
+  if (!fileRecord?.path) return entries;
+  const filePath = String(fileRecord.path);
+
+  const tokenize = (text) => {
+    return String(text || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/g)
+      .filter(Boolean)
+      .filter((t) => t.length >= 3);
+  };
+
+  const FUNCTION_KINDS = new Set([
+    'function_declaration', 'generator_function_declaration', 'function_definition',
+    'method_declaration', 'method_definition', 'method', 'singleton_method',
+    'function_item',
+  ]);
+  const CLASS_KINDS = new Set([
+    'class_declaration', 'class_definition', 'class',
+    'interface_declaration', 'trait_declaration', 'struct_item',
+    'enum_declaration', 'enum_item', 'trait_item', 'impl_item',
+    'class_specifier', 'struct_specifier',
+  ]);
+  const EXPORTED_KINDS = new Set(['exported']);
+
+  for (const sym of (Array.isArray(fileRecord.symbols) ? fileRecord.symbols : [])) {
+    if (!sym.name) continue;
+    const kindBoost = CLASS_KINDS.has(sym.kind) || FUNCTION_KINDS.has(sym.kind) ? 40
+      : EXPORTED_KINDS.has(sym.kind) ? 25 : 0;
+    const snippet = String(sym.signature || sym.name).slice(0, 140);
+    const tokensToIndex = new Set([
+      ...tokenize(sym.name),
+      ...tokenize(sym.signature || ''),
+    ]);
+    for (const token of tokensToIndex) {
+      entries.push({
+        token,
+        file: filePath,
+        lineStart: Number(sym.lineStart || 1),
+        lineEnd: Number(sym.lineEnd || sym.lineStart || 1),
+        snippet,
+        kind: String(sym.kind || ''),
+        kindBoost,
+      });
+    }
+  }
+
+  for (const lit of (Array.isArray(fileRecord.stringLiterals) ? fileRecord.stringLiterals : [])) {
+    if (!lit.value) continue;
+    const snippet = String(lit.value).slice(0, 80);
+    const tokensToIndex = new Set(tokenize(lit.value));
+    for (const token of tokensToIndex) {
+      entries.push({
+        token,
+        file: filePath,
+        lineStart: Number(lit.lineStart || 1),
+        lineEnd: Number(lit.lineStart || 1),
+        snippet,
+        kind: 'string_literal',
+        kindBoost: 15,
+      });
+    }
+  }
+
+  return entries;
+}
+
 module.exports = {
   DEFAULT_CHUNK_SIZE,
   LEGACY_WORKSPACE_ENCODING,
   MAX_CALL_SITES_PER_FILE,
   MAX_QUERY_TOKENS_PER_FILE,
+  buildQueryIndexEntries,
   extractCallSites,
   formatSymbolChain,
   MAX_TRANSPORT_CHUNKS,
