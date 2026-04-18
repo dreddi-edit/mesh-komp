@@ -14,10 +14,10 @@
 
 ### Semantic Query Index
 
-- [ ] **IDX-01**: Pre-built search index over code symbols, function names, and user-facing text strings built at workspace index time
-- [ ] **IDX-02**: Query resolution at request time — user entry phrase resolves to ranked code snippets with exact file:line ranges before AI sees anything
-- [ ] **IDX-03**: Index covers at minimum: function names, class names, exported identifiers, string literals, and comment keywords
-- [ ] **IDX-04**: Query index incrementally updated on file save alongside symbol index
+- [x] **IDX-01**: Pre-built search index over code symbols, function names, and user-facing text strings built at workspace index time
+- [x] **IDX-02**: Query resolution at request time — user entry phrase resolves to ranked code snippets with exact file:line ranges before AI sees anything
+- [x] **IDX-03**: Index covers at minimum: function names, class names, exported identifiers, string literals, and comment keywords
+- [x] **IDX-04**: Query index incrementally updated on file save alongside symbol index
 
 ### Capsule Quality Improvements
 
