@@ -41,12 +41,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Analytics
 
-- [ ] **ANLY-01**: Operations & Compression Analytics shows real, meaningful data
-- [ ] **ANLY-02**: Analytics does not display nonsensical local server log entries
+- [x] **ANLY-01**: Operations & Compression Analytics shows real, meaningful data
+- [x] **ANLY-02**: Analytics does not display nonsensical local server log entries
 
 ### Graph
 
-- [ ] **GRPH-01**: Mesh graph visual style (colors, typography, layout) matches the rest of the app
+- [x] **GRPH-01**: Mesh graph visual style (colors, typography, layout) matches the rest of the app
 
 ### .mesh Folder
 
@@ -79,9 +79,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SETT-01 | Phase 28 (verified: Phase 35) | Pending |
-| SETT-02 | Phase 28 (verified: Phase 35) | Pending |
-| SETT-03 | Phase 28 (verified: Phase 35) | Pending |
+| SETT-01 | Phase 28 (verified: Phase 35) | Complete |
+| SETT-02 | Phase 28 (verified: Phase 35) | Complete |
+| SETT-03 | Phase 28 (verified: Phase 35) | Complete |
 | TERM-01 | Phase 29 | Complete |
 | TERM-02 | Phase 29 | Complete |
 | TERM-03 | Phase 29 | Complete |
@@ -96,9 +96,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UIEL-06 | Phase 31 | Complete |
 | VOIC-01 | Phase 32 | Complete |
 | VOIC-02 | Phase 32 | Complete |
-| ANLY-01 | Phase 33 (verified: Phase 35) | Pending |
-| ANLY-02 | Phase 33 (verified: Phase 35) | Pending |
-| GRPH-01 | Phase 33 (verified: Phase 35) | Pending |
+| ANLY-01 | Phase 33 (verified: Phase 35) | Complete |
+| ANLY-02 | Phase 33 (verified: Phase 35) | Complete |
+| GRPH-01 | Phase 33 (verified: Phase 35) | Complete |
 | MESH-01 | Phase 34 | Complete |
 
 **Coverage:**
