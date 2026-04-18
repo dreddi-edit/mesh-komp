@@ -531,6 +531,39 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
     });
   }
 
+  // Extract string literals for query index (self-contained — cannot import compression-core)
+  const stringLiteralsRaw = [];
+  if (tree?.rootNode) {
+    const STRING_NODE_TYPES_W = new Set([
+      'string',
+      'string_fragment',
+      'template_string',
+      'interpreted_string_literal',
+      'raw_string_literal',
+    ]);
+    let slWalked = 0;
+    const MAX_SL_WALK = 100000;
+    const maxQueryTokens = limits.maxQueryTokens || 300;
+    walkTree(tree.rootNode, (node) => {
+      slWalked += 1;
+      if (slWalked > MAX_SL_WALK) return false;
+      if (stringLiteralsRaw.length >= maxQueryTokens) return false;
+      const type = String(node.type || '');
+      if (!STRING_NODE_TYPES_W.has(type)) return true;
+      const start = node.startIndex;
+      const end = node.endIndex;
+      const raw = rawText.slice(start, end).replace(/^["'`]|["'`]$/g, '').trim();
+      if (raw.length < 4) return true;
+      if (/^[0-9]+$/.test(raw)) return true;
+      if (/^[^a-zA-Z]+$/.test(raw)) return true;
+      stringLiteralsRaw.push({
+        value: raw.slice(0, 80),
+        lineStart: Number((node.startPosition?.row ?? 0) + 1),
+      });
+      return true;
+    });
+  }
+
   const routeLines = extractRegexLines(
     rawText,
     /\b(?:app|router)\.(get|post|put|delete|patch|use)\s*\(\s*["'`]([^"'`]+)["'`]/,
@@ -590,6 +623,7 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
         fallbackReason: "",
         symbolDeclarations,
         callSitesRaw,
+        stringLiteralsRaw,
         sections: [section],
         spanMap: fallbackSpanManager.spans,
         isSkeleton: false,
@@ -606,6 +640,7 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
     fallbackReason: parseOk ? "" : "tree-sitter parse unavailable; heuristic code capsule used",
     symbolDeclarations,
     callSitesRaw,
+    stringLiteralsRaw,
     sections: [
       importsSection,
       symbolsSection,
