@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: idle
-last_updated: "2026-04-18T12:00:00.000Z"
+milestone: v2.2
+milestone_name: Live App Bug Fix & Editor Overhaul
+status: planning
+last_updated: "2026-04-18T13:00:00.000Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 0
@@ -16,12 +16,19 @@ progress:
 
 ## Current Position
 
-Phase: None
-Plan: None
-Status: Between milestones (v2.1 shipped, next not yet defined)
-Last activity: 2026-04-18
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-18 — Milestone v2.2 started
 
 ## Accumulated Context
+
+### From v2.2 (Live App Bug Fix & Editor Overhaul)
+
+Starting. Key decisions:
+- Monaco komplett neu (kein CDN/AMD-Polling mehr)
+- Terminal Server-PTY-Fallback (node-pty bereits installiert)
+- Marketplace CORS via Backend-Proxy
 
 ### From v2.1 (App Functionality & UX Fix Sweep)
 
@@ -32,7 +39,7 @@ Last activity: 2026-04-18
 - Voice: AudioContext fix, dead zone, ready orb, muteSpeaker (Phase 32)
 - Analytics: real data, conditional rendering; Graph: muted palette, hover glow (Phase 33)
 - .mesh folder: provisionMeshFolder consolidation (Phase 34)
-- Verification sweep: retroactive Phase 28 verification, Phase 33 browser UAT (Phase 35)
+- Verification sweep (Phase 35)
 
 ### From v2.0 (Full-Stack Quality Sweep)
 
@@ -40,7 +47,6 @@ Last activity: 2026-04-18
 - Code splitting: 5 of 7 monoliths split, service layer DI established (Phases 24-25)
 - AWS infra: CloudFront, ALB, Auto Scaling, CloudWatch observability (Phases 11-12)
 - Compression engine: full language coverage (Phase 15)
-- Previous phases numbered 1–27 (1–15 from earlier work, 19–27 from v2.0)
 
 ### Carried Forward
 
@@ -58,5 +64,3 @@ None.
 |---|-------------|------|--------|-----------|
 | 260415-pni | Create pitch deck and one-pager for Mesh startup accelerator applications | 2026-04-15 | — | [260415-pni-create-pitch-deck-and-one-pager-for-mesh](.planning/quick/260415-pni-create-pitch-deck-and-one-pager-for-mesh/) |
 | 260416-43t | Security audit — audit codebase for vulnerabilities and fix CRITICAL/HIGH findings | 2026-04-16 | dcf8a80 | [260416-43t-security-audit-bitte](.planning/quick/260416-43t-security-audit-bitte/) |
-
-Last activity: 2026-04-16
