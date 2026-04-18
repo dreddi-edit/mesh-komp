@@ -16,6 +16,7 @@ const {
   buildWorkspaceFileRecord,
   buildWorkspaceFileView,
   ensureWorkspaceFileRecord,
+  buildQueryIndexEntries,
 } = require('../../../mesh-core/src/compression-core.cjs');
 
 let localWorkspaceEnrichmentRunning = false;
