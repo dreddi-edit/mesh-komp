@@ -15,49 +15,37 @@ Mesh is a full-stack AI-native IDE and context-compression platform. The fronten
 - `views/settings.njk` — SPA settings hub
 - `views/marketplace.njk` — Extension marketplace
 
-## Current Milestone: v2.2 — Live App Bug Fix & Editor Overhaul
+## Current Milestone: v2.15 — Compression Intelligence
 
-**Goal:** Fix alle 8 bekannten Live-App-Bugs und Monaco-Editor komplett neu einbauen.
+**Goal:** Make Mesh's compression pipeline a sharp competitive moat — compute-side context assembly so the AI arrives with a pre-built briefing (exact file:line ranges) instead of reasoning about where to look.
 
 **Target features:**
 
-### Editor (Monaco — kompletter Neueinbau)
-- Monaco-Editor vollständig neu implementieren — kein CDN-Race-Condition, kein AMD-Polling-Hack
-- Eigenes Bundle oder Worker-basiertes Setup das zuverlässig und ohne Spinner lädt
+### Symbol Dependency Graph
+- Cross-file call chain resolution with exact line numbers (onClick at LoginButton.tsx:24 → authService.login() at auth.ts:58 → POST /api/auth at routes.js:14)
+- Symbol-level index built at workspace index time, not at query time
+- Exposes to AI as structured context: "button X calls function Y at file:line"
 
-### Status Bar / Indexing
-- False "Indexing..." beim Öffnen ohne Folder eliminieren
+### Semantic Query Index
+- Pre-built search index over code symbols and user-facing text
+- Query "fix login button" resolves to exact file:line matches before AI sees anything
+- Compute does the search, AI gets the answer
 
-### Terminal
-- Server-PTY-Fallback wenn kein lokaler Agent verbunden ist (node-pty ist bereits vorhanden)
-- Terminal muss sofort nutzbar sein ohne Setup-Schritte
+### Capsule Quality Improvements
+- Richer capsule content: export surfaces, dependency edges, call graph summaries
+- Better project-level orientation so Claude understands the codebase holistically
 
-### Marketplace
-- CORS-Problem beim Open-VSX-Fetch lösen (Backend-Proxy oder iframe-Alternative)
-- Extensions werden korrekt angezeigt
-
-### Settings
-- Auth-Redirect beim Zurückgehen zum Workspace verhindern
-- Theme-Default korrekt (dark, nicht light)
-
-### Voice Agent
-- AWS Polly Speech Synthesis tatsächlich aktivieren — Audio-Ausgabe im Browser
-
-### FOUC (Flash of Unstyled Content)
-- Elemente die vor JS-Initialisierung sichtbar sind verstecken
-
-### .mesh Folder
-- Qualitativ hochwertige, lesbare Inhalte in `project.json`, `files.md`, `rules.md`
+### Targeted Reads + Large File Chunking
+- AI reads specific function/class via tree-sitter AST, not the whole file
+- Files above threshold chunked by AST node — no more 40k token reads for a 10k-line file
 
 ## Current State
 
-**Phase 36 complete** — Monaco Editor neueinbau (2026-04-18)
+**Milestone v2.15 started** (2026-04-18) — Compression Intelligence
 
-Monaco 0.52.2 self-hosted: AMD loader synchron aus node_modules, data: URL workers (CSP-safe), polling-free initMonaco(). Kein CDN, kein Race Condition. Validated in Phase 36: EDIT-07 ✓ (code), EDIT-04/05/06 pending browser verify.
+tree-sitter already parses every file into ASTs. Capsule pipeline already compresses and serializes. Missing: symbol-level cross-file resolution, semantic search index, and targeted reads. v2.2 phases 37-42 (terminal, marketplace, settings, voice, FOUC, .mesh) remain in backlog.
 
-**Last shipped:** v2.1 App Functionality & UX Fix Sweep (2026-04-18)
-
-v2.1 hat 21 Requirements in 8 Phasen abgedeckt, aber die Live-App zeigt, dass viele Fixes code-technisch korrekt aber funktional unvollständig waren. v2.2 schließt diese Lücke.
+**Last shipped:** v2.2 partial — Phase 36 complete (Monaco self-hosted, no CDN/polling). v2.1 shipped 2026-04-18.
 
 <details>
 <summary>Previous Milestones</summary>

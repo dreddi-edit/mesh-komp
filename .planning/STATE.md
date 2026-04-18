@@ -1,35 +1,43 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.2
-milestone_name: Live App Bug Fix & Editor Overhaul
-status: executing
-last_updated: "2026-04-18T11:44:07.780Z"
+milestone: v2.15
+milestone_name: Compression Intelligence
+status: planning
+last_updated: "2026-04-18T12:00:00.000Z"
 last_activity: 2026-04-18
 progress:
-  total_phases: 7
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 37
-Plan: Not started
-Status: Executing Phase 36
-Last activity: 2026-04-18
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-18 — Milestone v2.15 started
 
 ## Accumulated Context
 
-### From v2.2 (Live App Bug Fix & Editor Overhaul)
+### From v2.15 (Compression Intelligence)
 
 Starting. Key decisions:
 
-- Monaco komplett neu (kein CDN/AMD-Polling mehr)
-- Terminal Server-PTY-Fallback (node-pty bereits installiert)
-- Marketplace CORS via Backend-Proxy
+- Compute-side context assembly: server pre-resolves file:line ranges before AI sees anything
+- Symbol dependency graph: cross-file call chains with exact line numbers (not file-level)
+- Semantic query index: user intent → code snippets via pre-built search index
+- Capsules stay: richer content for project-level orientation
+- Targeted reads: tree-sitter AST node extraction, not whole-file reads
+- Milestone order: v2.15 takes priority over remaining v2.2 phases (37-42 in backlog)
+
+### From v2.2 (Live App Bug Fix & Editor Overhaul — partial)
+
+- Phase 36 complete: Monaco self-hosted, no CDN, no polling (2026-04-18)
+- Phases 37-42 deferred to backlog (terminal PTY, marketplace, settings, voice, FOUC, .mesh)
 
 ### From v2.1 (App Functionality & UX Fix Sweep)
 
