@@ -567,15 +567,15 @@
             }
 
             const FILE_COLORS = {
-                directory: '#e8a838',
-                javascript: '#f7df1e',
-                typescript: '#4fc3f7',
-                html: '#ff7043',
-                css: '#40c4ff',
-                json: '#69f0ae',
-                python: '#80cbc4',
-                markdown: '#ce93d8',
-                _default: '#b0bec5',
+                directory: '#7a8a9e',
+                javascript: '#8e9d6b',
+                typescript: '#6b9daa',
+                html: '#9e7a6b',
+                css: '#6b8a9e',
+                json: '#7a9e8a',
+                python: '#7a8e9e',
+                markdown: '#9e7a9e',
+                _default: '#7a8490',
             };
 
             function getFileTypeColor(type) {
@@ -602,7 +602,7 @@
                 .attr('viewBox', '-0 -4 8 8')
                 .attr('refX', 22).attr('refY', 0)
                 .attr('orient', 'auto')
-                .attr('markerWidth', 5).attr('markerHeight', 5)
+                .attr('markerWidth', 4).attr('markerHeight', 4)
                 .append('path')
                 .attr('d', 'M 0,-4 L 8,0 L 0,4')
                 .attr('fill', 'var(--tx3)')
@@ -613,6 +613,13 @@
             const feMerge = glowFilter.append('feMerge');
             feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
             feMerge.append('feMergeNode').attr('in', 'blur');
+
+            const hoverGlow = defs.append('filter').attr('id', 'hover-glow')
+                .attr('x', '-80%').attr('y', '-80%').attr('width', '260%').attr('height', '260%');
+            hoverGlow.append('feGaussianBlur').attr('in', 'SourceGraphic').attr('stdDeviation', '4').attr('result', 'blur');
+            const hMerge = hoverGlow.append('feMerge');
+            hMerge.append('feMergeNode').attr('in', 'blur');
+            hMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
             const g = svg.append('g');
             const zoomBehavior = d3.zoom().scaleExtent([0.1, 5]).on('zoom', (event) => { g.attr('transform', event.transform); });
@@ -644,8 +651,8 @@
                 .selectAll('path').data(edges).enter().append('path')
                 .attr('fill', 'none')
                 .attr('stroke', 'var(--tx3)')
-                .attr('stroke-width', 0.9)
-                .attr('stroke-opacity', 0.55)
+                .attr('stroke-width', 0.6)
+                .attr('stroke-opacity', 0.3)
                 .attr('marker-end', 'url(#arrowhead)')
                 .attr('d', d => {
                     const dx = d.target.x - d.source.x;
@@ -712,6 +719,7 @@
                     d3.select(this).select('circle, rect').transition().duration(150)
                         .attr('r', d.isDirectory ? undefined : nodeRadius(d) + 3)
                         .attr('stroke', 'var(--ac)').attr('stroke-width', 2.5);
+                    d3.select(this).select('circle, rect').style('filter', 'url(#hover-glow)');
                     link.attr('stroke-opacity', e =>
                         (e.source === d || e.target === d) ? 0.9 : 0.1
                     ).attr('stroke', e =>
@@ -724,9 +732,11 @@
                     const c = getFileTypeColor(d.fileType);
                     d3.select(this).select('circle').transition().duration(200)
                         .attr('r', nodeRadius(d)).attr('stroke', c).attr('stroke-width', 1);
+                    d3.select(this).select('circle').style('filter', 'url(#glow)');
                     d3.select(this).select('rect').transition().duration(200)
                         .attr('stroke', c).attr('stroke-width', 2);
-                    link.attr('stroke-opacity', 0.55).attr('stroke', 'var(--tx3)').attr('stroke-width', 0.9);
+                    d3.select(this).select('rect').style('filter', null);
+                    link.attr('stroke-opacity', 0.3).attr('stroke', 'var(--tx3)').attr('stroke-width', 0.6);
                 });
 
             // Entrance animation: fade with per-node stagger — avoids anime.js v4 API incompatibilities
@@ -741,7 +751,7 @@
             requestAnimationFrame(() => {
                 node.style('opacity', '1');
                 setTimeout(() => {
-                    link.style('opacity', '0.4');
+                    link.style('opacity', '0.3');
                     // Remove stagger delays after animation so hover/drag transitions are instant
                     setTimeout(() => node.nodes().forEach(el => { el.style.transitionDelay = '0ms'; }), 700);
                 }, 80);
