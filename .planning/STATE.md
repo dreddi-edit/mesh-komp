@@ -1,27 +1,38 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: App Functionality & UX Fix Sweep
-status: executing
-last_updated: "2026-04-18T10:40:09.096Z"
+milestone: none
+milestone_name: none
+status: idle
+last_updated: "2026-04-18T12:00:00.000Z"
 last_activity: 2026-04-18
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 26
-  completed_plans: 26
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
-Status: Executing Phase 35
+Phase: None
+Plan: None
+Status: Between milestones (v2.1 shipped, next not yet defined)
 Last activity: 2026-04-18
 
 ## Accumulated Context
+
+### From v2.1 (App Functionality & UX Fix Sweep)
+
+- Settings: design tokens, back-nav, async persistence (Phase 28)
+- Terminal: teal theme, Cmd+C copy, mesh-local agent (Phase 29)
+- Editor: polling Monaco loader, welcome screen, indexing guard (Phase 30)
+- UI: stop button, chat gap, agent manager, context display, duplicate removal (Phase 31)
+- Voice: AudioContext fix, dead zone, ready orb, muteSpeaker (Phase 32)
+- Analytics: real data, conditional rendering; Graph: muted palette, hover glow (Phase 33)
+- .mesh folder: provisionMeshFolder consolidation (Phase 34)
+- Verification sweep: retroactive Phase 28 verification, Phase 33 browser UAT (Phase 35)
 
 ### From v2.0 (Full-Stack Quality Sweep)
 

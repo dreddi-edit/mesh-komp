@@ -16,57 +16,40 @@ Mesh is a full-stack AI-native IDE and context-compression platform. The fronten
 - `views/settings.html` — SPA settings hub
 - `views/marketplace.html` — Extension marketplace
 
-## Previous Milestone: v2.0 Full-Stack Quality Sweep (Completed)
+## Current State
 
+**Last shipped:** v2.1 App Functionality & UX Fix Sweep (2026-04-18)
+
+All major IDE surfaces now work end-to-end:
+- Settings: restyled with design tokens, back-nav fixed, async persistence with auth warning
+- Terminal: teal xterm theme, Cmd+C copy, mesh-local agent for local machine connection
+- Editor: polling-based Monaco loader, welcome screen with dual-storage workspaces, indexing guard
+- UI: stop button (AbortController), chat gap (CSS var), agent manager, context display, duplicate removal
+- Voice: AudioContext fix, backend dead zone, ready orb state, muteSpeaker flag
+- Analytics: removed fake seed, conditional rendering; Graph: muted palette, hover glow
+- .mesh folder: consolidated 6 generators into provisionMeshFolder, net -453 lines
+
+## Next Milestone
+
+Not yet defined. Run `/gsd:new-milestone` to start planning.
+
+**Candidates for next milestone:**
+- v2 workbench (`app-v2.html`) development
+- normalizeEmail dedup (blocked by circular dep — carried from v2.0)
+- mesh-core monolith split (carried from v2.0)
+- Global mutable state refactor completion (carried from v2.0)
+
+<details>
+<summary>Previous Milestones</summary>
+
+### v2.1 App Functionality & UX Fix Sweep (Shipped 2026-04-18)
+Fix all broken and non-functional surfaces in the Mesh IDE so the app works end-to-end. 8 phases (28–35), 26 plans, 21 requirements, 78 commits, +12,404/-25,144 lines.
+[Full archive](milestones/v2.1-ROADMAP.md)
+
+### v2.0 Full-Stack Quality Sweep (Completed)
 Backend quality sweep: error classes, security middleware, code splitting, service layer DI, CI/CD, caching, AWS infrastructure. Phases 19–27.
 
-## Current Milestone: v2.1 App Functionality & UX Fix Sweep
-
-**Goal:** Fix the 10 major broken areas in the Mesh IDE so the app works end-to-end as intended — settings, terminal, editor, UI elements, voice agent, analytics, graph styling, and .mesh folder quality.
-
-**Target features:**
-
-### Settings
-- Restyle settings UI to match app and landing page design language
-- Fix navigation: back-to-workspace currently redirects through login screen
-- Fix persistence: setting changes don't actually save
-
-### Terminal (Validated in Phase 29)
-- ✓ Fix dark grey text — xterm.js theme updated to teal palette (#c8e6f0 foreground, #0d1820 bg)
-- ✓ Enable text selection and copy — Cmd+C handler with clipboard API + fallback
-- ✓ Connect terminal to user's local machine — mesh-local agent package + /terminal-agent WebSocket + connect dialog UI
-
-### Editor (Validated in Phase 30)
-- ✓ Restore Monaco Editor reliability — polling-based loader fixes race condition with AMD `require`
-- ✓ Welcome screen with real recent workspaces — dual storage (idb-keyval + server) survives cache clears, shows last 3 workspaces
-- ✓ Remove false "Indexing..." status bar indicator on startup — `S.dirHandle` guard in `updateIndexProgressState`
-
-### UI Elements (Validated in Phase 31)
-- ✓ Stop/pause button — AbortController wired to btnSend; transforms to stop square during streaming, restores on complete/abort
-- ✓ Chat panel gap — toggleChat/applyShellSnapshot manage --ch-w CSS var (0px when hidden)
-- ✓ Agent Manager button — openAgentManagerStub wired to #btnOpenAgentMgr and #wAgentMgr
-- ✓ Context window display — recalc() called immediately on init so label shows 0k/200k not 0k/128k
-- ✓ Duplicate model dropdown — .chat-in-row select{display:none!important} hides native selects
-- ✓ Duplicate mode options — same CSS rule eliminates both native selects from .chat-in-row
-
-### Voice Agent (Validated in Phase 32)
-- ✓ Implement actual speech-to-speech — AudioContext auto-suspend fixed via `audioCtx.resume()` in `startAudio()` and defensive guard in `playAudioDelta()`
-- ✓ Fix "keeps listening" spam — backend dead zone (1500ms), new `ready` orb state, visual-only empty transcription, `muteSpeaker` flag for mute-during-playback
-
-### Operations & Analytics (Validated in Phase 33, UAT confirmed Phase 35)
-- ✓ Show real compression analytics — ops panel hidden when no data, title reflects content
-- ✓ Remove fake log seed — operationsStore no longer seeds placeholder entries
-
-### Mesh Graph (Validated in Phase 33, UAT confirmed Phase 35)
-- ✓ Muted teal-harmonized node colors — replaced bright yellow/orange with subdued palette
-- ✓ Softer edges — thinner strokes (0.6px), lower opacity (0.3)
-- ✓ Hover glow filter — prominent ring on hover, connected edge highlighting
-
-### .mesh Folder (Validated in Phase 34)
-- ✓ Consolidated 3 scattered generators into single provisionMeshFolder() outputting project.json, files.md, rules.md
-- ✓ Clean format: structured JSON + YAML-frontmatter markdown, no emojis
-- ✓ Secret scrubbing on package.json scripts
-- ✓ Regenerates on every indexing completion (early-return guard removed)
+</details>
 
 ## Constraint
 - Brownfield: all improvements layered onto working v1.0 codebase
@@ -89,8 +72,4 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-### Verification Sweep (Validated in Phase 35)
-- ✓ Retroactive Phase 28 verification — SETT-01/02/03 confirmed against codebase
-- ✓ Phase 33 browser UAT — ANLY-01/ANLY-02/GRPH-01 visually confirmed
-
-*Last updated: 2026-04-18 — Phase 35 complete (all v2.1 audit gaps closed, 21/21 requirements satisfied)*
+*Last updated: 2026-04-18 — Milestone v2.1 shipped*
