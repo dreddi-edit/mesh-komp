@@ -1005,6 +1005,29 @@ async function enrichWorkspaceRecords(ctx = {}) {
         }
     });
 
+    // ── Pass 3: build workspace-wide query index ───────────────────────────────
+    const queryIndex = new Map();
+    const allFilesForIndex = workspaceMetadataStore.enabled && workspaceId
+        ? await workspaceMetadataStore.listWorkspaceFiles(workspaceId)
+        : [...workspaceState.files.values()];
+
+    for (const meta of allFilesForIndex) {
+        const indexEntries = buildQueryIndexEntries(meta);
+        for (const entry of indexEntries) {
+            const existing = queryIndex.get(entry.token) || [];
+            existing.push({
+                file: entry.file,
+                lineStart: entry.lineStart,
+                lineEnd: entry.lineEnd,
+                snippet: entry.snippet,
+                kind: entry.kind,
+                kindBoost: entry.kindBoost,
+            });
+            queryIndex.set(entry.token, existing);
+        }
+    }
+    workspaceState.queryIndex = queryIndex;
+
     if (!workspaceMetadataStore.enabled || !workspaceId) {
         workspaceState.indexedAt = new Date().toISOString();
         persistWorkspaceState();
