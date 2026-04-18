@@ -273,9 +273,6 @@ function loadOperationsStore() {
   operationsStore.logs = sanitizeOperationLogs(source?.logs);
   operationsStore.updatedAt = String(source?.updatedAt || toIsoNow());
   if (!operationsStore.policies.length) operationsStore.policies = defaultOperationPolicies();
-  if (!operationsStore.logs.length) {
-    operationsStore.logs = [{ id: crypto.randomUUID(), level: 'info', region: 'eu', message: 'Operational data store initialized.', source: 'server', createdAt: toIsoNow() }];
-  }
   persistOperationsStore();
 }
 

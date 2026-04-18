@@ -1689,9 +1689,10 @@ function renderOpsPanel(container){
   const policies=ops.policies||[];
   const logs=ops.logs||[];
 
+  const hasOpsData = pending.length > 0 || history.length > 0 || policies.length > 0 || logs.length > 0;
+  if(!hasOpsData) return false;
+
   const wrap=document.createElement('div');wrap.className='fv-scr';
-  const h=document.createElement('h2');h.className='fv-t';h.textContent='Operations & Compression Analytics';
-  wrap.appendChild(h);
 
   const grid=document.createElement('div');grid.className='ops-stats';
   const summaryCards=[
@@ -1753,13 +1754,8 @@ function renderOpsPanel(container){
     sec.appendChild(logWrap);wrap.appendChild(sec);
   }
 
-  if(!pending.length&&!history.length&&!policies.length&&!logs.length){
-    const empty=document.createElement('p');empty.style.cssText='color:var(--tx3);padding:12px 0;font-size:.78rem';
-    empty.textContent='No operations activity yet. Deployments, policies, and logs will appear here as they occur.';
-    wrap.appendChild(empty);
-  }
-
   container.appendChild(wrap);
+  return true;
 }
 
 let opsSort={col:'path',asc:true}; // default: group by directory alphabetically
@@ -1770,22 +1766,42 @@ function renderOps(){
   const v=$('#opsView');if(!v)return;
   v.textContent='';
 
-  renderOpsPanel(v);
+  const opsRendered=renderOpsPanel(v);
+  const h=document.createElement('h2');h.className='fv-t';
+  h.textContent=opsRendered?'Operations & Compression Analytics':'Compression Analytics';
+  v.insertBefore(h,v.firstChild);
 
   if(!S.dirName){
-    const wrap=document.createElement('div');wrap.className='fv-scr';wrap.style.cssText='padding:20px 0';
-    const h=document.createElement('h3');h.className='fv-t';h.textContent='Compression Analytics';
-    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:12px 0';p.textContent='Open a workspace folder to see compression analytics.';
-    wrap.append(h,p);v.appendChild(wrap);
+    const wrap=document.createElement('div');wrap.className='fv-scr';
+    wrap.style.cssText='padding:48px 20px;text-align:center';
+    const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    icon.setAttribute('width','40');icon.setAttribute('height','40');icon.setAttribute('viewBox','0 0 24 24');
+    icon.setAttribute('fill','none');icon.setAttribute('stroke','var(--tx3)');icon.setAttribute('stroke-width','1.5');
+    icon.style.cssText='margin:0 auto 12px;display:block;opacity:.5';
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z');
+    icon.appendChild(path);
+    const msg=document.createElement('p');msg.style.cssText='color:var(--tx3);font-size:.82rem;max-width:280px;margin:0 auto;line-height:1.5';
+    msg.textContent='Open a workspace folder to view compression analytics.';
+    wrap.append(icon,msg);v.appendChild(wrap);
     return;
   }
   if(!S.compressionMap.size){
-    const wrap=document.createElement('div');wrap.className='fv-scr';wrap.style.cssText='padding:20px 0';
-    const h=document.createElement('h3');h.className='fv-t';h.textContent='Compression Analytics';
-    const p=document.createElement('p');p.style.cssText='color:var(--tx3);padding:12px 0';
-    const b=document.createElement('strong');b.textContent=S.dirName;
-    p.append(b,' is open — compression data will appear once files finish indexing.');
-    wrap.append(h,p);v.appendChild(wrap);
+    const wrap=document.createElement('div');wrap.className='fv-scr';
+    wrap.style.cssText='padding:48px 20px;text-align:center';
+    const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    icon.setAttribute('width','40');icon.setAttribute('height','40');icon.setAttribute('viewBox','0 0 24 24');
+    icon.setAttribute('fill','none');icon.setAttribute('stroke','var(--tx3)');icon.setAttribute('stroke-width','1.5');
+    icon.style.cssText='margin:0 auto 12px;display:block;opacity:.5';
+    const circ=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circ.setAttribute('cx','12');circ.setAttribute('cy','12');circ.setAttribute('r','10');
+    const polyline=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    polyline.setAttribute('points','12 6 12 12 16 14');
+    icon.append(circ,polyline);
+    const msg=document.createElement('p');msg.style.cssText='color:var(--tx3);font-size:.82rem;max-width:280px;margin:0 auto;line-height:1.5';
+    const b=document.createElement('strong');b.style.color='var(--tx2)';b.textContent=S.dirName;
+    msg.append(b,' is open — compression data will appear once files finish indexing.');
+    wrap.append(icon,msg);v.appendChild(wrap);
     return;
   }
 
