@@ -1,89 +1,80 @@
-# Requirements: Mesh v2.2 — Live App Bug Fix & Editor Overhaul
+# Requirements: Mesh v2.15 — Compression Intelligence
 
 **Defined:** 2026-04-18
-**Core Value:** Die Live-App soll tatsächlich funktionieren — Monaco zuverlässig laden, Terminal sofort nutzbar, Marketplace Extensions anzeigen, Settings korrekt navigieren, Voice Agent Audio ausgeben, und .mesh Folder sinnvollen Inhalt erzeugen.
+**Core Value:** Compute-side context assembly — the AI arrives with a pre-built briefing (exact file:line ranges, resolved symbols, ranked snippets) instead of reasoning about where to look. Compression becomes a sharp competitive moat.
 
 ## v1 Requirements
 
-### Editor (Monaco — kompletter Neueinbau)
+### Symbol Dependency Graph
 
-- [x] **EDIT-04**: Monaco Editor lädt zuverlässig ohne Lade-Spinner oder Race Conditions beim App-Start
-- [x] **EDIT-05**: Monaco Worker (TypeScript, JSON, CSS) funktionieren korrekt — keine grauen Lade-Kreise
-- [x] **EDIT-06**: Syntax Highlighting für JS, TS, Python, CSS, HTML, JSON, Markdown funktioniert korrekt
-- [x] **EDIT-07**: Monaco lädt ohne externe CDN-Abhängigkeit (self-hosted aus node_modules)
+- [ ] **SYM-01**: Symbol-level index built at workspace index time — captures function/class/variable declarations with exact file and line ranges across all workspace files
+- [ ] **SYM-02**: Cross-file call chain resolution — given a symbol, the system resolves callers and callees with exact file:line references (not file-level import edges)
+- [ ] **SYM-03**: Dependency graph exposed as structured AI context — "button X in file A:L24 calls function Y in file B:L58 which calls endpoint Z in file C:L14"
+- [ ] **SYM-04**: Symbol index incrementally updated on file save — no full reindex required for single-file edits
 
-### Terminal
+### Semantic Query Index
 
-- [ ] **TERM-04**: Terminal öffnet sofort eine Shell ohne dass ein lokaler Agent installiert werden muss
-- [ ] **TERM-05**: Terminal-Fallback nutzt Server-PTY (node-pty) wenn kein lokaler Agent verbunden ist
+- [ ] **IDX-01**: Pre-built search index over code symbols, function names, and user-facing text strings built at workspace index time
+- [ ] **IDX-02**: Query resolution at request time — user entry phrase resolves to ranked code snippets with exact file:line ranges before AI sees anything
+- [ ] **IDX-03**: Index covers at minimum: function names, class names, exported identifiers, string literals, and comment keywords
+- [ ] **IDX-04**: Query index incrementally updated on file save alongside symbol index
 
-### Marketplace
+### Capsule Quality Improvements
 
-- [ ] **MKT-01**: Extensions Marketplace zeigt Extensions korrekt an (kein broken placeholder)
-- [ ] **MKT-02**: Open VSX Registry wird über einen Backend-Proxy geladen (kein direkter Browser-CORS-Fetch)
+- [ ] **CAP-01**: Capsule content includes export surfaces — what the file exports and what each export's signature is
+- [ ] **CAP-02**: Capsule content includes outgoing call references — which external symbols this file calls and where (file:line)
+- [ ] **CAP-03**: Capsule content includes dependency summary — direct imports listed with resolved paths
+- [ ] **CAP-04**: Project-level orientation capsule (workspace summary) references concrete file roles, not generic descriptions
 
-### Settings
+### Targeted Reads + Large File Chunking
 
-- [ ] **SETT-04**: Zurücknavigieren vom Settings zum Workspace leitet nicht durch den Auth-Screen
-- [ ] **SETT-05**: Settings öffnen standardmäßig im Dark Theme (nicht Light)
-
-### Voice Agent
-
-- [ ] **VOIC-03**: Voice Agent gibt Audio-Antworten über AWS Polly aus (Speech-to-Speech funktioniert im Browser)
-
-### UI / FOUC
-
-- [ ] **UIEL-07**: Beim App-Start sind keine UI-Elemente sichtbar bevor JavaScript initialisiert hat (kein FOUC)
-- [ ] **UIEL-08**: Status Bar zeigt kein "Indexing..." beim App-Start ohne geöffneten Workspace-Folder
-
-### .mesh Folder
-
-- [ ] **MESH-02**: `.mesh/project.json` enthält strukturierte, sinnvolle Projektmetadaten (kein Boilerplate)
-- [ ] **MESH-03**: `.mesh/files.md` enthält eine lesbare Übersicht der Workspace-Dateien mit Zweck-Beschreibungen
-- [ ] **MESH-04**: `.mesh/rules.md` enthält projektspezifische Coding-Konventionen (nicht generische Platzhalter)
+- [ ] **READ-01**: AI reads specific AST nodes (function/class body) via tree-sitter extraction — not the whole file — when a targeted symbol is known
+- [ ] **READ-02**: Files above a line threshold (300 lines) are chunked by AST node boundaries when a whole-file read is requested
+- [ ] **READ-03**: Targeted read API returns the exact lines of the requested symbol plus configurable context lines (default ±5)
+- [ ] **READ-04**: Large file chunking produces numbered chunks with line range headers so AI can request specific chunks by range
 
 ## v2 Requirements
 
 Deferred to future release.
 
-- Lokaler Terminal-Agent (mesh-local package) mit echter UI für Setup-Flow
-- Monaco Language Server Protocol (LSP) für echtes IntelliSense
-- Monaco Diff-Editor für Git-Diffs
+- Real-time symbol streaming — push symbol index diffs to connected clients as files change
+- Vector embeddings for semantic similarity search (beyond keyword matching)
+- Cross-workspace symbol resolution (monorepo support)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Monaco IntelliSense / LSP | Erfordert separaten Language Server — zu groß für dieses Milestone |
-| Terminal Multi-Split | Infrastruktur vorhanden, aber kein User-Request |
-| Voice Agent neue Features | Erst Basis-Speech zum Laufen bringen |
-| Marketplace Extension Installation | Backend-Endpunkt existiert, aber echte Installation erfordert Extension-Runtime |
+| LSP / IntelliSense | Language server protocol is a separate runtime concern — not compression |
+| Type inference | Requires full TypeScript compiler — out of scope for this milestone |
+| Remote workspace indexing | S3-hosted workspaces indexed on demand only — incremental index requires local file events |
+| v2.2 phases 37-42 | Terminal PTY, Marketplace, Settings, Voice, FOUC, .mesh deferred to backlog |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EDIT-04 | Phase 36 | Planned |
-| EDIT-05 | Phase 36 | Planned |
-| EDIT-06 | Phase 36 | Planned |
-| EDIT-07 | Phase 36 | Planned |
-| TERM-04 | Phase 37 | Planned |
-| TERM-05 | Phase 37 | Planned |
-| MKT-01 | Phase 38 | Planned |
-| MKT-02 | Phase 38 | Planned |
-| SETT-04 | Phase 39 | Planned |
-| SETT-05 | Phase 39 | Planned |
-| VOIC-03 | Phase 40 | Planned |
-| UIEL-07 | Phase 41 | Planned |
-| UIEL-08 | Phase 41 | Planned |
-| MESH-02 | Phase 42 | Planned |
-| MESH-03 | Phase 42 | Planned |
-| MESH-04 | Phase 42 | Planned |
+| SYM-01 | Phase 43 | Planned |
+| SYM-02 | Phase 43 | Planned |
+| SYM-03 | Phase 43 | Planned |
+| SYM-04 | Phase 43 | Planned |
+| IDX-01 | Phase 44 | Planned |
+| IDX-02 | Phase 44 | Planned |
+| IDX-03 | Phase 44 | Planned |
+| IDX-04 | Phase 44 | Planned |
+| CAP-01 | Phase 45 | Planned |
+| CAP-02 | Phase 45 | Planned |
+| CAP-03 | Phase 45 | Planned |
+| CAP-04 | Phase 45 | Planned |
+| READ-01 | Phase 46 | Planned |
+| READ-02 | Phase 46 | Planned |
+| READ-03 | Phase 46 | Planned |
+| READ-04 | Phase 46 | Planned |
 
 **Coverage:**
 - v1 requirements: 16 total
-- Mapped to phases: 16
-- Unmapped: 0 ✓
+- Mapped to phases: 16 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-18*
