@@ -126,6 +126,7 @@ export const workspaceState = {
     sourceKind:         WORKSPACE_SOURCE_UPLOAD,
     files:              new Map(),
     symbolMap:          new Map(), // Map<symbolName, {file, lineStart, lineEnd, kind}[]>
+    queryIndex:         new Map(), // Map<token, {file, lineStart, lineEnd, snippet, kind, kindBoost}[]>
     fileCountTotal:     0,
     fileCountCompleted: 0,
     fileCountFailed:    0,
