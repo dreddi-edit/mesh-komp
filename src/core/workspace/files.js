@@ -418,6 +418,32 @@ async function localWorkspaceSave(pathInput, nextContent) {
   } else {
     localAssistantWorkspace.files.set(requested, { path: requested, ...packed, kind: "source" });
   }
+
+  // Update queryIndex incrementally for this file
+  if (localAssistantWorkspace.queryIndex instanceof Map) {
+    for (const [token, entries] of localAssistantWorkspace.queryIndex) {
+      const filtered = entries.filter(e => e.file !== requested);
+      if (filtered.length === 0) {
+        localAssistantWorkspace.queryIndex.delete(token);
+      } else {
+        localAssistantWorkspace.queryIndex.set(token, filtered);
+      }
+    }
+    const newEntries = buildQueryIndexEntries({ path: requested, ...packed });
+    for (const entry of newEntries) {
+      const existing = localAssistantWorkspace.queryIndex.get(entry.token) || [];
+      existing.push({
+        file: entry.file,
+        lineStart: entry.lineStart,
+        lineEnd: entry.lineEnd,
+        snippet: entry.snippet,
+        kind: entry.kind,
+        kindBoost: entry.kindBoost,
+      });
+      localAssistantWorkspace.queryIndex.set(entry.token, existing);
+    }
+  }
+
   if (!localAssistantWorkspace.folderName) localAssistantWorkspace.folderName = "workspace";
   localAssistantWorkspace.rootPath = null;
   localAssistantWorkspace.sourceKind = WORKSPACE_SOURCE_UPLOAD;
