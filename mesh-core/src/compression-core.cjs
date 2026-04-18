@@ -881,6 +881,7 @@ function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
   }
 
   const callSitesRaw = extractCallSites(tree, rawText, fileType?.parserFamily || '');
+  const stringLiteralsRaw = extractStringLiterals(tree, rawText);
 
   const routeLines = extractRegexLines(
     rawText,
@@ -930,6 +931,7 @@ function buildCodeCapsule(pathValue, text, fileType, workspaceFilePaths = []) {
     fallbackReason,
     symbolDeclarations,
     callSitesRaw,
+    stringLiteralsRaw,
     sections: [
       importsSection,
       symbolsSection,
