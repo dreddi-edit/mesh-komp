@@ -8,7 +8,6 @@
 const fs = require('fs');
 const path = require('path');
 
-const { MESH_SYSTEM_PROMPT } = require('../model-providers');
 const logger = require('../../logger');
 
 const { toSafePath, mapWithConcurrency } = require('./path-utils');
@@ -24,190 +23,6 @@ const SCAN_DIR_CONCURRENCY = 8;
  * @param {number} [depth]
  * @returns {Promise<string>}
  */
-async function generateMeshWorkspaceTree(rootPath, currentPath = '', depth = 0) {
-  if (depth > 6) return '';
-  const absolutePath = path.join(rootPath, currentPath);
-  let result = '';
-
-  try {
-    const entries = await fs.promises.readdir(absolutePath, { withFileTypes: true });
-    entries.sort((a, b) => {
-      if (a.isDirectory() && !b.isDirectory()) return -1;
-      if (!a.isDirectory() && b.isDirectory()) return 1;
-      return a.name.localeCompare(b.name);
-    });
-
-    for (const entry of entries) {
-      if (LOCAL_WORKSPACE_SKIP_DIRS.test(entry.name)) continue;
-      const indent = '  '.repeat(depth);
-      if (entry.isDirectory()) {
-        result += `${indent}- 📁 ${entry.name}/\n`;
-        result += await generateMeshWorkspaceTree(rootPath, path.join(currentPath, entry.name), depth + 1);
-      } else {
-        if (LOCAL_WORKSPACE_SKIP_EXTENSIONS.test(entry.name)) continue;
-        result += `${indent}- 📄 ${entry.name}\n`;
-      }
-    }
-  } catch {
-    // Skip unreadable
-  }
-  return result;
-}
-
-/**
- * Generates a recursive directory tree string from a flat file manifest (Cloud Mode).
- * @param {object[]} [files]
- * @param {string} [folderName]
- * @returns {string}
- */
-function generateMeshWorkspaceTreeFromManifest(files = [], folderName = 'workspace') {
-  const tree = {};
-  const rootName = String(folderName || 'workspace').trim() || 'workspace';
-
-  for (const file of files) {
-    const filePath = String(file.path || file.name || '').trim();
-    if (!filePath) continue;
-    if (LOCAL_WORKSPACE_SKIP_DIRS.test(filePath)) continue;
-    const parts = filePath.split('/');
-    let current = tree;
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      if (!current[part]) {
-        current[part] = i === parts.length - 1 ? null : {};
-      }
-      current = current[part];
-    }
-  }
-
-  function render(node, name, depth = 0) {
-    const indent = '  '.repeat(depth);
-    if (node === null) {
-      if (LOCAL_WORKSPACE_SKIP_EXTENSIONS.test(name)) return '';
-      return `${indent}- 📄 ${name}\n`;
-    }
-    let res = `${indent}- 📁 ${name}/\n`;
-    const children = Object.keys(node).sort((a, b) => {
-      const aIsDir = node[a] !== null;
-      const bIsDir = node[b] !== null;
-      if (aIsDir && !bIsDir) return -1;
-      if (!aIsDir && bIsDir) return 1;
-      return a.localeCompare(b);
-    });
-    for (const child of children) {
-      res += render(node[child], child, depth + 1);
-    }
-    return res;
-  }
-
-  return render(tree, rootName);
-}
-
-/**
- * Reads package.json from rootPath and returns a flat project summary.
- * @param {string} rootPath
- * @returns {Promise<string>}
- */
-async function readPackageJsonSummary(rootPath) {
-  if (!rootPath) return '';
-  try {
-    const raw = await fs.promises.readFile(path.join(rootPath, 'package.json'), 'utf8');
-    const pkg = JSON.parse(raw);
-    const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
-    const lines = [];
-    if (pkg.name) lines.push(`Project: ${pkg.name}`);
-    if (pkg.description) lines.push(`Description: ${pkg.description}`);
-    if (deps.length) lines.push(`Dependencies: ${deps.join(', ')}`);
-    return lines.join('\n');
-  } catch {
-    return '';
-  }
-}
-
-/**
- * Automatically provisions .mesh/workspace-instructions.md if it doesn't exist.
- * Supports both Local and Cloud backends.
- * @param {object} [ctx]
- * @returns {Promise<void>}
- */
-async function provisionMeshWorkspaceMetadata(ctx = {}) {
-  const { rootPath, workspaceId, folderName, sourceKind, sessionId, manifestFiles } = ctx;
-  const isCloud = Boolean(workspaceId) && workspaceMetadataStore.enabled;
-  const isLocal = Boolean(rootPath);
-  const meshPath = '.mesh/workspace-instructions.md';
-
-  try {
-    let tree = '';
-    let pkgSummary = '';
-    if (isLocal) {
-      [tree, pkgSummary] = await Promise.all([
-        generateMeshWorkspaceTree(rootPath),
-        readPackageJsonSummary(rootPath),
-      ]);
-    } else if (isCloud) {
-      tree = generateMeshWorkspaceTreeFromManifest(manifestFiles || [], folderName);
-    } else {
-      return;
-    }
-
-    const sections = ['# Mesh AI Workspace Instructions', MESH_SYSTEM_PROMPT];
-
-    if (pkgSummary) {
-      sections.push('## Project', pkgSummary);
-    }
-
-    sections.push(
-      '## Coding Rules',
-      '- Write complete, production-ready code. No TODOs, no placeholders, no truncated output.',
-      '- Prefer editing existing files over creating new ones.',
-      '- Do not add error handling for scenarios that cannot happen.',
-      '- Do not add comments unless the logic is non-obvious.',
-      '- Do not refactor or clean up code outside the scope of the request.',
-      '- Security: never hardcode secrets, always use parameterized queries, validate all external input.',
-      '## Edit Behavior',
-      '- Use `read_file_range` to fetch the exact lines before performing an edit.',
-      '- Prefer structural edits (targeted line changes) over full-file rewrites.',
-      '- When a capsule file has `is_skeleton="true"`, fetch the implementation before editing.',
-      '## Workspace Structure',
-      '```',
-      tree || '(empty)',
-      '```',
-    );
-
-    const content = sections.join('\n');
-
-    if (isLocal) {
-      const meshDir = path.join(rootPath, '.mesh');
-      await fs.promises.mkdir(meshDir, { recursive: true });
-      await fs.promises.writeFile(path.join(meshDir, 'workspace-instructions.md'), content, 'utf8');
-      logger.info('Provisioned local metadata', { scope: 'workspace-infra', meshDir });
-    } else if (isCloud) {
-      const meshFilePath = `${folderName}/${meshPath}`;
-      await workspaceMetadataStore.upsertWorkspaceFileRecord({
-        workspaceId,
-        folderName,
-        sourceKind: sourceKind || 'upload',
-        sessionId: sessionId || '',
-        path: meshFilePath,
-        status: 'completed',
-        record: {
-          path: meshFilePath,
-          kind: 'source',
-          description: 'Mesh AI Workspace Instructions',
-          originalSize: content.length,
-          compressedSize: content.length,
-          modelContent: content,
-          capsuleMode: 'none',
-          parserFamily: 'markdown',
-          storage: { provider: 'virtual', blobPath: meshFilePath },
-        },
-      });
-      logger.info('Provisioned virtual metadata', { scope: 'workspace-infra', workspaceId });
-    }
-  } catch (error) {
-    logger.error('Failed to provision metadata', { scope: 'workspace-infra', error: error.message });
-  }
-}
-
 /**
  * @param {string} absolutePath
  * @returns {Promise<string>}
@@ -429,10 +244,6 @@ function isMeshWorkerUnavailableError(error) {
 }
 
 module.exports = {
-  generateMeshWorkspaceTree,
-  generateMeshWorkspaceTreeFromManifest,
-  readPackageJsonSummary,
-  provisionMeshWorkspaceMetadata,
   readLocalWorkspaceFileText,
   scanLocalWorkspaceFiles,
   packLocalWorkspaceContent,

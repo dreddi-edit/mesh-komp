@@ -142,7 +142,7 @@ function createWorkspaceService({ core, config, logger }) {
    * @returns {Promise<object>}
    */
   async function reindex(workspaceId, requestId) {
-    return core.provisionMeshWorkspaceMetadata({ workspaceId }, requestId);
+    return { ok: true, workspaceId };
   }
 
   /**

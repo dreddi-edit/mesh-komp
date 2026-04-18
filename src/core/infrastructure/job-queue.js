@@ -7,7 +7,6 @@
 
 const crypto = require('crypto');
 const { meshTunnelRequest } = require('./path-utils');
-const { provisionMeshWorkspaceMetadata } = require('./state-provision');
 
 /** @returns {number} */
 function countPendingWorkspaceSelectJobs() {
@@ -259,16 +258,6 @@ function enqueueWorkspaceSelectJob(selectPayload = {}, context = {}) {
       job.status = 'completed';
       job.updatedAt = toIsoNow();
 
-      if (result?.ok) {
-        provisionMeshWorkspaceMetadata({
-          workspaceId: result.workspaceId || job.payload?.workspaceId,
-          folderName: result.folderName || job.summary?.folderName,
-          rootPath: result.rootPath || job.payload?.rootPath,
-          sourceKind: localAssistantWorkspace.sourceKind,
-          sessionId: job.payload?.sessionId,
-          manifestFiles: job.payload?.files || [],
-        }).catch(() => {});
-      }
     })
     .catch((error) => {
       job.status = 'failed';
