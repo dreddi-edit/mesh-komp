@@ -529,6 +529,7 @@ function setState(s) {
 /* ── Audio ── */
 async function startAudio() {
   audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+  await audioCtx.resume();
   await audioCtx.audioWorklet.addModule('/assets/features/voice-audio-worklet.js');
   micStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: SAMPLE_RATE, channelCount: 1, echoCancellation: true, noiseSuppression: true } });
   const source = audioCtx.createMediaStreamSource(micStream);
@@ -727,6 +728,7 @@ async function connectWebSocket() {
 
 function playAudioDelta(base64) {
   if (!speakerNode || !base64) return;
+  if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
   const pcm16 = base64ToInt16(base64);
   const float32 = new Float32Array(pcm16.length);
   for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / (pcm16[i] < 0 ? 0x8000 : 0x7FFF);
