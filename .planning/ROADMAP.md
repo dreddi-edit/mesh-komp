@@ -1,75 +1,102 @@
 # Mesh. Roadmap
 
-## Active Milestone: v2.15 — Compression Intelligence
+## Active Milestone: v2.2 — Live App Bug Fix & Editor Overhaul (Continued)
 
-**Goal:** Compute-side context assembly — pre-built symbol index, semantic query resolution, richer capsules, and targeted AST reads so the AI arrives with an exact briefing instead of reasoning about where to look.
+**Goal:** Fix the remaining broken surfaces deferred from v2.1 — marketplace search proxying, settings auth, voice Polly TTS, UI polish (FOUC, false indexing), and .mesh content quality enriched with v2.15 symbol data.
 
-**Phases:** 4 (Phase 43–46)
-**Requirements:** 16 mapped
-
----
-
-### Phase 43: Symbol Dependency Graph
-
-**Goal:** Build a symbol-level cross-file dependency index at workspace index time — function/class declarations with exact file:line ranges, caller/callee resolution, and AI-consumable structured context.
-
-**Status:** planned
-**Depends on:** None (first v2.15 phase)
-**Requirements:** SYM-01, SYM-02, SYM-03, SYM-04
-
-**Success Criteria:**
-1. Symbol index built at workspace index time contains all function/class/variable declarations with file:line ranges
-2. Cross-file call chain resolution works — given a symbol, callers and callees resolve to exact file:line references
-3. Symbol context exposed to AI as structured text: "X in A:L24 calls Y in B:L58 which calls Z in C:L14"
-4. Single-file save triggers incremental symbol update — no full reindex
+**Phases:** 6 (Phase 37–42)
+**Requirements:** 12 mapped
 
 ---
 
-### Phase 44: Semantic Query Index
+### Phase 37: Terminal — Server-PTY-Fallback
 
-**Goal:** Pre-built search index over code symbols and user-facing strings — user query resolves to ranked code snippets with exact file:line ranges before AI prompt assembly.
-
-**Status:** planned
-**Depends on:** Phase 43 (symbol infrastructure)
-**Requirements:** IDX-01, IDX-02, IDX-03, IDX-04
-
-**Success Criteria:**
-1. Query index built at workspace index time covers function names, class names, exported identifiers, string literals, comment keywords
-2. Query "fix login button" resolves to ranked file:line matches before AI sees anything
-3. Top-N results returned with file path, line range, and matched snippet
-4. Incremental update on file save alongside symbol index
-
----
-
-### Phase 45: Capsule Quality Improvements
-
-**Goal:** Richer capsule content — export surfaces, outgoing call references, dependency summaries, and concrete workspace-level orientation so Claude understands the codebase holistically.
-
-**Status:** planned
-**Depends on:** Phase 43 (symbol data available)
-**Requirements:** CAP-01, CAP-02, CAP-03, CAP-04
-
-**Success Criteria:**
-1. Capsule includes file's exported symbols with signatures
-2. Capsule includes outgoing call references (what external symbols this file calls and where)
-3. Capsule includes direct imports with resolved paths
-4. Workspace summary capsule names concrete file roles (not generic "utility file" descriptions)
-
----
-
-### Phase 46: Targeted Reads + Large File Chunking
-
-**Goal:** AI reads specific AST nodes via tree-sitter extraction instead of whole files; files above threshold are chunked by AST node boundaries so large files never hit 40k token reads.
+**Goal:** Terminal works on servers where node-pty is unavailable — fallback to child_process shell with visible warning; local agent proxy checked before PTY guard so agent-connected users always get a terminal.
 
 **Status:** complete
-**Depends on:** None (tree-sitter already parses all files)
-**Requirements:** READ-01, READ-02, READ-03, READ-04
+**Depends on:** None
+**Requirements:** TERM-04, TERM-05
 
 **Success Criteria:**
-1. Targeted read extracts specific function/class body by name — returns only that AST node's lines ±5 context
-2. Files >300 lines chunked by AST node boundaries when whole-file read is requested
-3. Targeted read API returns line range in response so AI can reference exact location
-4. Chunk headers include line range so AI can request specific chunks by range
+1. When node-pty is unavailable, a fallback shell spawns via child_process with a yellow warning message
+2. Local agent proxy check runs before PTY availability check — agent users unaffected by missing PTY
+3. Standard commands (git, ls, npm) work in fallback mode; interactive programs show appropriate messaging
+
+---
+
+### Phase 38: Marketplace — CORS-Proxy & Extension Display
+
+**Goal:** Extension search routed through a server-side proxy so the browser never calls Open VSX directly; extension cards display consistently with name, publisher, description, and install action.
+
+**Status:** planned
+**Depends on:** None
+**Requirements:** MKT-01, MKT-02
+
+**Success Criteria:**
+1. `/api/assistant/marketplace/search?q=...` proxies to Open VSX API server-side — browser makes no direct cross-origin calls
+2. Extension cards show name, publisher, version, description, download count, and install button
+3. Search works with empty query (trending/popular) and with keyword query
+4. Install flow unchanged — still uses existing `/api/assistant/extensions/install` endpoint
+
+---
+
+### Phase 39: Settings — Auth-Fix & Theme-Default
+
+**Goal:** Settings page accessible without spurious login redirect when already authenticated; default theme follows OS preference on first load.
+
+**Status:** planned
+**Depends on:** None
+**Requirements:** SETT-04, SETT-05
+
+**Success Criteria:**
+1. Navigating to `/settings` from the workspace while logged in loads settings without redirect to login
+2. On first load (no saved preference), theme follows OS `prefers-color-scheme` — dark OS = dark theme, light OS = light theme
+3. Saved theme preference still overrides system default on subsequent loads
+
+---
+
+### Phase 40: Voice Agent — Polly TTS End-to-End
+
+**Goal:** Voice agent TTS output uses Amazon Polly neural voices end-to-end — no Azure TTS dependency remaining; Polly integration complete and working in production.
+
+**Status:** planned
+**Depends on:** None
+**Requirements:** VOIC-03
+
+**Success Criteria:**
+1. Voice agent speaks responses using Polly neural TTS with no Azure SDK calls in the audio path
+2. Voice works with `MESH_VOICE_POLLY_VOICE` env var to select voice; defaults to Joanna neural
+3. No regression in voice agent STT (Transcribe) or agent reasoning — only TTS output path changed
+
+---
+
+### Phase 41: UI — FOUC & False Indexing Fix
+
+**Goal:** Correct theme applied before first paint on all pages; indexing status indicator only visible during active indexing.
+
+**Status:** planned
+**Depends on:** None
+**Requirements:** UIEL-07, UIEL-08
+
+**Success Criteria:**
+1. No flash of wrong theme on page load — theme class applied synchronously before first paint on `app.njk`, `settings.njk`, and `index.njk`
+2. "Indexing..." indicator in status bar only shows when workspace indexing is actively running — hidden on fresh load and when no folder is open
+3. No visual regression on theme switching after fix
+
+---
+
+### Phase 42: .mesh Folder — Content Quality
+
+**Goal:** `.mesh` folder files enriched with v2.15 symbol and file-role data — per-file role descriptions, symbol counts, and workspace-specific rules instead of generic templates.
+
+**Status:** planned
+**Depends on:** Phase 46 (v2.15 symbol + file-role data available on records)
+**Requirements:** MESH-02, MESH-03, MESH-04
+
+**Success Criteria:**
+1. `.mesh/files.md` includes a per-file role column derived from `record.fileRole` (built in Phase 45 CAP-04)
+2. `.mesh/project.json` includes `symbolCount` and top 5 exported symbol names per file
+3. `.mesh/rules.md` contains workspace-specific patterns (detected stack, conventions, entry points) — not generic placeholder text
 
 ---
 
@@ -77,93 +104,44 @@
 
 | Requirement | Phase | Category |
 |-------------|-------|----------|
-| SYM-01 | Phase 43 | Symbol Graph |
-| SYM-02 | Phase 43 | Symbol Graph |
-| SYM-03 | Phase 43 | Symbol Graph |
-| SYM-04 | Phase 43 | Symbol Graph |
-| IDX-01 | Phase 44 | Query Index |
-| IDX-02 | Phase 44 | Query Index |
-| IDX-03 | Phase 44 | Query Index |
-| IDX-04 | Phase 44 | Query Index |
-| CAP-01 | Phase 45 | Capsules |
-| CAP-02 | Phase 45 | Capsules |
-| CAP-03 | Phase 45 | Capsules |
-| CAP-04 | Phase 45 | Capsules |
-| READ-01 | Phase 46 | Targeted Reads |
-| READ-02 | Phase 46 | Targeted Reads |
-| READ-03 | Phase 46 | Targeted Reads |
-| READ-04 | Phase 46 | Targeted Reads |
+| TERM-04 | Phase 37 | Terminal |
+| TERM-05 | Phase 37 | Terminal |
+| MKT-01 | Phase 38 | Marketplace |
+| MKT-02 | Phase 38 | Marketplace |
+| SETT-04 | Phase 39 | Settings |
+| SETT-05 | Phase 39 | Settings |
+| VOIC-03 | Phase 40 | Voice |
+| UIEL-07 | Phase 41 | UI |
+| UIEL-08 | Phase 41 | UI |
+| MESH-02 | Phase 42 | .mesh |
+| MESH-03 | Phase 42 | .mesh |
+| MESH-04 | Phase 42 | .mesh |
 
-**Coverage:** 16/16 requirements mapped ✓
+**Coverage:** 12/12 requirements mapped ✓
 
 ---
 
 **Milestone Success Criteria:**
-- User query "fix login button" resolves to exact file:line matches before AI prompt assembly
-- Symbol dependency chain visible: button click → function → API call with file:line at each hop
-- Capsules contain export surfaces, call references, and resolved import paths
-- Files >300 lines never read whole — chunked or targeted by AST node
-
----
-
-## Backlog: v2.2 phases (deferred, not abandoned)
-
-[v2.2 Live App Bug Fix & Editor Overhaul — Phases 37-42](milestones/v2.2-ROADMAP-BACKLOG.md)
-
-Phase 36 complete (Monaco self-hosted). Phases 37-42 (Terminal PTY, Marketplace, Settings, Voice, FOUC, .mesh) deferred until after v2.15.
+- Marketplace search works in production without CORS errors
+- Settings accessible without spurious auth redirect
+- Voice agent speaks with Polly neural voices
+- No FOUC on any page; indexing indicator accurate
+- .mesh files contain real workspace-derived content
 
 ---
 
 <details>
-<summary>v2.2 — Live App Bug Fix &amp; Editor Overhaul (Phase 36 complete, 37-42 backlog)</summary>
+<summary>Archive: v2.15 — Compression Intelligence (complete 2026-04-19)</summary>
 
-### Phase 36: Editor — Monaco Kompletter Neueinbau ✓ COMPLETE
+All 4 phases complete. Symbol index (Phase 43), Semantic Query Index (Phase 44), Capsule Quality (Phase 45), Targeted Reads + Chunking (Phase 46). 30/30 tests green.
 
-**Goal:** Monaco Editor vollständig neu implementieren — AMD loader aus node_modules self-hosted, Worker korrekt konfiguriert, kein CDN, kein Polling, kein FOUC im Editor.
+Requirements: SYM-01..04, IDX-01..04, CAP-01..04, READ-01..04 — all complete.
 
-**Status:** complete
-**Requirements:** EDIT-04, EDIT-05, EDIT-06, EDIT-07
+</details>
 
----
+<details>
+<summary>Archive: v2.2 Phase 36 — Monaco Neueinbau (complete)</summary>
 
-### Phase 37: Terminal — Server-PTY-Fallback (BACKLOG)
-
-**Status:** backlog (deferred to post-v2.15)
-**Requirements:** TERM-04, TERM-05
-
----
-
-### Phase 38: Marketplace — CORS-Proxy & Extension Display (BACKLOG)
-
-**Status:** backlog (deferred to post-v2.15)
-**Requirements:** MKT-01, MKT-02
-
----
-
-### Phase 39: Settings — Auth-Fix & Theme-Default (BACKLOG)
-
-**Status:** backlog (deferred to post-v2.15)
-**Requirements:** SETT-04, SETT-05
-
----
-
-### Phase 40: Voice Agent — Polly Speech Synthesis (BACKLOG)
-
-**Status:** backlog (deferred to post-v2.15)
-**Requirements:** VOIC-03
-
----
-
-### Phase 41: UI — FOUC & False Indexing Fix (BACKLOG)
-
-**Status:** backlog (deferred to post-v2.15)
-**Requirements:** UIEL-07, UIEL-08
-
----
-
-### Phase 42: .mesh Folder — Content Quality (BACKLOG)
-
-**Status:** backlog (deferred to post-v2.15)
-**Requirements:** MESH-02, MESH-03, MESH-04
+Monaco Editor self-hosted from node_modules, AMD loader, no CDN, no polling, no FOUC in editor. EDIT-04..07 complete.
 
 </details>
