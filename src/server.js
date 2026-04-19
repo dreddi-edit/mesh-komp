@@ -226,6 +226,16 @@ app.get('/', async (_req, res, next) => {
   } catch (err) { next(err); }
 });
 
+app.get('/settings', async (req, res, next) => {
+  const resolved = await resolveAuthUserFromRequest(req);
+  if (!resolved) {
+    return res.redirect('/app?login=1');
+  }
+  try {
+    await sendHtmlWithHashes(res, 'settings.njk');
+  } catch (err) { next(err); }
+});
+
 app.use(async (req, res, next) => {
   if (req.path === '/' || req.path.slice(1).includes('.')) return next();
   const filePath = VIEW_ROUTE_MAP.get(req.path);
@@ -256,6 +266,7 @@ app.get('/api/csrf-token', (req, res) => {
   res.json({ ok: true, token: generateToken(req, res) });
 });
 
+const { resolveAuthUserFromRequest } = require('./core/auth');
 const { createAuthRouter } = require('./routes/auth.routes');
 const { createAppRouter } = require('./routes/app.routes');
 const { createAssistantRouter } = require('./routes/assistant.routes');

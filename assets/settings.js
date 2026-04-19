@@ -46,7 +46,7 @@ const SETTINGS_ROUTES = {
   appearance: "settings-appearance",
   ai: "settings-ai",
 };
-const DEFAULT_APPEARANCE = { theme: "light", density: "default", accent: "indigo", motion: "full", font: "berkeley", sidebarWidth: "default" };
+const DEFAULT_APPEARANCE = { theme: "system", density: "default", accent: "indigo", motion: "full", font: "berkeley", sidebarWidth: "default" };
 const DEFAULT_BILLING_STATE = { cycle: "annual", currentPlan: "pro" };
 const DEFAULT_INTEGRATIONS = {
   github: { connected: true, label: "@yourhandle", scopes: "Read access to repositories" },
@@ -139,30 +139,6 @@ async function persistJSON(key, value) {
   return value;
 }
 
-function showSettingsAuthWarning() {
-  if (document.getElementById('settings-auth-warning')) return;
-  const banner = document.createElement('div');
-  banner.id = 'settings-auth-warning';
-  banner.style.cssText = 'position:fixed;top:52px;left:0;right:0;z-index:100;background:var(--amber-bg);border-bottom:1px solid var(--amber);color:var(--amber);padding:8px 24px;font-size:0.8rem;display:flex;align-items:center;gap:8px;';
-
-  const icon = document.createElement('span');
-  icon.className = 'material-symbols-outlined';
-  icon.style.fontSize = '16px';
-  icon.textContent = 'warning';
-
-  const msg = document.createElement('span');
-  msg.textContent = "Not signed in \u2014 changes won't be saved to your account. ";
-
-  const link = document.createElement('a');
-  link.href = '/app';
-  link.style.cssText = 'color:inherit;text-decoration:underline;margin-left:4px;';
-  link.textContent = 'Sign in';
-
-  banner.appendChild(icon);
-  banner.appendChild(msg);
-  banner.appendChild(link);
-  document.body.appendChild(banner);
-}
 
 async function preloadUserStoreCache() {
   if (USER_STORE_READY) return;
@@ -181,9 +157,7 @@ async function preloadUserStoreCache() {
   try {
     const query = encodeURIComponent(SAFE_USER_STORE_KEYS.join(","));
     const response = await fetch(`/api/user/store?keys=${query}`, { credentials: "same-origin" });
-    if (response.status === 401) {
-      showSettingsAuthWarning();
-    } else if (response.ok) {
+    if (response.ok) {
       const body = await response.json().catch(() => ({}));
       const remote = body?.data && typeof body.data === "object" ? body.data : {};
       for (const key of SAFE_USER_STORE_KEYS) {
