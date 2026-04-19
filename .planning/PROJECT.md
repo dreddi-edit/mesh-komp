@@ -43,11 +43,13 @@ Mesh is a full-stack AI-native IDE and context-compression platform. The fronten
 
 **Milestone v2.15 in progress** (2026-04-18) — Compression Intelligence
 
+Phase 45 complete: Capsule Quality Improvements — export surfaces (CAP-01), outgoing call references (CAP-02), resolved imports (CAP-03), file roles table (CAP-04). All 10/10 tests pass.
+
 Phase 44 complete: Semantic Query Index shipped. `workspaceState.queryIndex` (inverted token index) built in enrichment Pass 3 from all symbols + string literals. `searchWorkspace()` now returns `snippets[]`. `localWorkspaceSave()` maintains index incrementally. 8/8 tests pass.
 
 Phase 43 complete: Symbol Dependency Graph — per-file `symbols[]` and `callSites[]` with cross-file resolution.
 
-Still missing: capsule quality improvements (Phase 45), targeted reads / large file chunking (Phase 46+).
+Still missing: targeted reads / large file chunking (Phase 46+).
 
 **Last shipped:** v2.2 partial — Phase 36 complete (Monaco self-hosted, no CDN/polling). v2.1 shipped 2026-04-18.
 
@@ -85,4 +87,4 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-*Last updated: 2026-04-18 — Phase 44 complete (Semantic Query Index)*
+*Last updated: 2026-04-19 — Phase 45 complete (Capsule Quality Improvements)*
