@@ -87,4 +87,4 @@ This document evolves at phase transitions and milestone boundaries.
 3. Audit Out of Scope — reasons still valid?
 4. Update Context with current state
 
-*Last updated: 2026-04-19 — Phase 46 complete (Targeted Reads + Large File Chunking) — milestone v2.15 complete*
+*Last updated: 2026-04-19 — Phase 41 complete (FOUC inline script + indexing idle guard) — milestone v2.2 in progress*
