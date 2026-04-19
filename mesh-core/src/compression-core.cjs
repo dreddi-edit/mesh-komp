@@ -100,6 +100,9 @@ const MAX_LLM_FALLBACK_SOURCE_BYTES = (() => {
   const normalized = Number.isFinite(configured) ? Math.trunc(configured) : fallback;
   return Math.max(32 * 1024, Math.min(normalized, 8 * 1024 * 1024));
 })();
+const LARGE_FILE_LINE_THRESHOLD = 300;
+const CHUNK_TARGET_LINES = 150;
+const MAX_CONTEXT_LINES = 20;
 const MAX_RENDER_ITEMS = {
   verbose: 14,
   compact: 8,
@@ -2635,6 +2638,38 @@ async function buildWorkspaceFileView(meta, view = "original", options = {}) {
     };
   }
 
+  if (normalizedView === "targeted") {
+    const symbolName = String(options.symbolName || "").trim();
+    const contextLines = Math.min(MAX_CONTEXT_LINES, Math.max(0, Number.isFinite(Number(options.contextLines)) ? Number(options.contextLines) : 5));
+    const symbols = Array.isArray(record.symbols) ? record.symbols : [];
+    const sym = symbols.find((s) => s.name === symbolName);
+    if (!sym) {
+      return {
+        ...base,
+        view: "targeted",
+        symbolName,
+        lineRange: null,
+        content: rawText,
+        encoding: "plain-text",
+        fallback: true,
+      };
+    }
+    const lineStarts = buildLineStarts(rawText);
+    const totalLines = lineStarts.length;
+    const rangeStart = Math.max(1, sym.lineStart - contextLines);
+    const rangeEnd = Math.min(totalLines, sym.lineEnd + contextLines);
+    const content = sliceTextByLines(rawText, lineStarts, rangeStart, rangeEnd);
+    return {
+      ...base,
+      view: "targeted",
+      symbolName,
+      lineRange: { start: rangeStart, end: rangeEnd },
+      content,
+      encoding: "plain-text",
+      fallback: false,
+    };
+  }
+
   return {
     ...base,
     view: "original",
@@ -2892,6 +2927,9 @@ function buildQueryIndexEntries(fileRecord) {
 
 module.exports = {
   DEFAULT_CHUNK_SIZE,
+  LARGE_FILE_LINE_THRESHOLD,
+  CHUNK_TARGET_LINES,
+  MAX_CONTEXT_LINES,
   LEGACY_WORKSPACE_ENCODING,
   MAX_CALL_SITES_PER_FILE,
   MAX_QUERY_TOKENS_PER_FILE,
