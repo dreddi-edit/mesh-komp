@@ -534,23 +534,6 @@ function createVoiceAgentSession(options = {}) {
       appendToChat: false,
     });
 
-    sendAzureEvent({
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: decision === 'approve'
-              ? `The operator approved action ${actionId} in run ${runId}. Continue.`
-              : `The operator rejected action ${actionId} in run ${runId}. Adjust and continue.`,
-          },
-        ],
-      },
-    });
-    sendAzureEvent({ type: 'response.create' });
-
     const pending = listPendingApprovalActions(run);
     rememberToolResult(decision === 'approve' ? 'approve_action' : 'reject_action', `${decision}d ${action.title || actionId}`);
 
@@ -791,15 +774,6 @@ function createVoiceAgentSession(options = {}) {
     }
 
     const output = JSON.stringify(result);
-    sendAzureEvent({
-      type: 'conversation.item.create',
-      item: {
-        type: 'function_call_output',
-        call_id: callId,
-        output,
-      },
-    });
-    sendAzureEvent({ type: 'response.create' });
 
     return result;
   }
