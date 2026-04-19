@@ -477,14 +477,14 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
         priority: "P0",
       });
       const EXPORT_PARENT_TYPES = new Set(['export_statement', 'export_declaration', 'export_default_declaration']);
-      const sig = String(signaturePreview(node, rawText) || '').slice(0, 140);
-      const isExported = EXPORT_PARENT_TYPES.has(node.parent?.type || '') || /^export\s/.test(sig);
+      const sigTrimmed = String(sig || '').slice(0, 140);
+      const isExported = EXPORT_PARENT_TYPES.has(node.parent?.type || '') || /^export\s/.test(sigTrimmed);
       symbolDeclarations.push({
         name: String(name || ''),
         kind: String(type || ''),
         lineStart: Number((node.startPosition?.row ?? 0) + 1),
         lineEnd: Number((node.endPosition?.row ?? 0) + 1),
-        signature: sig,
+        signature: sigTrimmed,
         isExported,
       });
       if (symbolsSection.items.length >= maxSymbols) return false;

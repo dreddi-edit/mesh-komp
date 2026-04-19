@@ -2458,6 +2458,32 @@ async function buildWorkspaceFileRecord(pathValue, rawText, options = {}) {
     record.storage = externalStorage;
   }
   record.compressionStats = buildCompressionStats(record);
+
+  // Build resolved-imports section from workspace-resolved dependencies
+  const resolvedImportPairs = [];
+  const workspaceFilePaths = options.workspaceFilePaths || [];
+  const importsSection = (baseCapsule.sections || []).find((s) => s.name === "imports");
+  if (importsSection && Array.isArray(importsSection.items) && workspaceFilePaths.length > 0) {
+    for (const item of importsSection.items) {
+      const source = item.metadata?.source;
+      if (!source) continue;
+      const resolved = resolveWorkspacePath(normalizedPath, source, workspaceFilePaths);
+      if (resolved) resolvedImportPairs.push({ source, resolved });
+    }
+  }
+  if (resolvedImportPairs.length > 0) {
+    const resolvedImportsSection = {
+      name: 'resolved-imports',
+      priority: 'P1',
+      items: resolvedImportPairs.map(ri => ({ text: `'${ri.source}' → ${ri.resolved}`, priority: 'P1' })),
+    };
+    record.capsuleBase.sections.push(resolvedImportsSection);
+    const cacheSections = record.capsuleCache?.capsule?.sections;
+    if (Array.isArray(cacheSections) && cacheSections !== record.capsuleBase.sections) {
+      cacheSections.push({ ...resolvedImportsSection, items: [...resolvedImportsSection.items] });
+    }
+  }
+
   if (externalStorage && (!persistRawContent || !persistTransportChunks)) {
     stripWorkspaceRecordPayload(record, {
       storage: externalStorage,

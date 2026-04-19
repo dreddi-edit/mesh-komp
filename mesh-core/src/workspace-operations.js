@@ -990,6 +990,27 @@ async function enrichWorkspaceRecords(ctx = {}) {
         const fileRecord = workspaceState.files.get(meta.path);
         if (fileRecord) {
             fileRecord.callSites = resolved;
+            // Rebuild calls section with resolved file:line after enrichment
+            const MAX_CALLS_SECTION = 30;
+            const callsSectionItems = [];
+            for (const cs of resolved) {
+                if (callsSectionItems.length >= MAX_CALLS_SECTION) break;
+                const location = cs.resolvedFile ? `${cs.resolvedFile}:${cs.resolvedLine}` : `line ${cs.callerLine}`;
+                callsSectionItems.push({ text: `${cs.calleeName} → ${location}`, priority: 'P1' });
+            }
+            if (callsSectionItems.length > 0) {
+                const updatedSection = { name: 'calls', priority: 'P1', items: callsSectionItems };
+                if (Array.isArray(fileRecord.capsuleBase?.sections)) {
+                    const idx = fileRecord.capsuleBase.sections.findIndex(s => s.name === 'calls');
+                    if (idx >= 0) fileRecord.capsuleBase.sections[idx] = updatedSection;
+                    else fileRecord.capsuleBase.sections.push(updatedSection);
+                }
+                if (Array.isArray(fileRecord.capsuleCache?.capsule?.sections)) {
+                    const cacheIdx = fileRecord.capsuleCache.capsule.sections.findIndex(s => s.name === 'calls');
+                    if (cacheIdx >= 0) fileRecord.capsuleCache.capsule.sections[cacheIdx] = { ...updatedSection, items: [...callsSectionItems] };
+                    else fileRecord.capsuleCache.capsule.sections.push({ ...updatedSection, items: [...callsSectionItems] });
+                }
+            }
             workspaceState.files.set(meta.path, fileRecord);
         }
 
