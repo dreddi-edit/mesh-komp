@@ -1315,6 +1315,7 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
   const rawText = String(text || "");
   const spanManager = createSpanManager(rawText);
   const symbolsSection = createSection("symbols", "P0");
+  const exportsSection = createSection("exports", "P0");
   const outlineSection = createSection("outline", "P1");
 
   // Regex patterns covering Rust, Elixir, Ruby, generic C-style, JS/TS, class/struct/trait/protocol
@@ -1354,6 +1355,7 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
         lineStart: i + 1,
         lineEnd: i + 1,
         signature: String(line.trim().slice(0, 140)),
+        isExported: /^export\s/.test(line.trim()),
       });
       break;
     }
@@ -1378,7 +1380,17 @@ function buildTextFallbackCapsule(pathValue, text, fileType) {
     });
   }
 
-  const sections = [symbolsSection, outlineSection].filter((s) => {
+  const MAX_EXPORTS_SECTION = 40;
+  for (const sym of heuristicSymbolDeclarations) {
+    if (!sym.isExported) continue;
+    if (exportsSection.items.length >= MAX_EXPORTS_SECTION) break;
+    pushSectionItem(exportsSection, {
+      text: sym.signature ? `${sym.name} — ${sym.signature}` : sym.name,
+      priority: "P0",
+    });
+  }
+
+  const sections = [exportsSection, symbolsSection, outlineSection].filter((s) => {
     s.items = dedupeByText(s.items);
     return s.items.length > 0;
   });
