@@ -20,7 +20,7 @@
     The :root in mesh-settings.css defaults to dark; this script sets
     data-theme="light" immediately when the user has light mode saved.
   -->
-  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'light').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}}());</script>
+  <script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var t=String(a.theme||'system').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Berkeley+Mono&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link href="/assets/mesh-settings.css" rel="stylesheet"/>
@@ -902,9 +902,9 @@
               <div class="field-group">
                 <label class="field-label" for="app-theme">Theme</label>
                 <select class="field-select" id="app-theme" name="theme">
-                  <option value="light" selected>Light</option>
+                  <option value="light">Light</option>
                   <option value="dark">Dark</option>
-                  <option value="system">Follow system</option>
+                  <option value="system" selected>Follow system</option>
                 </select>
               </div>
               <div class="field-group">
