@@ -2533,6 +2533,39 @@ function getFocusedCacheKey(query, tier = "ultra") {
   return sha256Hex(`${normalizeCapsuleTier(tier, "ultra")}::${String(query || "").trim().toLowerCase()}`).slice(0, 24);
 }
 
+/**
+ * Computes line-range boundaries for chunking a large file.
+ * Snaps each boundary to the nearest symbol lineEnd ≤ ideal boundary to avoid splitting inside a function.
+ * @param {Array} symbols - record.symbols[] array, each {lineStart, lineEnd}
+ * @param {number} totalLines - total line count of the file
+ * @param {number} targetLines - target lines per chunk (e.g. 150)
+ * @returns {Array<{start: number, end: number}>} array of 1-based inclusive line ranges
+ */
+function buildChunkBoundaries(symbols, totalLines, targetLines) {
+  const safeTarget = Math.max(50, targetLines);
+  const boundaries = [];
+  let pos = 1;
+  while (pos <= totalLines) {
+    const idealEnd = Math.min(totalLines, pos + safeTarget - 1);
+    let snappedEnd = idealEnd;
+    if (Array.isArray(symbols) && symbols.length > 0) {
+      let bestDiff = Infinity;
+      for (const sym of symbols) {
+        const le = Number(sym.lineEnd);
+        if (!Number.isFinite(le) || le < pos || le > idealEnd) continue;
+        const diff = idealEnd - le;
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          snappedEnd = le;
+        }
+      }
+    }
+    boundaries.push({ start: pos, end: snappedEnd });
+    pos = snappedEnd + 1;
+  }
+  return boundaries;
+}
+
 async function buildWorkspaceFileView(meta, view = "original", options = {}) {
   const record = await ensureWorkspaceFileRecord(meta, options);
   const rawText = decodeRawStorage(record.rawStorage);
@@ -2667,6 +2700,35 @@ async function buildWorkspaceFileView(meta, view = "original", options = {}) {
       content,
       encoding: "plain-text",
       fallback: false,
+    };
+  }
+
+  // Transparent chunking for large files (>LARGE_FILE_LINE_THRESHOLD lines)
+  const lineStarts = buildLineStarts(rawText);
+  const totalLines = lineStarts.length;
+
+  if (totalLines > LARGE_FILE_LINE_THRESHOLD) {
+    if (!Array.isArray(record.chunkBoundaries) || record.chunkBoundaries.length === 0) {
+      record.chunkBoundaries = buildChunkBoundaries(record.symbols || [], totalLines, CHUNK_TARGET_LINES);
+    }
+    const chunks = record.chunkBoundaries;
+    const totalChunks = chunks.length;
+    const requestedIndex = Number.isFinite(Number(options.chunkIndex))
+      ? Math.max(0, Math.min(totalChunks - 1, Math.trunc(Number(options.chunkIndex))))
+      : 0;
+    const chunk = chunks[requestedIndex];
+    const rawChunkContent = sliceTextByLines(rawText, lineStarts, chunk.start, chunk.end);
+    const fileName = basename(record.path || "");
+    const header = `## ${fileName} lines ${chunk.start}-${chunk.end} (chunk ${requestedIndex + 1}/${totalChunks})\n`;
+    return {
+      ...base,
+      view: "original",
+      content: header + rawChunkContent,
+      encoding: "plain-text",
+      chunked: true,
+      chunkIndex: requestedIndex,
+      totalChunks,
+      lineRange: { start: chunk.start, end: chunk.end },
     };
   }
 

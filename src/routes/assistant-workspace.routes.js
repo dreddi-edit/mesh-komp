@@ -201,6 +201,7 @@ function createWorkspaceRouter(core) {
         focus: String(req.query.focus || req.query.q || req.query.query || ''),
         symbolName: String(req.query.symbolName || '').trim(),
         contextLines: Number.isFinite(Number(req.query.contextLines)) ? Number(req.query.contextLines) : 5,
+        chunkIndex: Number.isFinite(Number(req.query.chunkIndex)) ? Number(req.query.chunkIndex) : 0,
         requestId: req.requestId,
       });
       res.json(result);
