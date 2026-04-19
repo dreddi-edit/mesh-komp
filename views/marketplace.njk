@@ -100,6 +100,27 @@
     .loading { text-align: center; padding: 60px; color: var(--tx3); }
     .mp-error { padding: 40px; text-align: center; color: var(--red); background: rgba(241, 76, 76, 0.05); border-radius: 12px; }
 
+    .mp-skeleton-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-bd);
+      border-radius: 16px;
+      padding: 20px;
+      height: 180px;
+      position: relative;
+      overflow: hidden;
+    }
+    .mp-skeleton-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(20,184,166,0.06), transparent);
+      animation: skeleton-shimmer 1.5s infinite;
+    }
+    @keyframes skeleton-shimmer {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(100%); }
+    }
+
     /* Progress Simulation */
     .prog-ctx { height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; display: none; margin-top: 8px; }
     .prog-bar { height: 100%; background: var(--ac); width: 0%; transition: width 0.3s; }
@@ -136,10 +157,14 @@
 
     async function fetchExtensions(query = '') {
       try {
-        grid.innerHTML = '<div class="loading">Fetching the global registry...</div>';
-        const url = query 
-          ? `https://open-vsx.org/api/-/search?q=${encodeURIComponent(query)}&size=30`
-          : `https://open-vsx.org/api/-/search?size=30`; // Default trending
+        grid.innerHTML =
+          '<div class="mp-skeleton-card"></div>' +
+          '<div class="mp-skeleton-card"></div>' +
+          '<div class="mp-skeleton-card"></div>' +
+          '<div class="mp-skeleton-card"></div>';
+        const url = query
+          ? `/api/marketplace/search?q=${encodeURIComponent(query)}`
+          : `/api/marketplace/search`;
         
         const res = await fetch(url);
         const data = await res.json();
@@ -148,7 +173,7 @@
         const extensions = data.extensions || data.results || [];
         renderExtensions(extensions);
       } catch (e) {
-        grid.innerHTML = `<div class="mp-error">Failed to connect to Open VSX Registry. <br> ${e.message}</div>`;
+        grid.innerHTML = `<div class="mp-error">Failed to connect to the extensions registry.<br><br><button class="mp-btn" style="width:auto;padding:8px 24px;" onclick="fetchExtensions(search.value)">Try again</button></div>`;
       }
     }
 
