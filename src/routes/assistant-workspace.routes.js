@@ -199,6 +199,8 @@ function createWorkspaceRouter(core) {
         tier: String(req.query.tier || req.query.capsuleTier || req.query.variant || '').trim(),
         query: String(req.query.q || req.query.query || req.query.focus || ''),
         focus: String(req.query.focus || req.query.q || req.query.query || ''),
+        symbolName: String(req.query.symbolName || '').trim(),
+        contextLines: Number.isFinite(Number(req.query.contextLines)) ? Number(req.query.contextLines) : 5,
         requestId: req.requestId,
       });
       res.json(result);
