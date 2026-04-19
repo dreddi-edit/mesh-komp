@@ -339,7 +339,9 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
 
   const importsSection = createSection("imports", "P0");
   const symbolsSection = createSection("symbols", "P0");
+  const exportsSection = createSection("exports", "P0");
   const routesSection = createSection("routes", "P1");
+  const callsSection = createSection("calls", "P1");
   const literalsSection = createSection("literals", "P1");
   const elisionsSection = createSection("elisions", "P2");
   const seenSymbolNames = new Set();
@@ -474,12 +476,16 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
         spanIds: [spanId],
         priority: "P0",
       });
+      const EXPORT_PARENT_TYPES = new Set(['export_statement', 'export_declaration', 'export_default_declaration']);
+      const sig = String(signaturePreview(node, rawText) || '').slice(0, 140);
+      const isExported = EXPORT_PARENT_TYPES.has(node.parent?.type || '') || /^export\s/.test(sig);
       symbolDeclarations.push({
         name: String(name || ''),
         kind: String(type || ''),
         lineStart: Number((node.startPosition?.row ?? 0) + 1),
         lineEnd: Number((node.endPosition?.row ?? 0) + 1),
-        signature: String(signaturePreview(node, rawText) || '').slice(0, 140),
+        signature: sig,
+        isExported,
       });
       if (symbolsSection.items.length >= maxSymbols) return false;
       return true;
@@ -528,6 +534,25 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
         });
       }
       return true;
+    });
+  }
+
+  const MAX_EXPORTS_SECTION = 40;
+  for (const sym of symbolDeclarations) {
+    if (!sym.isExported) continue;
+    if (exportsSection.items.length >= MAX_EXPORTS_SECTION) break;
+    pushSectionItem(exportsSection, {
+      text: sym.signature ? `${sym.name} — ${sym.signature}` : sym.name,
+      priority: "P0",
+    });
+  }
+
+  const MAX_CALLS_SECTION = 30;
+  for (const cs of callSitesRaw) {
+    if (callsSection.items.length >= MAX_CALLS_SECTION) break;
+    pushSectionItem(callsSection, {
+      text: `${cs.calleeName} — line ${cs.callerLine}`,
+      priority: "P1",
     });
   }
 
@@ -644,7 +669,9 @@ function buildCodeCapsule(pathValue, text, fileType, limits) {
     sections: [
       importsSection,
       symbolsSection,
+      exportsSection,
       routesSection,
+      callsSection,
       literalsSection,
       elisionsSection,
     ].flatMap((section) => {
