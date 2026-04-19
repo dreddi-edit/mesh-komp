@@ -7,10 +7,10 @@
 
 ### Symbol Dependency Graph
 
-- [ ] **SYM-01**: Symbol-level index built at workspace index time — captures function/class/variable declarations with exact file and line ranges across all workspace files
-- [ ] **SYM-02**: Cross-file call chain resolution — given a symbol, the system resolves callers and callees with exact file:line references (not file-level import edges)
-- [ ] **SYM-03**: Dependency graph exposed as structured AI context — "button X in file A:L24 calls function Y in file B:L58 which calls endpoint Z in file C:L14"
-- [ ] **SYM-04**: Symbol index incrementally updated on file save — no full reindex required for single-file edits
+- [x] **SYM-01**: Symbol-level index built at workspace index time — captures function/class/variable declarations with exact file and line ranges across all workspace files
+- [x] **SYM-02**: Cross-file call chain resolution — given a symbol, the system resolves callers and callees with exact file:line references (not file-level import edges)
+- [x] **SYM-03**: Dependency graph exposed as structured AI context — "button X in file A:L24 calls function Y in file B:L58 which calls endpoint Z in file C:L14"
+- [x] **SYM-04**: Symbol index incrementally updated on file save — no full reindex required for single-file edits
 
 ### Semantic Query Index
 
