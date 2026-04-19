@@ -2321,6 +2321,7 @@ async function bootstrap() {
   loadRecentWorkspaces().then(recents => renderRecentWorkspaces(recents)).catch(() => {});
 }
 async function init(){
+  updateIndexProgressState('idle');
   bind();loadS();renderChat();initMonaco(()=>{createEditor();if(S.activeTab)switchTab(S.activeTab);});
 
   // Strip ?login=1 from the URL immediately — it was a one-time signal from settings
