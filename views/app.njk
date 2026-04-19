@@ -3,6 +3,7 @@
 {% block title %}Mesh. — IDE{% endblock %}
 
 {% block head %}
+<script>(function(){try{var a=JSON.parse(localStorage.getItem('meshAppearance')||'{}');var m=JSON.parse(localStorage.getItem('meshSettings')||'{}');var t=String(a.theme||m.theme||'system').trim();if(t==='system')t=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light';}catch(e){document.documentElement.dataset.theme='light';}})();</script>
 <style>
   #page-transition-overlay {
     position: fixed; inset: 0; background: #fff; z-index: 9999; pointer-events: none;
