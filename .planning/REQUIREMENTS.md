@@ -21,10 +21,10 @@
 
 ### Capsule Quality Improvements
 
-- [ ] **CAP-01**: Capsule content includes export surfaces — what the file exports and what each export's signature is
-- [ ] **CAP-02**: Capsule content includes outgoing call references — which external symbols this file calls and where (file:line)
-- [ ] **CAP-03**: Capsule content includes dependency summary — direct imports listed with resolved paths
-- [ ] **CAP-04**: Project-level orientation capsule (workspace summary) references concrete file roles, not generic descriptions
+- [x] **CAP-01**: Capsule content includes export surfaces — what the file exports and what each export's signature is
+- [x] **CAP-02**: Capsule content includes outgoing call references — which external symbols this file calls and where (file:line)
+- [x] **CAP-03**: Capsule content includes dependency summary — direct imports listed with resolved paths
+- [x] **CAP-04**: Project-level orientation capsule (workspace summary) references concrete file roles, not generic descriptions
 
 ### Targeted Reads + Large File Chunking
 
