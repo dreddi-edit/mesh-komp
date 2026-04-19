@@ -259,6 +259,7 @@ app.get('/api/csrf-token', (req, res) => {
 const { createAuthRouter } = require('./routes/auth.routes');
 const { createAppRouter } = require('./routes/app.routes');
 const { createAssistantRouter } = require('./routes/assistant.routes');
+const { createMarketplaceRouter } = require('./routes/marketplace.routes');
 const { setupRealtimeRelay } = require('./routes/realtime.routes');
 
 // ── Service layer ─────────────────────────────────────────────────────────────
@@ -284,6 +285,7 @@ setupRealtimeRelay(server, core);
 app.use('/', createAuthRouter(core));
 app.use('/', createAppRouter(core));
 app.use('/', createAssistantRouter(core));
+app.use('/', createMarketplaceRouter());
 
 /* ─────────────────────────────────────────
    WebSocket terminal — ws://localhost:8080/terminal
