@@ -61,7 +61,7 @@
 
 **Goal:** AI reads specific AST nodes via tree-sitter extraction instead of whole files; files above threshold are chunked by AST node boundaries so large files never hit 40k token reads.
 
-**Status:** planned
+**Status:** complete
 **Depends on:** None (tree-sitter already parses all files)
 **Requirements:** READ-01, READ-02, READ-03, READ-04
 
