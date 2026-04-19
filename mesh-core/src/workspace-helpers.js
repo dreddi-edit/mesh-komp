@@ -1,6 +1,6 @@
 /**
  * MESH Worker — Workspace helper functions.
- * State persistence, path utilities, blob I/O, local filesystem ops, git helpers,
+ * State persistence, path utilities, local filesystem ops, git helpers,
  * envelope parsing, and pre-indexing normalization.
  * Imports shared state and constants from ./mesh-state.js.
  */
@@ -9,16 +9,13 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
-import { pipeline } from 'stream/promises';
 import { StringDecoder } from 'string_decoder';
 import { createRequire } from 'module';
-import { BlobClient, BlockBlobClient } from '@azure/storage-blob';
 import { compressMeshPayload, decompressMeshPayload } from './MeshServer.js';
 import compressionCore from './compression-core.cjs';
 import compressionUtils from './compression-utils.cjs';
 import {
     workspaceState,
-    workspaceBlobConfig,
     workspaceMetadataStore,
     brotliCompress,
     brotliDecompress,
@@ -32,17 +29,8 @@ import {
     LOCAL_WORKSPACE_SKIP_EXTENSIONS,
     LOCAL_WORKSPACE_SKIP_DIRS,
     LOCAL_WORKSPACE_MAX_FILE_CHARS,
-    WORKSPACE_BLOB_INLINE_BUFFER_BYTES,
-    WORKSPACE_BLOB_DOWNLOAD_CHUNK_BYTES,
-    WORKSPACE_BLOB_UPLOAD_BUFFER_BYTES,
-    WORKSPACE_BLOB_UPLOAD_MAX_CONCURRENCY,
     BLOB_WORKSPACE_SOURCE_NOTE,
-    trimTrailingSlashes,
-    normalizeSasToken,
-    sanitizeBlobContainerName,
     toSafePath,
-    buildAzureBlobAbsoluteUrl,
-    canonicalAzureBlobUrl,
 } from './mesh-state.js';
 
 const {
@@ -301,59 +289,18 @@ function toWorkspaceRelativePath(pathInput, folderName = workspaceState.folderNa
     return requested;
 }
 
-function normalizeWorkspaceBlobStorage(storage = {}, filePath = '') {
-    if (!storage || typeof storage !== 'object') return null;
-    const provider = String(storage.provider || '').trim().toLowerCase();
-    if (provider && provider !== 'azure-blob') return null;
-    const blobPath = toSafePath(storage.blobPath || filePath || '');
-    const azureBlobUrl = String(storage.azureBlobUrl || '').trim()
-        || (blobPath && workspaceBlobConfig.baseUrl && workspaceBlobConfig.container
-            ? canonicalAzureBlobUrl(workspaceBlobConfig.baseUrl, workspaceBlobConfig.container, blobPath)
-            : '');
-    return blobPath
-        ? {
-            provider: 'azure-blob',
-            blobPath,
-            azureBlobUrl,
-        }
-        : null;
-}
 
-function buildWorkspaceBlobAccessUrl(storage = {}, mode = 'read', options = {}) {
-    const normalized = normalizeWorkspaceBlobStorage(storage);
-    if (!normalized) {
-        throw new Error('Azure blob storage reference missing.');
-    }
-
-    const transientReadUrl = mode === 'read' ? String(options.readUrl || '').trim() : '';
-    if (transientReadUrl) {
-        return transientReadUrl;
-    }
-
-    const token = mode === 'read'
-        ? workspaceBlobConfig.readSasToken || workspaceBlobConfig.uploadSasToken
-        : (mode === 'delete'
-            ? workspaceBlobConfig.deleteSasToken || workspaceBlobConfig.uploadSasToken
-            : workspaceBlobConfig.uploadSasToken);
-
-    if (!workspaceBlobConfig.baseUrl || !workspaceBlobConfig.container || !token) {
-        throw new Error(`Azure blob ${mode} access is not configured on this worker.`);
-    }
-
-    return buildAzureBlobAbsoluteUrl(
-        workspaceBlobConfig.baseUrl,
-        workspaceBlobConfig.container,
-        normalized.blobPath,
-        token,
-    );
-}
-
-function getWorkspaceBlobClient(storage = {}, mode = 'read', options = {}) {
-    const url = buildWorkspaceBlobAccessUrl(storage, mode, options);
-    return mode === 'write'
-        ? new BlockBlobClient(url)
-        : new BlobClient(url);
-}
+// Storage is no longer backed by Azure Blob — all blob functions throw to prevent silent data loss.
+function normalizeWorkspaceBlobStorage() { return null; }
+function buildWorkspaceBlobAccessUrl() { throw new Error('Blob storage not supported.'); }
+function getWorkspaceBlobClient() { throw new Error('Blob storage not supported.'); }
+async function stageWorkspaceBlobForIndexing() { throw new Error('Blob storage not supported.'); }
+async function readWorkspaceBlobText() { throw new Error('Blob storage not supported.'); }
+async function writeWorkspaceBlobText() { throw new Error('Blob storage not supported.'); }
+async function copyWorkspaceBlob() { throw new Error('Blob storage not supported.'); }
+async function deleteWorkspaceBlob() { throw new Error('Blob storage not supported.'); }
+function workspaceUploadBlobStorageForPath() { return null; }
+async function packBlobBackedWorkspaceRecord() { throw new Error('Blob storage not supported.'); }
 
 async function withTemporaryWorkspaceFile(prefix, callback) {
     const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), `${prefix}-`));
@@ -442,88 +389,6 @@ async function extractIndexableTextFromStream(stream) {
         truncated: decoderState.truncated,
         binary: false,
     };
-}
-
-async function stageWorkspaceBlobForIndexing(storage = {}, sizeBytes = 0, options = {}) {
-    const normalizedStorage = normalizeWorkspaceBlobStorage(storage);
-    if (!normalizedStorage) {
-        throw new Error('Azure blob storage reference missing.');
-    }
-
-    const blobClient = getWorkspaceBlobClient(normalizedStorage, 'read', options);
-    const download = await blobClient.download();
-    if (!download.readableStreamBody) {
-        throw new Error('Azure blob download did not expose a readable stream.');
-    }
-
-    const normalizedSize = Number(sizeBytes || 0);
-    if (normalizedSize > 0 && normalizedSize <= WORKSPACE_BLOB_INLINE_BUFFER_BYTES) {
-        const extracted = await extractIndexableTextFromStream(download.readableStreamBody);
-        return {
-            ...extracted,
-            storage: normalizedStorage,
-            sourceKind: 'inline',
-            tempFilePath: '',
-        };
-    }
-
-    return withTemporaryWorkspaceFile('mesh-workspace-blob', async (tempFilePath) => {
-        await pipeline(download.readableStreamBody, fs.createWriteStream(tempFilePath));
-        const readStream = fs.createReadStream(tempFilePath, {
-            highWaterMark: WORKSPACE_BLOB_DOWNLOAD_CHUNK_BYTES,
-        });
-        const extracted = await extractIndexableTextFromStream(readStream);
-        return {
-            ...extracted,
-            storage: normalizedStorage,
-            sourceKind: 'temp-file',
-            tempFilePath,
-        };
-    });
-}
-
-async function readWorkspaceBlobText(storage = {}, sizeBytes = 0, options = {}) {
-    const staged = await stageWorkspaceBlobForIndexing(storage, sizeBytes, options);
-    return {
-        content: staged.content,
-        byteLength: staged.byteLength,
-        truncated: staged.truncated,
-        binary: staged.binary,
-    };
-}
-
-async function writeWorkspaceBlobText(storage = {}, content = '') {
-    const normalizedStorage = normalizeWorkspaceBlobStorage(storage);
-    if (!normalizedStorage) {
-        throw new Error('Azure blob storage reference missing.');
-    }
-    const blobClient = getWorkspaceBlobClient(normalizedStorage, 'write');
-    await blobClient.uploadData(Buffer.from(String(content || ''), 'utf8'));
-    return normalizedStorage;
-}
-
-async function copyWorkspaceBlob(sourceStorage = {}, targetStorage = {}) {
-    const sourceUrl = buildWorkspaceBlobAccessUrl(sourceStorage, 'read');
-    const targetClient = getWorkspaceBlobClient(targetStorage, 'write');
-    const sourceClient = getWorkspaceBlobClient(sourceStorage, 'read');
-    const download = await sourceClient.download();
-    if (!download.readableStreamBody) {
-        throw new Error('Azure blob copy stream unavailable.');
-    }
-    await targetClient.uploadStream(
-        download.readableStreamBody,
-        WORKSPACE_BLOB_UPLOAD_BUFFER_BYTES,
-        WORKSPACE_BLOB_UPLOAD_MAX_CONCURRENCY,
-    );
-    return {
-        sourceUrl,
-        targetBlobPath: normalizeWorkspaceBlobStorage(targetStorage)?.blobPath || '',
-    };
-}
-
-async function deleteWorkspaceBlob(storage = {}) {
-    const blobClient = getWorkspaceBlobClient(storage, 'delete');
-    await blobClient.deleteIfExists();
 }
 
 function normalizeAbsoluteRootPath(rootPath) {
@@ -627,43 +492,8 @@ async function packWorkspaceContentRecord(workspacePath, content, options = {}) 
     });
 }
 
-function workspaceUploadBlobStorageForPath(filePath, extra = {}) {
-    const blobPath = toSafePath(extra.blobPath || filePath);
-    if (!blobPath) return null;
-    return normalizeWorkspaceBlobStorage({
-        provider: 'azure-blob',
-        blobPath,
-        azureBlobUrl: extra.azureBlobUrl,
-    }, filePath);
-}
-
-async function packBlobBackedWorkspaceRecord(workspacePath, content, options = {}) {
-    const storage = workspaceUploadBlobStorageForPath(workspacePath, options.storage || {});
-    if (!storage) {
-        throw new Error('Blob-backed workspace storage reference is required.');
-    }
-
-    if (options.writeToBlob !== false) {
-        await writeWorkspaceBlobText(storage, content);
-    }
-
-    return buildWorkspaceFileRecord(workspacePath, content, {
-        legacyBrotliQuality: WORKSPACE_BROTLI_QUALITY,
-        initialBrotliQuality: WORKSPACE_INITIAL_BROTLI_QUALITY,
-        originalSizeOverride: Buffer.byteLength(String(content || ''), 'utf8'),
-        storage,
-        persistRawContent: false,
-        persistTransportChunks: false,
-        recordMode: options.recordMode || 'full',
-    });
-}
-
 async function loadWorkspaceRecordText(meta, requestedPath = '') {
     const record = await ensureWorkspaceMeta(meta, requestedPath || meta?.path || '');
-    if (record?.storage?.provider === 'azure-blob') {
-        const blobText = await readWorkspaceBlobText(record.storage, record.originalSize);
-        return blobText.content;
-    }
     return decodeRawStorage(record.rawStorage);
 }
 
@@ -804,13 +634,6 @@ function normalizeIncomingWorkspacePreindexedFile(candidate, filePath) {
             chunks: normalized.chunks,
             manifestText: typeof normalized.manifestText === 'string' ? normalized.manifestText : '',
         };
-    }
-
-    const storage = normalizeWorkspaceBlobStorage(candidate?.storage, filePath);
-    if (storage) {
-        normalized.storage = storage;
-        const storageReadUrl = String(candidate?.storage?.readUrl || '').trim();
-        if (storageReadUrl) normalized.storageReadUrl = storageReadUrl;
     }
 
     return normalized;

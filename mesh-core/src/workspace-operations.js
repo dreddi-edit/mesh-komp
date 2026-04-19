@@ -11,7 +11,6 @@ import compressionCore from './compression-core.cjs';
 import {
     workspaceState,
     workspaceMetadataStore,
-    workspaceBlobConfig,
     brotliCompress,
     brotliDecompress,
     execFileAsync,
@@ -27,16 +26,9 @@ import {
     LOCAL_WORKSPACE_SKIP_EXTENSIONS,
     LOCAL_WORKSPACE_SKIP_DIRS,
     LOCAL_WORKSPACE_MAX_FILE_CHARS,
-    WORKSPACE_BLOB_INLINE_BUFFER_BYTES,
-    WORKSPACE_BLOB_DOWNLOAD_CHUNK_BYTES,
-    WORKSPACE_BLOB_UPLOAD_BUFFER_BYTES,
-    WORKSPACE_BLOB_UPLOAD_MAX_CONCURRENCY,
     BLOB_WORKSPACE_SOURCE_NOTE,
     parseIntegerInRange,
     toSafePath,
-    buildAzureBlobAbsoluteUrl,
-    trimTrailingSlashes,
-    normalizeSasToken,
 } from './mesh-state.js';
 import {
     safeReadJsonFile,
