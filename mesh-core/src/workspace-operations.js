@@ -1141,6 +1141,23 @@ function buildProjectJson(files, folderName, packageJson) {
  * @param {string} folderName - Human-readable workspace name.
  * @returns {string} Markdown string with YAML frontmatter.
  */
+/**
+ * Classifies a workspace-relative file path into a role bucket.
+ * @param {string} relPath - Workspace-relative file path.
+ * @returns {string} Role: entry-point | route-handler | service | model | middleware | config | test | util
+ */
+function classifyFileRole(relPath) {
+    const p = String(relPath || '');
+    if (/\.(test|spec)\.(cjs|js|ts|mjs)$/.test(p) || /[/\\]tests?[/\\]/.test(p) || /\.test$/.test(p)) return 'test';
+    if (/\.routes\.(js|ts|cjs)$/.test(p) || /[/\\]routes[/\\]/.test(p)) return 'route-handler';
+    if (/\bmiddleware\b/.test(p)) return 'middleware';
+    if (/\b(server|app|main|index)\.(js|ts|cjs)$/.test(p)) return 'entry-point';
+    if (/\.(config|rc)\.(js|ts|cjs|json)$/.test(p) || /[/\\]config[/\\]/.test(p) || /config\.(js|ts|cjs)$/.test(p)) return 'config';
+    if (/\bservices?\b/.test(p) || /-service\.(js|ts|cjs)$/.test(p) || /-core\.(js|ts|cjs)$/.test(p)) return 'service';
+    if (/\b(models?|schema)\b/.test(p) || /\.(model|schema)\.(js|ts|cjs)$/.test(p)) return 'model';
+    return 'util';
+}
+
 function buildFilesMd(files, folderName) {
     const now = new Date().toISOString();
     const lines = [
@@ -1215,6 +1232,25 @@ function buildFilesMd(files, folderName) {
         lines.push('## API Surface', '');
         if (exports.length > 0) { lines.push('### Exports', '', ...exports, ''); }
         if (endpoints.length > 0) { lines.push('### HTTP Endpoints', '', ...endpoints, ''); }
+    }
+
+    const ROLE_ORDER = ['entry-point', 'route-handler', 'service', 'model', 'middleware', 'config', 'test', 'util'];
+    const roleMap = new Map(ROLE_ORDER.map(r => [r, []]));
+    for (const f of files) {
+        const rawPath = String(f.path || '');
+        const relFp = rawPath.startsWith(`${folderName}/`) ? rawPath.slice(folderName.length + 1) : rawPath;
+        if (!relFp) continue;
+        const role = classifyFileRole(relFp);
+        if (roleMap.has(role)) roleMap.get(role).push(relFp);
+    }
+    const nonEmptyRoles = ROLE_ORDER.filter(r => roleMap.get(r).length > 0);
+    if (nonEmptyRoles.length > 0) {
+        lines.push('## File Roles', '', '| Role | Files |', '|------|-------|');
+        for (const role of nonEmptyRoles) {
+            const roleFiles = roleMap.get(role).sort().join(', ');
+            lines.push(`| ${role} | ${roleFiles} |`);
+        }
+        lines.push('');
     }
 
     return lines.join('\n');
