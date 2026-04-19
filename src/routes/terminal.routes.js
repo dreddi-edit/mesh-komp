@@ -193,6 +193,50 @@ async function resolveTerminalCwd(projectRoot, deps = {}) {
 }
 
 /**
+ * Fallback shell using child_process.spawn when node-pty is unavailable.
+ * No PTY — interactive programs (vim, top) won't work, but standard CLI commands do.
+ *
+ * @param {import('ws').WebSocket} ws
+ * @param {string} shell
+ * @param {string} cwd
+ * @param {Record<string, string>} env
+ */
+function spawnFallbackShell(ws, shell, cwd, env) {
+  const { spawn } = require('child_process');
+  try {
+    ws.send(JSON.stringify({
+      type: 'output',
+      data: '\r\n\x1b[33m● node-pty unavailable — running in limited shell mode (no PTY, interactive programs disabled)\x1b[0m\r\n',
+    }));
+  } catch {}
+
+  const proc = spawn(shell, ['--norc', '--noprofile'], {
+    cwd,
+    env,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  proc.stdout.on('data', (chunk) => {
+    try { ws.send(JSON.stringify({ type: 'output', data: chunk.toString('utf8') })); } catch {}
+  });
+  proc.stderr.on('data', (chunk) => {
+    try { ws.send(JSON.stringify({ type: 'output', data: chunk.toString('utf8') })); } catch {}
+  });
+  proc.on('exit', () => {
+    try { ws.send(JSON.stringify({ type: 'exit' })); ws.close(); } catch {}
+  });
+
+  ws.on('message', (msg) => {
+    try {
+      const { type, data } = JSON.parse(msg);
+      if (type === 'input' && proc.stdin.writable) proc.stdin.write(data);
+    } catch {}
+  });
+
+  ws.on('close', () => { try { proc.kill(); } catch {} });
+}
+
+/**
  * Attaches terminal WebSocket handling to an existing HTTP server.
  *
  * @param {import('http').Server} server
@@ -295,18 +339,12 @@ function setupTerminalRelay(server, { projectRoot, core }) {
   });
 
   wss.on('connection', async (ws, req) => {
-    if (!nodePty) {
-      try { ws.send(JSON.stringify({ type: 'output', data: '\r\n\x1b[31m● node-pty not available on this server.\x1b[0m\r\n' })); } catch {}
-      ws.close();
-      return;
-    }
-
     const urlParams = new URL(req.url, 'http://localhost').searchParams;
     const shellPref = urlParams.get('shell');
     const clientFolder = urlParams.get('folder') || '';
     const clientWorkspaceId = urlParams.get('workspaceId') || '';
 
-    // Check if a local agent is connected — proxy through agent instead of spawning EC2 shell
+    // Check agent proxy first — works even when node-pty is unavailable on the server
     const resolved = await resolveAuthUserFromRequest(req).catch(() => null);
     const browserUserId = resolved?.id || resolved?.userId || resolved?.email;
     const agentWs = browserUserId ? agentConnections.get(browserUserId) : null;
@@ -359,35 +397,41 @@ function setupTerminalRelay(server, { projectRoot, core }) {
       } catch {}
     }
 
-    const proc = nodePty.spawn(shell, [], {
-      name: 'xterm-color',
-      cols: 120,
-      rows: 36,
-      cwd:  cwdInfo.cwd,
-      env:  sanitizeEnvForShell(process.env),
-    });
+    const sanitizedEnv = sanitizeEnvForShell(process.env);
 
-    proc.onData((data) => { try { ws.send(JSON.stringify({ type: 'output', data })); } catch {} });
-    proc.onExit(() => { try { ws.send(JSON.stringify({ type: 'exit' })); ws.close(); } catch {} });
+    if (nodePty) {
+      const proc = nodePty.spawn(shell, [], {
+        name: 'xterm-color',
+        cols: 120,
+        rows: 36,
+        cwd:  cwdInfo.cwd,
+        env:  sanitizedEnv,
+      });
 
-    const isLocalServer = !process.env.EC2_INSTANCE_ID && !process.env.AWS_EXECUTION_ENV && (
-      os.hostname().includes('.local') || os.hostname().includes('localhost') ||
-      cwdInfo.cwd.startsWith('/Users/') || cwdInfo.cwd.startsWith('/home/')
-    );
-    const modeLabel = isLocalServer ? 'Local Terminal' : 'Remote Terminal';
-    try {
-      ws.send(JSON.stringify({ type: 'output', data: `\r\n\x1b[36m● ${modeLabel} — ${cwdInfo.note}\x1b[0m\r\n` }));
-    } catch {}
+      proc.onData((data) => { try { ws.send(JSON.stringify({ type: 'output', data })); } catch {} });
+      proc.onExit(() => { try { ws.send(JSON.stringify({ type: 'exit' })); ws.close(); } catch {} });
 
-    ws.on('message', (msg) => {
+      const isLocalServer = !process.env.EC2_INSTANCE_ID && !process.env.AWS_EXECUTION_ENV && (
+        os.hostname().includes('.local') || os.hostname().includes('localhost') ||
+        cwdInfo.cwd.startsWith('/Users/') || cwdInfo.cwd.startsWith('/home/')
+      );
+      const modeLabel = isLocalServer ? 'Local Terminal' : 'Remote Terminal';
       try {
-        const { type, data, cols, rows } = JSON.parse(msg);
-        if (type === 'input')  proc.write(data);
-        if (type === 'resize') proc.resize(cols, rows);
+        ws.send(JSON.stringify({ type: 'output', data: `\r\n\x1b[36m● ${modeLabel} — ${cwdInfo.note}\x1b[0m\r\n` }));
       } catch {}
-    });
 
-    ws.on('close', () => { try { proc.kill(); } catch {} });
+      ws.on('message', (msg) => {
+        try {
+          const { type, data, cols, rows } = JSON.parse(msg);
+          if (type === 'input')  proc.write(data);
+          if (type === 'resize') proc.resize(cols, rows);
+        } catch {}
+      });
+
+      ws.on('close', () => { try { proc.kill(); } catch {} });
+    } else {
+      spawnFallbackShell(ws, shell, cwdInfo.cwd, sanitizedEnv);
+    }
   });
 }
 
